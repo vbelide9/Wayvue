@@ -7,12 +7,13 @@ const axios = require('axios');
 async function getRecommendations(routeSegments) {
     const recommendations = [];
 
-    // We can't query every single segment, it would be too slow.
-    // Pick 3 strategic stops: Start (coffee), Mid (gas/food), End (sightseeing)
+    // We'll query 5 strategic stops along the route for better coverage
     const indices = [
-        Math.floor(routeSegments.length * 0.1), // Near start
-        Math.floor(routeSegments.length * 0.5), // Middle
-        Math.floor(routeSegments.length * 0.9)  // Near dest
+        Math.floor(routeSegments.length * 0.05), // Start-ish
+        Math.floor(routeSegments.length * 0.25),
+        Math.floor(routeSegments.length * 0.50), // Middle
+        Math.floor(routeSegments.length * 0.75),
+        Math.floor(routeSegments.length * 0.95)  // Near dest
     ];
 
     const tasks = indices.map(async (idx, i) => {
@@ -22,27 +23,33 @@ async function getRecommendations(routeSegments) {
         const { lat, lon } = seg.location;
         let type, amenityQuery;
 
-        // Logic: Morning -> Coffee/Cafe, Mid -> Food/Gas, End -> View/Park
+        // Logic: Vary types across the 5 points
         if (i === 0) {
             type = 'food';
             amenityQuery = '["amenity"~"cafe|fast_food|restaurant|diner"]';
         } else if (i === 1) {
             type = 'gas';
             amenityQuery = '["amenity"~"fuel|charging_station"]';
+        } else if (i === 2) {
+            type = 'rest';
+            amenityQuery = '["amenity"~"rest_area|toilets|bench"]';
+        } else if (i === 3) {
+            type = 'food';
+            amenityQuery = '["amenity"~"restaurant|pub|ice_cream"]';
         } else {
             type = 'view';
             amenityQuery = '["tourism"~"viewpoint|attraction|museum|park"]';
         }
 
-        // Overpass QL Query: Search within 30000m (30km) for highway segments
-        // 30km is a reasonable detour distance on a long trip
+        // Overpass QL Query: Search within 30000m (30km)
+        // Returning 5 results per point now
         const query = `
             [out:json][timeout:15];
             (
               node${amenityQuery}(around:30000, ${lat}, ${lon});
               way${amenityQuery}(around:30000, ${lat}, ${lon});
             );
-            out center 1;
+            out center 5;
         `;
 
         let place = null;
@@ -59,18 +66,21 @@ async function getRecommendations(routeSegments) {
                 headers: { 'User-Agent': 'WayvueApp/3.0' },
                 timeout: 20000
             });
-            const node = response.data.elements?.[0]; // Just take the first valid result
+            const nodes = response.data.elements || [];
 
-            if (node && node.tags && (node.tags.name || node.tags.operator)) {
-                const name = node.tags.name || node.tags.operator;
-                place = {
-                    id: `osm-${node.id}`,
-                    type: type,
-                    location: seg.segment.includes('Segment') ? 'Along Route' : seg.segment.split(',')[0],
-                    title: name,
-                    description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : 'Local Stop')
-                };
-            }
+            nodes.forEach(node => {
+                if (node.tags && (node.tags.name || node.tags.operator)) {
+                    const name = node.tags.name || node.tags.operator;
+                    recommendations.push({
+                        id: `osm-${node.id}`,
+                        type: type,
+                        location: seg.segment.includes('Segment') ? 'Along Route' : seg.segment.split(',')[0],
+                        title: name,
+                        description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest stop and basic services' : 'Local Stop')
+                    });
+                }
+            });
+            return null; // Don't return 'place' for tasks.map, we push directly to array
         } catch (err) {
             console.log(`Overpass lookup failed for ${type} on ${mirror}: ${err.message}`);
         }
@@ -108,9 +118,19 @@ async function getRecommendations(routeSegments) {
         return place;
     });
 
-    const results = await Promise.all(tasks);
+    await Promise.all(tasks);
 
-    return results.filter(r => r !== null);
+    // Filter duplicates by title/id
+    const finalResults = [];
+    const seen = new Set();
+    recommendations.forEach(r => {
+        if (!seen.has(r.title)) {
+            seen.add(r.title);
+            finalResults.push(r);
+        }
+    });
+
+    return finalResults;
 }
 
 module.exports = { getRecommendations };
