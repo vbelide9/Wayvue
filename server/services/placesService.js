@@ -79,7 +79,8 @@ async function getRecommendations(routeSegments) {
                         location: displayLocation,
                         title: name,
                         description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest stop and basic services' : 'Local Stop'),
-                        quality: qualityScore
+                        quality: qualityScore,
+                        miles: Number(milesFromStart)
                     });
                 }
             });
@@ -104,7 +105,8 @@ async function getRecommendations(routeSegments) {
                 location: displayLocation,
                 title: `${townName} ${title}`,
                 description: `A convenient ${type} stop selected for your journey.`,
-                quality: 1 // Lower quality for fallbacks
+                quality: 1, // Lower quality for fallbacks
+                miles: Number(milesFromStart)
             });
         }
     });
@@ -116,8 +118,8 @@ async function getRecommendations(routeSegments) {
     const finalResults = [];
     const seen = new Set();
 
-    // Sort overall by quality score
-    recommendations.sort((a, b) => (b.quality || 0) - (a.quality || 0));
+    // Sort overall by distance (ascending) to show stops in order of travel
+    recommendations.sort((a, b) => (a.miles || 0) - (b.miles || 0));
 
     recommendations.forEach(r => {
         if (!seen.has(r.title)) {
