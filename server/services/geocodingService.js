@@ -1,34 +1,57 @@
 const axios = require('axios');
 
 /**
- * Geocodes a query string to coordinates using OpenStreetMap Nominatim.
+ * Geocodes a query string to coordinates using ArcGIS World Geocoding Service.
  * @param {string} query - e.g. "San Francisco, CA"
  * @returns {Promise<{lat: string, lon: string, display_name: string} | null>}
  */
 const geocode = async (query) => {
     try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-        // Nominatim requires a User-Agent
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Wayvue-App/1.0'
-            }
-        });
+        const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&SingleLine=${encodeURIComponent(query)}&maxLocations=1`;
 
-        if (response.data && response.data.length > 0) {
-            console.log(`Geocoding success for "${query}":`, response.data[0].display_name);
-            return response.data[0];
+        const response = await axios.get(url);
+
+        if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+            const candidate = response.data.candidates[0];
+            console.log(`Geocoding success for "${query}":`, candidate.address);
+            return {
+                lat: candidate.location.y,
+                lon: candidate.location.x,
+                display_name: candidate.address
+            };
         }
         console.warn(`Geocoding returned no results for "${query}"`);
         return null;
     } catch (error) {
         console.error(`Geocoding failed for "${query}":`, error.message);
-        if (error.response) {
-            console.error('Response data:', error.response.data);
-            console.error('Response status:', error.response.status);
-        }
         return null;
     }
 };
 
-module.exports = { geocode };
+/**
+ * Reverse geocodes coordinates to an address/location name.
+ * @param {number} lat 
+ * @param {number} lon 
+ * @returns {Promise<string | null>}
+ */
+const reverseGeocode = async (lat, lon) => {
+    try {
+        const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1000`;
+        const response = await axios.get(url);
+
+        if (response.data && response.data.address) {
+            const addr = response.data.address;
+            // Prefer City, State. Fallback to Neighborhood or full address
+            if (addr.City && addr.RegionAbbr) {
+                return `${addr.City}, ${addr.RegionAbbr}`;
+            }
+            return addr.Match_addr || "Unknown Location";
+        }
+        return null;
+    } catch (error) {
+        console.error(`Reverse geocoding failed for ${lat},${lon}:`, error.message);
+        return null;
+    }
+};
+
+module.exports = { geocode, reverseGeocode };

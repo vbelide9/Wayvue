@@ -9,8 +9,13 @@ export const api = axios.create({
     },
 });
 
-export const getRoute = async (start: string, end: string) => {
-    const response = await api.post('/route', { start, end });
+export const getRoute = async (
+    start: string,
+    end: string,
+    startCoords?: { lat: number, lng: number },
+    endCoords?: { lat: number, lng: number }
+) => {
+    const response = await api.post('/route', { start, end, startCoords, endCoords });
     return response.data;
 };
 

@@ -24,7 +24,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/route', async (req, res) => {
-  const { start, end } = req.body;
+  const { start, end, startCoords, endCoords } = req.body;
 
   if (!start || !end) {
     return res.status(400).json({ error: 'Start and End locations are required' });
@@ -33,9 +33,20 @@ app.post('/api/route', async (req, res) => {
   try {
     console.log(`Processing route: ${start} -> ${end}`);
 
-    // 1. Geocode
-    const startLoc = await geocode(start);
-    const endLoc = await geocode(end);
+    // 1. Geocode (Use provided coords if available, else fallback to geocoding)
+    let startLoc, endLoc;
+
+    if (startCoords && startCoords.lat && startCoords.lng) {
+      startLoc = { lat: startCoords.lat, lon: startCoords.lng, display_name: start };
+    } else {
+      startLoc = await geocode(start);
+    }
+
+    if (endCoords && endCoords.lat && endCoords.lng) {
+      endLoc = { lat: endCoords.lat, lon: endCoords.lng, display_name: end };
+    } else {
+      endLoc = await geocode(end);
+    }
 
     if (!startLoc || !endLoc) {
       console.log('Geocoding failed');
@@ -69,10 +80,69 @@ app.post('/api/route', async (req, res) => {
     const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
     const weatherData = await getWeatherForPoints(pointsForWeather);
 
+    // 5. Generate Real Road Conditions
+    // Pick 4 equidistant points (Start, 1/3, 2/3, End)
+    const conditionSegments = [];
+    const segmentIndices = [
+      0,
+      Math.floor(weatherData.length * 0.33),
+      Math.floor(weatherData.length * 0.66),
+      weatherData.length - 1
+    ];
+    // Remove duplicates if route is short
+    const uniqueIndices = [...new Set(segmentIndices)];
+
+    // We need reverse geocoding to get location names
+    const { reverseGeocode } = require('./services/geocodingService');
+
+    const roadConditions = await Promise.all(uniqueIndices.map(async (idx, i) => {
+      const w = weatherData[idx];
+      const [lat, lng] = pointsForWeather[idx];
+
+      let locationName = `Segment ${i + 1}`;
+      if (i === 0) locationName = "Start Area";
+      else if (i === uniqueIndices.length - 1) locationName = "Destination Area";
+      else {
+        // Try to get real city name
+        const realName = await reverseGeocode(lat, lng);
+        if (realName) locationName = realName;
+      }
+
+      // Determine status based on weather
+      let status = "good";
+      let desc = "Clear roads, normal traffic flow";
+      const code = w.weather?.weather_code || 0; // Check standard OpenMeteo code property name
+
+      // Snow/Ice
+      if ([71, 73, 75, 85, 86].includes(code)) {
+        status = "poor";
+        desc = "Snow/Ice detected. Drive with caution.";
+      }
+      // Rain/Showers
+      else if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) {
+        status = "moderate";
+        desc = "Wet roads, possible visibility reduction.";
+      }
+      // Fog
+      else if ([45, 48].includes(code)) {
+        status = "moderate";
+        desc = "Foggy conditions, low visibility.";
+      }
+
+      return {
+        segment: locationName,
+        status: status,
+        description: desc,
+        distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
+        estimatedTime: "..." // We don't have real traffic time, leave placeholder or calc
+      };
+    }));
+
     res.json({
       route: routeData.geometry,
-      sampledPoints: sampledPoints, // These are [lng, lat]
-      weather: weatherData, // This will return array of { lat, lng, weather }
+      sampledPoints: sampledPoints,
+      weather: weatherData,
+      roadConditions: roadConditions, // New field with real names
       duration: routeData.duration,
       distance: routeData.distance
     });

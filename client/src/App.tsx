@@ -13,11 +13,15 @@ import { RoadConditionCard, type RoadCondition } from '@/components/RoadConditio
 
 function App() {
   // State
-  const [start, setStart] = useState("");
-  const [destination, setDestination] = useState("");
-  const [routeGeoJSON, setRouteGeoJSON] = useState<FeatureCollection | Geometry | null>(null);
+  const [start, setStart] = useState('Pittsburgh, PA');
+  const [destination, setDestination] = useState('Tampa, FL');
+  const [startCoords, setStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+  const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+  const [route, setRoute] = useState<FeatureCollection | Geometry | null>(null);
+  const [sampledPoints, setSampledPoints] = useState<any[]>([]); // Assuming type for sampledPoints
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null); // Added error state
   const [unit, setUnit] = useState<'C' | 'F'>('F');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -28,15 +32,18 @@ function App() {
   const handleRouteSubmit = async () => {
     if (!start || !destination) return;
     setLoading(true);
+    setError(null); // Reset error on new submission
     try {
-      const data = await getRoute(start, destination);
+      // Pass coordinates if we have them from the autocomplete
+      const response = await getRoute(start, destination, startCoords, destCoords);
 
-      if (data.route) {
-        setRouteGeoJSON(data.route);
+      if (response.route) {
+        setRoute(response.route);
+        setSampledPoints(response.sampledPoints); // Set sampled points
         // Calculate metrics
-        const miles = (data.distance * 0.000621371);
-        const hours = Math.floor(data.duration / 3600);
-        const mins = Math.floor((data.duration % 3600) / 60);
+        const miles = (response.distance * 0.000621371);
+        const hours = Math.floor(response.duration / 3600);
+        const mins = Math.floor((response.duration % 3600) / 60);
         setMetrics({
           distance: `${miles.toFixed(1)} mi`,
           time: `${hours > 0 ? hours + 'h ' : ''}${mins}min`,
@@ -44,33 +51,16 @@ function App() {
         });
       }
 
-      if (data.weather) {
-        setWeatherData(data.weather);
-        // Generate road conditions based on real weather data
-        // Segmenting the route into chunks
-        const conditions: RoadCondition[] = [];
-        const segments = Math.min(4, data.weather.length); // Max 4 segments
+      if (response.weather) {
+        setWeatherData(response.weather);
 
-        // Simple mock generator using real weather to influence status
-        for (let i = 0; i < segments; i++) {
-          const w = data.weather[Math.floor(i * (data.weather.length / segments))];
-          let status: "good" | "moderate" | "poor" = "good";
-          let desc = "Clear roads, normal traffic flow";
-
-          // Infer status from weather code
-          const code = w.weather?.weathercode || 0;
-          if ([71, 73, 75, 85, 86].includes(code)) { status = "poor"; desc = "Heavy snow/ice detected."; }
-          else if ([51, 61, 63, 80, 81].includes(code)) { status = "moderate"; desc = "Rainy conditions, possible slowing."; }
-
-          conditions.push({
-            segment: i === 0 ? "Start Area" : (i === segments - 1 ? "Destination Area" : `Segment ${i + 1}`),
-            status,
-            description: desc,
-            distance: `${(matchMiles(metrics.distance) / segments).toFixed(0)} mi`,
-            estimatedTime: "..."
-          });
+        // Use real road conditions from backend if available
+        if (response.roadConditions) {
+          setRoadConditions(response.roadConditions);
+        } else {
+          // Fallback if backend doesn't send it (legacy support)
+          setRoadConditions([]);
         }
-        setRoadConditions(conditions);
       }
       setLastUpdated(new Date());
 
@@ -134,7 +124,11 @@ function App() {
                 label="Starting Point"
                 placeholder="Enter city (e.g. New York)"
                 value={start}
-                onChange={setStart}
+                onChange={(val) => {
+                  setStart(val)
+                  if (startCoords) setStartCoords(undefined) // Reset coords on manual edit
+                }}
+                onSelect={(coords) => setStartCoords(coords)}
                 icon="start"
               />
             </div>
@@ -143,7 +137,11 @@ function App() {
                 label="Destination"
                 placeholder="Enter city (e.g. Boston)"
                 value={destination}
-                onChange={setDestination}
+                onChange={(val) => {
+                  setDestination(val)
+                  if (destCoords) setDestCoords(undefined) // Reset coords on manual edit
+                }}
+                onSelect={(coords) => setDestCoords(coords)}
                 icon="destination"
               />
             </div>
@@ -159,7 +157,7 @@ function App() {
           </div>
 
           {/* Stats */}
-          {routeGeoJSON && (
+          {route && (
             <div className="mb-6 flex-none">
               <RouteSummary
                 totalDistance={metrics.distance}
@@ -192,7 +190,7 @@ function App() {
               <div className="flex-1 relative z-0">
                 {/* Actual Leaflet Map */}
                 <MapComponent
-                  routeGeoJSON={routeGeoJSON}
+                  routeGeoJSON={route}
                   weatherData={weatherData}
                   unit={unit}
                 />
@@ -201,7 +199,7 @@ function App() {
 
             {/* Info Sidebar */}
             <div className="space-y-4 overflow-y-auto pr-1">
-              {!routeGeoJSON && (
+              {!route && (
                 <div className="text-center p-10 border-2 border-dashed border-border rounded-xl opacity-50">
                   <p>Enter a route to view details</p>
                 </div>
