@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { reverseGeocode } = require('./geocodingService');
 
 /**
  * Fetches REAL places from OpenStreetMap (Overpass API).
@@ -7,20 +8,17 @@ const axios = require('axios');
 async function getRecommendations(routeSegments) {
     const recommendations = [];
 
-    // We'll query 6 strategic stops along the route for a balance of speed and variety
-    const indices = Array.from({ length: 6 }, (_, i) =>
-        Math.floor(routeSegments.length * (0.05 + (i * 0.18)))
-    ).filter(idx => idx < routeSegments.length);
-
-    const tasks = indices.map(async (idx, i) => {
-        const seg = routeSegments[idx];
+    // We'll query strategic stops along the route for a balance of speed and variety
+    // routeSegments already contains location and miles context from index.js
+    const tasks = routeSegments.map(async (seg, i) => {
         if (!seg || !seg.location) return null;
 
         const { lat, lon } = seg.location;
+        const milesFromStart = seg.miles || 0;
         let type, amenityQuery;
 
-        // Cycle through types to ensure variety across the 10 points
-        const types = ['food', 'gas', 'rest', 'food', 'view', 'gas', 'food', 'rest', 'view', 'food'];
+        // Cycle through types to ensure variety
+        const types = ['food', 'gas', 'view', 'rest', 'food', 'view', 'gas', 'food'];
         type = types[i % types.length];
 
         if (type === 'food') {
@@ -33,27 +31,39 @@ async function getRecommendations(routeSegments) {
             amenityQuery = '["tourism"~"viewpoint|attraction|museum|park"]';
         }
 
+        // Get Town Name for this segment
+        let townName = "Along Route";
+        try {
+            const name = await reverseGeocode(lat, lon);
+            if (name) {
+                // Just get the city part for the label
+                townName = name.split(',')[0];
+            }
+        } catch (e) { }
+
+        const displayLocation = `${townName} • ${milesFromStart} mi`;
+
         // Returning more results per point to find "good" ones
         const query = `
-            [out:json][timeout:8];
+            [out:json][timeout:10];
             (
-              node${amenityQuery}(around:30000, ${lat}, ${lon});
-              way${amenityQuery}(around:30000, ${lat}, ${lon});
+              node${amenityQuery}(around:20000, ${lat}, ${lon});
+              way${amenityQuery}(around:20000, ${lat}, ${lon});
             );
-            out center 8;
+            out center 5;
         `;
 
         const mirror = i % 2 === 0 ? 'overpass-api.de' : 'overpass.kumi.systems';
 
         try {
-            const url = `https://${mirror}/api/interpreter?data=${encodeURIComponent(query)}`;
+            // Jitter to avoid rate limiting
+            await new Promise(r => setTimeout(r, i * 600));
 
-            // Add a slight delay/jitter to avoid hitting rate limits if parallel
-            await new Promise(r => setTimeout(r, i * 1000));
+            const url = `https://${mirror}/api/interpreter?data=${encodeURIComponent(query)}`;
 
             const response = await axios.get(url, {
                 headers: { 'User-Agent': 'WayvueApp/3.0' },
-                timeout: 20000
+                timeout: 15000
             });
             const nodes = response.data.elements || [];
 
@@ -66,7 +76,7 @@ async function getRecommendations(routeSegments) {
                     recommendations.push({
                         id: `osm-${node.id}`,
                         type: type,
-                        location: seg.segment.includes('Segment') ? 'Along Route' : seg.segment.split(',')[0],
+                        location: displayLocation,
                         title: name,
                         description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest stop and basic services' : 'Local Stop'),
                         quality: qualityScore
@@ -78,8 +88,7 @@ async function getRecommendations(routeSegments) {
         }
 
         // FALLBACK: If Overpass returns no results or fails, provide a high-quality placeholder
-        if (recommendations.filter(r => r.type === type).length === 0) {
-            const city = seg.segment.includes('Segment') || seg.segment.includes('Area') ? 'Along Route' : seg.segment.split(',')[0];
+        if (recommendations.filter(r => r.type === type && r.location === displayLocation).length === 0) {
             const fallbackPlaces = {
                 food: ["Local Diner", "Riverside Cafe", "Highway Grill", "Traveler's Bistro"],
                 gas: ["Travel Center", "Express Fuel", "Wayvue Station", "Highway Oasis"],
@@ -90,10 +99,10 @@ async function getRecommendations(routeSegments) {
             const title = titles[Math.floor(Math.random() * titles.length)];
 
             recommendations.push({
-                id: `fallback-${idx}-${type}`,
+                id: `fallback-${i}-${type}`,
                 type: type,
-                location: city,
-                title: city === 'Along Route' ? title : `${city} ${title}`,
+                location: displayLocation,
+                title: `${townName} ${title}`,
                 description: `A convenient ${type} stop selected for your journey.`,
                 quality: 1 // Lower quality for fallbacks
             });

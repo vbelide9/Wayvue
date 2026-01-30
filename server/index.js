@@ -157,7 +157,12 @@ app.post('/api/route', async (req, res) => {
         const { getRecommendations } = require('./services/placesService');
         const contextPoints = [0, 0.25, 0.5, 0.75, 1.0].map(p => {
           const idx = Math.floor(fullCoordinates.length * 0.999 * p);
-          return { segment: 'Route', location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] } };
+          const currentDist = (p * totalDistanceMiles).toFixed(0);
+          return {
+            segment: `${currentDist} mi`,
+            location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] },
+            miles: currentDist
+          };
         });
         return getRecommendations(contextPoints);
       })()
