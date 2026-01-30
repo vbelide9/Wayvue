@@ -1,0 +1,1276 @@
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+Server running on port 3001
+[2026-01-30T16:54:12.835Z] POST /api/route
+Processing route: New York, NY -> White Plains, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "White Plains, NY": White Plains, New York
+Route distance: 29.9 miles. Sampling interval: 5 miles. Expected points: ~6
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (40.950836,-73.852912): Code 1, Temp -10.3
+Weather service returned 7 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -10.2,
+    "weathercode": 1,
+    "windSpeed": 21.5,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 300
+  }
+}
+Road condition weather fetch for segment 3 (41.032728,-73.766326): Code 1, Temp -10.7
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -10.2
+Road condition weather fetch for segment 1 (40.843681,-73.944346): Code 2, Temp -9.9
+Enriched weather point 6: {
+  "temperature": -10.7,
+  "weathercode": 1,
+  "windSpeed": 21.5,
+  "humidity": 59,
+  "precipitationProbability": 0,
+  "windDirection": 274,
+  "eta": "ETA 12:48 PM",
+  "distanceFromStart": 30,
+  "location": "White Plains, NY",
+  "lat": 41.032728,
+  "lng": -73.766326
+}
+Enriched weather point 0: {
+  "temperature": -10.2,
+  "weathercode": 1,
+  "windSpeed": 21.5,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 300,
+  "eta": "ETA 11:54 AM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 429
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 7 weather points, 4 road conditions.
+[2026-01-30T16:55:20.579Z] POST /api/route
+Processing route: Pittsburgh, Pennsylvania -> Miami, Florida
+Route distance: 1174.8 miles. Sampling interval: 46.993085755744005 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (35.113499,-80.925283): Code 3, Temp 3.4
+Road condition weather fetch for segment 3 (25.775084,-80.194702): Code 3, Temp 17.7
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.442153,
+  "lng": -79.994967,
+  "weather": {
+    "temperature": -10.6,
+    "weathercode": 3,
+    "windSpeed": 8,
+    "humidity": 71,
+    "precipitationProbability": 0,
+    "windDirection": 292
+  }
+}
+Road condition weather fetch for segment 0 (40.442153,-79.994967): Code 3, Temp -10.6
+Road condition weather fetch for segment 1 (37.913314,-81.166495): Code 3, Temp -6
+Enriched weather point 25: {
+  "temperature": 17.2,
+  "weathercode": 3,
+  "windSpeed": 8.9,
+  "humidity": 88,
+  "precipitationProbability": 0,
+  "windDirection": 79,
+  "eta": "ETA 10:03 AM",
+  "distanceFromStart": 1175,
+  "location": "Miami, FL",
+  "lat": 25.793877,
+  "lng": -80.20553
+}
+Enriched weather point 0: {
+  "temperature": -10.6,
+  "weathercode": 3,
+  "windSpeed": 8,
+  "humidity": 71,
+  "precipitationProbability": 0,
+  "windDirection": 292,
+  "eta": "ETA 11:55 AM",
+  "distanceFromStart": 0,
+  "location": "Pittsburgh, PA",
+  "lat": 40.442153,
+  "lng": -79.994967
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T16:59:35.466Z] POST /api/route
+Processing route: New York, NY -> Buffalo, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 373.3 miles. Sampling interval: 14.930603131564 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (42.011325,-76.458349): Code 3, Temp -13.4
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -10.2
+Road condition weather fetch for segment 1 (40.995083,-75.142913): Code 1, Temp -10.4
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -10.2,
+    "weathercode": 1,
+    "windSpeed": 21.5,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 300
+  }
+}
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 2, Temp -13.3
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Enriched weather point 25: {
+  "temperature": -13.3,
+  "weathercode": 2,
+  "windSpeed": 13.4,
+  "humidity": 75,
+  "precipitationProbability": 0,
+  "windDirection": 298,
+  "eta": "ETA 7:52 PM",
+  "distanceFromStart": 373,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Reverse geocoding failed for 42.118403,-75.987 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Reverse geocoding failed for 40.713047,-74.00723 after 1 retries: timeout of 6000ms exceeded
+Enriched weather point 0: {
+  "temperature": -10.2,
+  "weathercode": 1,
+  "windSpeed": 21.5,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 300,
+  "eta": "ETA 11:59 AM",
+  "distanceFromStart": 0,
+  "location": "Highway Segment",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:00:15.210Z] POST /api/route
+Processing route: New York, NY -> Buffalo, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 373.3 miles. Sampling interval: 14.930603131564 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (42.011325,-76.458349): Code 3, Temp -13.2
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 1, Temp -13.1
+Road condition weather fetch for segment 1 (40.995083,-75.142913): Code 1, Temp -10.3
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -9.9
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -9.9,
+    "weathercode": 1,
+    "windSpeed": 21.1,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 267
+  }
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 429
+Enriched weather point 25: {
+  "temperature": -13.1,
+  "weathercode": 1,
+  "windSpeed": 13.7,
+  "humidity": 75,
+  "precipitationProbability": 0,
+  "windDirection": 253,
+  "eta": "ETA 7:52 PM",
+  "distanceFromStart": 373,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Enriched weather point 0: {
+  "temperature": -9.9,
+  "weathercode": 1,
+  "windSpeed": 21.1,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 267,
+  "eta": "ETA 12:00 PM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:03:03.784Z] POST /api/route
+Processing route: New York, NY -> Buffalo, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 373.3 miles. Sampling interval: 14.930603131564 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 1, Temp -13.1
+Road condition weather fetch for segment 2 (42.011325,-76.458349): Code 3, Temp -13.2
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -9.9
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -9.9,
+    "weathercode": 1,
+    "windSpeed": 21.1,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 267
+  }
+}
+Road condition weather fetch for segment 1 (40.995083,-75.142913): Code 1, Temp -10.3
+Enriched weather point 25: {
+  "temperature": -13.1,
+  "weathercode": 1,
+  "windSpeed": 13.7,
+  "humidity": 75,
+  "precipitationProbability": 0,
+  "windDirection": 253,
+  "eta": "ETA 7:55 PM",
+  "distanceFromStart": 373,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Enriched weather point 0: {
+  "temperature": -9.9,
+  "weathercode": 1,
+  "windSpeed": 21.1,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 267,
+  "eta": "ETA 12:03 PM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Reverse geocoding failed for 41.451567,-75.644457 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:08:31.042Z] POST /api/route
+Processing route: Pittsburgh, Pennsylvania -> Buffalo, NY
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 216.1 miles. Sampling interval: 8.64579337626 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 1, Temp -13.1
+Road condition weather fetch for segment 1 (41.034622,-80.12166): Code 1, Temp -14.2
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.442153,
+  "lng": -79.994967,
+  "weather": {
+    "temperature": -10.3,
+    "weathercode": 3,
+    "windSpeed": 8.9,
+    "humidity": 71,
+    "precipitationProbability": 0,
+    "windDirection": 278
+  }
+}
+Road condition weather fetch for segment 2 (42.102168,-79.98835): Code 3, Temp -12.9
+Road condition weather fetch for segment 0 (40.442153,-79.994967): Code 3, Temp -10.3
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 0: {
+  "temperature": -10.3,
+  "weathercode": 3,
+  "windSpeed": 8.9,
+  "humidity": 71,
+  "precipitationProbability": 0,
+  "windDirection": 278,
+  "eta": "ETA 12:08 PM",
+  "distanceFromStart": 0,
+  "location": "Pittsburgh, PA",
+  "lat": 40.442153,
+  "lng": -79.994967
+}
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 25: {
+  "temperature": -13.1,
+  "weathercode": 1,
+  "windSpeed": 13.7,
+  "humidity": 75,
+  "precipitationProbability": 0,
+  "windDirection": 253,
+  "eta": "ETA 4:21 PM",
+  "distanceFromStart": 216,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:13:08.059Z] POST /api/route
+Processing route: New York, NY -> Buffalo, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 373.3 miles. Sampling interval: 14.930603131564 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 1, Temp -13.1
+Road condition weather fetch for segment 2 (42.011325,-76.458349): Code 3, Temp -13.2
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -9.9,
+    "weathercode": 1,
+    "windSpeed": 21.1,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 267
+  }
+}
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -9.9
+Enriched weather point 25: {
+  "temperature": -13.1,
+  "weathercode": 1,
+  "windSpeed": 13.7,
+  "humidity": 75,
+  "precipitationProbability": 0,
+  "windDirection": 253,
+  "eta": "ETA 8:05 PM",
+  "distanceFromStart": 373,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Road condition weather fetch for segment 1 (40.995083,-75.142913): Code 1, Temp -10.3
+Enriched weather point 0: {
+  "temperature": -9.9,
+  "weathercode": 1,
+  "windSpeed": 21.1,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 267,
+  "eta": "ETA 12:13 PM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:15:07.223Z] POST /api/route
+Processing route: Pittsburgh, Pennsylvania -> Miami, Florida
+Route distance: 1174.8 miles. Sampling interval: 46.993085755744005 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 1 (37.913314,-81.166495): Code 3, Temp -5.9
+Road condition weather fetch for segment 0 (40.442153,-79.994967): Code 3, Temp -10.1
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.442153,
+  "lng": -79.994967,
+  "weather": {
+    "temperature": -10.1,
+    "weathercode": 3,
+    "windSpeed": 9.7,
+    "humidity": 70,
+    "precipitationProbability": 0,
+    "windDirection": 278
+  }
+}
+Road condition weather fetch for segment 2 (35.113499,-80.925283): Code 3, Temp 4
+Road condition weather fetch for segment 3 (25.775084,-80.194702): Code 3, Temp 17.8
+Enriched weather point 0: {
+  "temperature": -10.1,
+  "weathercode": 3,
+  "windSpeed": 9.7,
+  "humidity": 70,
+  "precipitationProbability": 0,
+  "windDirection": 278,
+  "eta": "ETA 12:15 PM",
+  "distanceFromStart": 0,
+  "location": "Pittsburgh, PA",
+  "lat": 40.442153,
+  "lng": -79.994967
+}
+Enriched weather point 25: {
+  "temperature": 17.5,
+  "weathercode": 3,
+  "windSpeed": 7.9,
+  "humidity": 88,
+  "precipitationProbability": 1,
+  "windDirection": 78,
+  "eta": "ETA 10:23 AM",
+  "distanceFromStart": 1175,
+  "location": "Miami, FL",
+  "lat": 25.793877,
+  "lng": -80.20553
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:21:30.206Z] POST /api/route
+Processing route: New York, NY -> Buffalo, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "Buffalo, NY": Buffalo, New York
+Route distance: 373.3 miles. Sampling interval: 14.930603131564 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (42.887692,-78.87938): Code 2, Temp -12.9
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -9.5,
+    "weathercode": 1,
+    "windSpeed": 23.1,
+    "humidity": 56,
+    "precipitationProbability": 0,
+    "windDirection": 267
+  }
+}
+Enriched weather point 25: {
+  "temperature": -12.9,
+  "weathercode": 2,
+  "windSpeed": 13,
+  "humidity": 74,
+  "precipitationProbability": 0,
+  "windDirection": 253,
+  "eta": "ETA 8:14 PM",
+  "distanceFromStart": 373,
+  "location": "Buffalo, NY",
+  "lat": 42.887692,
+  "lng": -78.87938
+}
+Road condition weather fetch for segment 1 (40.995083,-75.142913): Code 2, Temp -10.2
+Road condition weather fetch for segment 2 (42.011325,-76.458349): Code 3, Temp -13
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -9.5
+Enriched weather point 0: {
+  "temperature": -9.5,
+  "weathercode": 1,
+  "windSpeed": 23.1,
+  "humidity": 56,
+  "precipitationProbability": 0,
+  "windDirection": 267,
+  "eta": "ETA 12:21 PM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Reverse geocoding failed for 42.118403,-75.987 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:28:23.505Z] POST /api/route
+Processing route: New York, NY -> Boston, MA
+Geocoding success for "New York, NY": New York
+Geocoding success for "Boston, MA": Boston, Massachusetts
+Route distance: 214.1 miles. Sampling interval: 8.563295191332 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (41.854996,-72.425195): Code 1, Temp -13.3
+Road condition weather fetch for segment 1 (41.12136,-73.362142): Code 1, Temp -9.8
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -9.5
+Road condition weather fetch for segment 3 (42.358994,-71.058628): Code 1, Temp -11
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -9.5,
+    "weathercode": 1,
+    "windSpeed": 23.1,
+    "humidity": 56,
+    "precipitationProbability": 0,
+    "windDirection": 267
+  }
+}
+Enriched weather point 0: {
+  "temperature": -9.5,
+  "weathercode": 1,
+  "windSpeed": 23.1,
+  "humidity": 56,
+  "precipitationProbability": 0,
+  "windDirection": 267,
+  "eta": "ETA 12:28 PM",
+  "distanceFromStart": 0,
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 25: {
+  "temperature": -11,
+  "weathercode": 1,
+  "windSpeed": 22,
+  "humidity": 66,
+  "precipitationProbability": 0,
+  "windDirection": 260,
+  "eta": "ETA 5:11 PM",
+  "distanceFromStart": 214,
+  "location": "Boston, MA",
+  "lat": 42.358994,
+  "lng": -71.058628
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:34:11.400Z] POST /api/route
+Processing route: San Francisco -> Los Angeles
+Geocoding success for "San Francisco": San Francisco, California
+Geocoding success for "Los Angeles": Los Angeles, California
+Route distance: 381.0 miles. Sampling interval: 15.241375623504 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 1 (37.699445,-121.78668): Code 0, Temp 9.9
+Road condition weather fetch for segment 0 (37.780079,-122.420153): Code 0, Temp 11.1
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 37.780079,
+  "lng": -122.420153,
+  "weather": {
+    "temperature": 11.1,
+    "weathercode": 0,
+    "windSpeed": 14.8,
+    "humidity": 80,
+    "precipitationProbability": 0,
+    "windDirection": 8
+  }
+}
+Road condition weather fetch for segment 3 (34.052251,-118.243363): Code 0, Temp 20.7
+Road condition weather fetch for segment 2 (34.890116,-118.912976): Code 0, Temp 18.6
+Enriched weather point 0: {
+  "temperature": 11.1,
+  "weathercode": 0,
+  "windSpeed": 14.8,
+  "humidity": 80,
+  "precipitationProbability": 0,
+  "windDirection": 8,
+  "eta": "ETA 12:34 PM",
+  "distanceFromStart": 0,
+  "location": "San Francisco, CA",
+  "lat": 37.780079,
+  "lng": -122.420153
+}
+Enriched weather point 25: {
+  "temperature": 20.7,
+  "weathercode": 0,
+  "windSpeed": 4.8,
+  "humidity": 31,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 7:41 PM",
+  "distanceFromStart": 381,
+  "location": "Los Angeles, CA",
+  "lat": 34.051641,
+  "lng": -118.242299
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:35:55.510Z] POST /api/route
+Processing route: San Francisco, CA -> Los Angeles, CA
+Geocoding success for "San Francisco, CA": San Francisco, California
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Route distance: 381.0 miles. Sampling interval: 15.241375623504 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 0 (37.780079,-122.420153): Code 0, Temp 11.1
+Road condition weather fetch for segment 3 (34.052251,-118.243363): Code 0, Temp 20.7
+Road condition weather fetch for segment 1 (37.699445,-121.78668): Code 0, Temp 9.9
+Road condition weather fetch for segment 2 (34.890116,-118.912976): Code 0, Temp 18.6
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 37.780079,
+  "lng": -122.420153,
+  "weather": {
+    "temperature": 11.1,
+    "weathercode": 0,
+    "windSpeed": 14.8,
+    "humidity": 80,
+    "precipitationProbability": 0,
+    "windDirection": 8
+  }
+}
+Enriched weather point 25: {
+  "temperature": 20.7,
+  "weathercode": 0,
+  "windSpeed": 4.8,
+  "humidity": 31,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 7:43 PM",
+  "distanceFromStart": 381,
+  "location": "Los Angeles, CA",
+  "lat": 34.051641,
+  "lng": -118.242299
+}
+Enriched weather point 0: {
+  "temperature": 11.1,
+  "weathercode": 0,
+  "windSpeed": 14.8,
+  "humidity": 80,
+  "precipitationProbability": 0,
+  "windDirection": 8,
+  "eta": "ETA 12:36 PM",
+  "distanceFromStart": 0,
+  "location": "San Francisco, CA",
+  "lat": 37.780079,
+  "lng": -122.420153
+}
+Reverse geocoding failed for 35.082259,-119.024 after 1 retries: timeout of 6000ms exceeded
+Reverse geocoding failed for 36.966667,-120.885113 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Reverse geocoding failed for 34.20577,-118.405909 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass-api.de: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:38:37.799Z] POST /api/route
+Processing route: San Francisco, CA -> South Lake Tahoe, CA
+Geocoding success for "San Francisco, CA": San Francisco, California
+Geocoding success for "South Lake Tahoe, CA": South Lake Tahoe, California
+Route distance: 188.1 miles. Sampling interval: 7.522101088892 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 0 (37.780079,-122.420153): Code 0, Temp 11.1
+Road condition weather fetch for segment 3 (38.94163,-119.977224): Code 0, Temp 0.6
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 37.780079,
+  "lng": -122.420153,
+  "weather": {
+    "temperature": 11.1,
+    "weathercode": 0,
+    "windSpeed": 14.8,
+    "humidity": 80,
+    "precipitationProbability": 0,
+    "windDirection": 8
+  }
+}
+Enriched weather point 25: {
+  "temperature": 0.6,
+  "weathercode": 0,
+  "windSpeed": 4.2,
+  "humidity": 65,
+  "precipitationProbability": 0,
+  "windDirection": 284,
+  "eta": "ETA 4:35 PM",
+  "distanceFromStart": 188,
+  "location": "South Lake Tahoe, CA",
+  "lat": 38.94163,
+  "lng": -119.977224
+}
+Road condition weather fetch for segment 2 (38.773958,-120.301418): Code 0, Temp 12.1
+Road condition weather fetch for segment 1 (38.581705,-121.302483): Code 45, Temp 6.9
+Enriched weather point 0: {
+  "temperature": 11.1,
+  "weathercode": 0,
+  "windSpeed": 14.8,
+  "humidity": 80,
+  "precipitationProbability": 0,
+  "windDirection": 8,
+  "eta": "ETA 12:38 PM",
+  "distanceFromStart": 0,
+  "location": "San Francisco, CA",
+  "lat": 37.780079,
+  "lng": -122.420153
+}
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:41:30.285Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 9.2
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 14.5
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 9.3
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 20.7,
+    "weathercode": 0,
+    "windSpeed": 4.8,
+    "humidity": 31,
+    "precipitationProbability": 0,
+    "windDirection": 45
+  }
+}
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 20.7
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Enriched weather point 25: {
+  "temperature": 14.5,
+  "weathercode": 0,
+  "windSpeed": 6.8,
+  "humidity": 37,
+  "precipitationProbability": 0,
+  "windDirection": 252,
+  "eta": "ETA 6:20 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Enriched weather point 0: {
+  "temperature": 20.7,
+  "weathercode": 0,
+  "windSpeed": 4.8,
+  "humidity": 31,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 12:41 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:42:23.190Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 9.2
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 14.5
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 9.3
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 20.7
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 20.7,
+    "weathercode": 0,
+    "windSpeed": 4.8,
+    "humidity": 31,
+    "precipitationProbability": 0,
+    "windDirection": 45
+  }
+}
+Enriched weather point 0: {
+  "temperature": 20.7,
+  "weathercode": 0,
+  "windSpeed": 4.8,
+  "humidity": 31,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 12:42 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Reverse geocoding failed for 36.452216,-116.864768 after 1 retries: timeout of 6000ms exceeded
+Enriched weather point 25: {
+  "temperature": 14.5,
+  "weathercode": 0,
+  "windSpeed": 6.8,
+  "humidity": 37,
+  "precipitationProbability": 0,
+  "windDirection": 252,
+  "eta": "ETA 6:20 PM",
+  "distanceFromStart": 267,
+  "location": "Highway Segment",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Reverse geocoding failed for 36.45195,-116.865274 after 1 retries: timeout of 6000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:55:44.646Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 21.6
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.1
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 9.8
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 21.6,
+    "weathercode": 0,
+    "windSpeed": 5.6,
+    "humidity": 29,
+    "precipitationProbability": 0,
+    "windDirection": 45
+  }
+}
+Enriched weather point 25: {
+  "temperature": 15,
+  "weathercode": 0,
+  "windSpeed": 9.4,
+  "humidity": 38,
+  "precipitationProbability": 0,
+  "windDirection": 252,
+  "eta": "ETA 6:34 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Enriched weather point 0: {
+  "temperature": 21.6,
+  "weathercode": 0,
+  "windSpeed": 5.6,
+  "humidity": 29,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 12:55 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:58:47.036Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.1
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 21.6
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 9.8
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 21.6,
+    "weathercode": 0,
+    "windSpeed": 5.6,
+    "humidity": 29,
+    "precipitationProbability": 0,
+    "windDirection": 45
+  }
+}
+Enriched weather point 25: {
+  "temperature": 15,
+  "weathercode": 0,
+  "windSpeed": 9.4,
+  "humidity": 38,
+  "precipitationProbability": 0,
+  "windDirection": 252,
+  "eta": "ETA 6:37 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Enriched weather point 0: {
+  "temperature": 21.6,
+  "weathercode": 0,
+  "windSpeed": 5.6,
+  "humidity": 29,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 12:59 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T17:59:44.760Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.1
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 21.6
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 21.6,
+    "weathercode": 0,
+    "windSpeed": 5.6,
+    "humidity": 29,
+    "precipitationProbability": 0,
+    "windDirection": 45
+  }
+}
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 9.8
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Enriched weather point 25: {
+  "temperature": 15,
+  "weathercode": 0,
+  "windSpeed": 9.4,
+  "humidity": 38,
+  "precipitationProbability": 0,
+  "windDirection": 252,
+  "eta": "ETA 6:38 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 0: {
+  "temperature": 21.6,
+  "weathercode": 0,
+  "windSpeed": 5.6,
+  "humidity": 29,
+  "precipitationProbability": 0,
+  "windDirection": 45,
+  "eta": "ETA 12:59 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T18:04:15.038Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 10.3
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10.6
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 22.4,
+    "weathercode": 0,
+    "windSpeed": 5.1,
+    "humidity": 28,
+    "precipitationProbability": 0,
+    "windDirection": 70
+  }
+}
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 22.4
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.5
+Enriched weather point 25: {
+  "temperature": 15.5,
+  "weathercode": 0,
+  "windSpeed": 10.5,
+  "humidity": 39,
+  "precipitationProbability": 0,
+  "windDirection": 338,
+  "eta": "ETA 6:42 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Enriched weather point 0: {
+  "temperature": 22.4,
+  "weathercode": 0,
+  "windSpeed": 5.1,
+  "humidity": 28,
+  "precipitationProbability": 0,
+  "windDirection": 70,
+  "eta": "ETA 1:04 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for view on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T18:05:22.445Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10.6
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.5
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 22.4,
+    "weathercode": 0,
+    "windSpeed": 5.1,
+    "humidity": 28,
+    "precipitationProbability": 0,
+    "windDirection": 70
+  }
+}
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 10.3
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 22.4
+Enriched weather point 25: {
+  "temperature": 15.5,
+  "weathercode": 0,
+  "windSpeed": 10.5,
+  "humidity": 39,
+  "precipitationProbability": 0,
+  "windDirection": 338,
+  "eta": "ETA 6:43 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Enriched weather point 0: {
+  "temperature": 22.4,
+  "weathercode": 0,
+  "windSpeed": 5.1,
+  "humidity": 28,
+  "precipitationProbability": 0,
+  "windDirection": 70,
+  "eta": "ETA 1:05 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T18:06:47.762Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 22.4
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.5
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10.6
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 10.3
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 22.4,
+    "weathercode": 0,
+    "windSpeed": 5.1,
+    "humidity": 28,
+    "precipitationProbability": 0,
+    "windDirection": 70
+  }
+}
+Enriched weather point 0: {
+  "temperature": 22.4,
+  "weathercode": 0,
+  "windSpeed": 5.1,
+  "humidity": 28,
+  "precipitationProbability": 0,
+  "windDirection": 70,
+  "eta": "ETA 1:06 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Enriched weather point 25: {
+  "temperature": 15.5,
+  "weathercode": 0,
+  "windSpeed": 10.5,
+  "humidity": 39,
+  "precipitationProbability": 0,
+  "windDirection": 338,
+  "eta": "ETA 6:45 PM",
+  "distanceFromStart": 267,
+  "location": "Death Valley, CA",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T18:07:49.690Z] POST /api/route
+Processing route: Los Angeles, CA -> Death Valley, CA
+Geocoding success for "Los Angeles, CA": Los Angeles, California
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 266.8 miles. Sampling interval: 10.673749481540002 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.5
+Road condition weather fetch for segment 1 (34.594678,-118.134578): Code 0, Temp 10.3
+Road condition weather fetch for segment 0 (34.052251,-118.243363): Code 0, Temp 22.4
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 34.052251,
+  "lng": -118.243363,
+  "weather": {
+    "temperature": 22.4,
+    "weathercode": 0,
+    "windSpeed": 5.1,
+    "humidity": 28,
+    "precipitationProbability": 0,
+    "windDirection": 70
+  }
+}
+Road condition weather fetch for segment 2 (35.806012,-117.347554): Code 0, Temp 10.6
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 0: {
+  "temperature": 22.4,
+  "weathercode": 0,
+  "windSpeed": 5.1,
+  "humidity": 28,
+  "precipitationProbability": 0,
+  "windDirection": 70,
+  "eta": "ETA 1:07 PM",
+  "distanceFromStart": 0,
+  "location": "Los Angeles, CA",
+  "lat": 34.052251,
+  "lng": -118.243363
+}
+Reverse geocoding failed for 36.452216,-116.864768 after 1 retries: timeout of 6000ms exceeded
+Enriched weather point 25: {
+  "temperature": 15.5,
+  "weathercode": 0,
+  "windSpeed": 10.5,
+  "humidity": 39,
+  "precipitationProbability": 0,
+  "windDirection": 338,
+  "eta": "ETA 6:46 PM",
+  "distanceFromStart": 267,
+  "location": "Highway Segment",
+  "lat": 36.452216,
+  "lng": -116.864768
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T18:13:36.306Z] POST /api/route
+Processing route: Pittsburgh, Pennsylvania -> Death Valley, CA
+Geocoding success for "Death Valley, CA": Death Valley
+Route distance: 2316.8 miles. Sampling interval: 92.671698443248 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (39.65975,-106.637247): Code 0, Temp -1.4
+Road condition weather fetch for segment 0 (40.442153,-79.994967): Code 1, Temp -9.4
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.442153,
+  "lng": -79.994967,
+  "weather": {
+    "temperature": -9.4,
+    "weathercode": 1,
+    "windSpeed": 10.4,
+    "humidity": 58,
+    "precipitationProbability": 0,
+    "windDirection": 336
+  }
+}
+Road condition weather fetch for segment 3 (36.45166,-116.86633): Code 0, Temp 15.5
+Road condition weather fetch for segment 1 (41.689078,-93.175672): Code 3, Temp -10.7
+Enriched weather point 25: {
+  "temperature": 15.5,
+  "weathercode": 0,
+  "windSpeed": 10.5,
+  "humidity": 39,
+  "precipitationProbability": 0,
+  "windDirection": 338,
+  "eta": "ETA 6:20 AM",
+  "distanceFromStart": 2317,
+  "location": "Death Valley, CA",
+  "lat": 36.45166,
+  "lng": -116.86633
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Enriched weather point 0: {
+  "temperature": -9.4,
+  "weathercode": 1,
+  "windSpeed": 10.4,
+  "humidity": 58,
+  "precipitationProbability": 0,
+  "windDirection": 336,
+  "eta": "ETA 1:13 PM",
+  "distanceFromStart": 0,
+  "location": "Pittsburgh, PA",
+  "lat": 40.442153,
+  "lng": -79.994967
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.

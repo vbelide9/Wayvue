@@ -24,3 +24,8 @@ export const getHealth = async () => {
     const response = await api.get('/health');
     return response.data;
 };
+
+export const getPlaceDetails = async (lat: number, lon: number) => {
+    const response = await api.post('/place-details', { lat, lon });
+    return response.data;
+};

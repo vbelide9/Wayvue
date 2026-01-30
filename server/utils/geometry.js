@@ -68,4 +68,4 @@ const sampleRoute = (coordinates, intervalMiles = 15) => {
     return sampled;
 };
 
-module.exports = { decodePolyline, sampleRoute };
+module.exports = { decodePolyline, sampleRoute, getDistance };

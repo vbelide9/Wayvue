@@ -33,19 +33,24 @@ const geocode = async (query) => {
  * Uses retries and smarter field extraction for better coverage.
  * @param {number} lat 
  * @param {number} lon 
+ * @param {boolean} fullAddress - If true, returns the detailed address (Match_addr)
  * @returns {Promise<string | null>}
  */
-const reverseGeocode = async (lat, lon, retries = 1) => {
+const reverseGeocode = async (lat, lon, fullAddress = false, retries = 1) => {
     for (let i = 0; i <= retries; i++) {
         try {
             // Jittered delay to be nice to API
             await new Promise(r => setTimeout(r, Math.random() * 800));
 
-            const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1500`;
+            const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=10000`;
             const response = await axios.get(url, { timeout: 6000 });
 
             if (response.data && response.data.address) {
                 const addr = response.data.address;
+
+                if (fullAddress && addr.Match_addr) {
+                    return addr.Match_addr;
+                }
 
                 // 1. City, StateAbbr (Ideal)
                 if (addr.City && addr.RegionAbbr) {

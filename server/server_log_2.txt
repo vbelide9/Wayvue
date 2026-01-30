@@ -1,0 +1,107 @@
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Server running on port 3001
+[2026-01-30T16:49:52.241Z] POST /api/route
+Processing route: Pittsburgh, Pennsylvania -> Miami, Florida
+Route distance: 1174.8 miles. Sampling interval: 46.993085755744005 miles. Expected points: ~25
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 2 (35.113499,-80.925283): Code 3, Temp 3.4
+Road condition weather fetch for segment 0 (40.442153,-79.994967): Code 3, Temp -10.6
+Weather service returned 26 points.
+Sample weather data from service: {
+  "lat": 40.442153,
+  "lng": -79.994967,
+  "weather": {
+    "temperature": -10.6,
+    "weathercode": 3,
+    "windSpeed": 8,
+    "humidity": 71,
+    "precipitationProbability": 0,
+    "windDirection": 292
+  }
+}
+Road condition weather fetch for segment 1 (37.913314,-81.166495): Code 3, Temp -6
+Road condition weather fetch for segment 3 (25.775084,-80.194702): Code 3, Temp 17.7
+Enriched weather point 0: {
+  "temperature": -10.6,
+  "weathercode": 3,
+  "windSpeed": 8,
+  "humidity": 71,
+  "precipitationProbability": 0,
+  "windDirection": 292,
+  "eta": "ETA 11:49 AM",
+  "location": "Pittsburgh, PA",
+  "lat": 40.442153,
+  "lng": -79.994967
+}
+Enriched weather point 25: {
+  "temperature": 17.2,
+  "weathercode": 3,
+  "windSpeed": 8.9,
+  "humidity": 88,
+  "precipitationProbability": 0,
+  "windDirection": 79,
+  "eta": "ETA 9:57 AM",
+  "location": "Miami, FL",
+  "lat": 25.793877,
+  "lng": -80.20553
+}
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 26 weather points, 4 road conditions.
+[2026-01-30T16:53:37.364Z] POST /api/route
+Processing route: New York, NY -> White Plains, NY
+Geocoding success for "New York, NY": New York
+Geocoding success for "White Plains, NY": White Plains, New York
+Route distance: 29.9 miles. Sampling interval: 5 miles. Expected points: ~6
+Running parallel enrichments (Weather, Road, AI, Places)...
+Road condition weather fetch for segment 3 (41.032728,-73.766326): Code 1, Temp -10.7
+Weather service returned 7 points.
+Sample weather data from service: {
+  "lat": 40.713047,
+  "lng": -74.00723,
+  "weather": {
+    "temperature": -10.2,
+    "weathercode": 1,
+    "windSpeed": 21.5,
+    "humidity": 55,
+    "precipitationProbability": 0,
+    "windDirection": 300
+  }
+}
+Road condition weather fetch for segment 1 (40.843681,-73.944346): Code 2, Temp -9.9
+Road condition weather fetch for segment 2 (40.950836,-73.852912): Code 1, Temp -10.3
+Road condition weather fetch for segment 0 (40.713047,-74.00723): Code 1, Temp -10.2
+Enriched weather point 6: {
+  "temperature": -10.7,
+  "weathercode": 1,
+  "windSpeed": 21.5,
+  "humidity": 59,
+  "precipitationProbability": 0,
+  "windDirection": 274,
+  "eta": "ETA 12:47 PM",
+  "location": "White Plains, NY",
+  "lat": 41.032728,
+  "lng": -73.766326
+}
+Enriched weather point 0: {
+  "temperature": -10.2,
+  "weathercode": 1,
+  "windSpeed": 21.5,
+  "humidity": 55,
+  "precipitationProbability": 0,
+  "windDirection": 300,
+  "eta": "ETA 11:53 AM",
+  "location": "New York, NY",
+  "lat": 40.713047,
+  "lng": -74.00723
+}
+Overpass lookup failed for food on overpass-api.de: Request failed with status code 504
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for rest on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for view on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for gas on overpass.kumi.systems: timeout of 15000ms exceeded
+Overpass lookup failed for food on overpass.kumi.systems: timeout of 15000ms exceeded
+Sending response: 7 weather points, 4 road conditions.

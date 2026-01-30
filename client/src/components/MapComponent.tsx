@@ -21,10 +21,11 @@ L.Marker.prototype.options.icon = DefaultIcon;
 interface WeatherPoint {
     lat: number;
     lng: number;
-    weather: {
-        temperature: number;
-        weathercode: number;
-    } | null;
+    temperature: number;
+    weathercode: number;
+    location: string;
+    humidity?: number;
+    windSpeed?: number;
 }
 
 // Map WMO codes to text
@@ -102,6 +103,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
 
     // Helper to create custom "Pill" icon
     const createWeatherIcon = (tempC: number) => {
+        const hasTemp = tempC !== undefined && tempC !== null;
         const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
 
         // Inline colors to ensure no Tailwind issues
@@ -129,7 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                 transform: translate(-50%, -50%);
                 font-family: ui-sans-serif, system-ui, sans-serif;
             ">
-                ${tempDisplay}°
+                ${hasTemp ? tempDisplay + '°' : 'N/A'}
             </div>`,
             iconSize: [52, 32],
             iconAnchor: [26, 16]
@@ -156,7 +158,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
             >
-                <ZoomControl position="topright" />
+                <ZoomControl position="bottomright" />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -177,7 +179,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
                 {weatherData && weatherData.map((point, idx) => {
-                    const tempC = point.weather?.temperature || 0;
+                    const tempC = point.temperature;
+                    const hasTemp = tempC !== undefined && tempC !== null;
 
                     // Earthy Palette Mapping
                     let bgColor = '#628141';
@@ -185,14 +188,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                     if (tempC > 25) bgColor = '#E67E22';
 
                     const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
-                    const weatherDesc = getWeatherDescription(point.weather?.weathercode || 0);
-                    const roadCond = getRoadCondition(point.weather?.weathercode || 0);
+                    const weatherDesc = getWeatherDescription(point.weathercode || 0);
+                    const roadCond = getRoadCondition(point.weathercode || 0);
 
-                    return point.weather ? (
+                    return point ? (
                         <Marker
                             key={idx}
                             position={[point.lat, point.lng]}
-                            icon={createWeatherIcon(point.weather.temperature)}
+                            icon={createWeatherIcon(tempC as any)}
                         >
                             <Popup className="custom-popup-overrides">
                                 <div className="flex flex-col min-w-[160px] font-sans">
@@ -218,7 +221,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                                         {/* Big Temp */}
                                         <div className="flex items-center justify-center gap-1 text-[#40513B]">
                                             <span className="font-extrabold text-5xl tracking-tighter">
-                                                {tempDisplay}°
+                                                {hasTemp ? tempDisplay + '°' : 'N/A'}
                                             </span>
                                             <span className="text-xl font-bold uppercase opacity-60 mt-2">
                                                 {unit}

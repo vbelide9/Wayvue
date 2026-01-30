@@ -9,6 +9,7 @@ interface LocationInputProps {
     onChange: (val: string) => void
     onSelect?: (coords: { lat: number, lng: number, display_name: string }) => void
     icon: "start" | "destination"
+    variant?: "default" | "minimal"
 }
 
 interface Suggestion {
@@ -18,7 +19,7 @@ interface Suggestion {
     lon: string
 }
 
-export function LocationInput({ label, placeholder, value, onChange, onSelect, icon }: LocationInputProps) {
+export function LocationInput({ label, placeholder, value, onChange, onSelect, icon, variant = "default" }: LocationInputProps) {
     const [suggestions, setSuggestions] = useState<Suggestion[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [showSuggestions, setShowSuggestions] = useState(false)
@@ -87,7 +88,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
 
     return (
         <div className="relative group" ref={wrapperRef}>
-            <label className="text-sm font-medium text-foreground mb-2 block">{label}</label>
+            {variant !== "minimal" && <label className="text-sm font-medium text-foreground mb-2 block">{label}</label>}
             <div className="relative">
                 <div className="absolute left-3 top-3.5 text-muted-foreground transition-colors group-focus-within:text-primary z-10">
                     {icon === "start" ? <Navigation className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
@@ -100,6 +101,12 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                     }}
                     onFocus={() => {
                         if (suggestions.length > 0) setShowSuggestions(true)
+
+                        // Clear if it's a default value
+                        const defaultValues = ["New York, NY", "Buffalo, NY", "Start", "End"];
+                        if (defaultValues.includes(value)) {
+                            onChange("");
+                        }
                     }}
                     placeholder={placeholder}
                     className="pl-10 bg-card border-border h-11 text-base focus-visible:ring-primary/50"
