@@ -95,11 +95,9 @@ app.post('/api/route', async (req, res) => {
           const distMiles = Math.round((i / Math.max(1, weatherResults.length - 1)) * Number(totalDistanceMiles));
           let city = `Mile ${distMiles}`;
           try {
-            // Geocode every 6th point for speed (approx 4-5 geocodes total)
-            if (i % 8 === 0 || i === weatherResults.length - 1) {
-              const name = await reverseGeocode(lat, lng);
-              if (name) city = name;
-            }
+            // Geocode every single point to ensure full city name coverage as requested
+            const name = await reverseGeocode(lat, lng);
+            if (name) city = name;
           } catch (e) { }
           return { ...w.weather, location: city, lat: w.lat, lng: w.lng };
         }));

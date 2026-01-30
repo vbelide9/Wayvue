@@ -30,31 +30,54 @@ const geocode = async (query) => {
 
 /**
  * Reverse geocodes coordinates to an address/location name.
+ * Uses retries and smarter field extraction for better coverage.
  * @param {number} lat 
  * @param {number} lon 
  * @returns {Promise<string | null>}
  */
-const reverseGeocode = async (lat, lon) => {
-    try {
-        // Use a small delay to prevent rate limiting from parallel bursts
-        await new Promise(r => setTimeout(r, Math.random() * 500));
+const reverseGeocode = async (lat, lon, retries = 1) => {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            // Jittered delay to be nice to API
+            await new Promise(r => setTimeout(r, Math.random() * 800));
 
-        const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1000`;
-        const response = await axios.get(url, { timeout: 5000 });
+            const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1500`;
+            const response = await axios.get(url, { timeout: 6000 });
 
-        if (response.data && response.data.address) {
-            const addr = response.data.address;
-            // Prefer City, State. Fallback to Neighborhood or full address
-            if (addr.City && addr.RegionAbbr) {
-                return `${addr.City}, ${addr.RegionAbbr}`;
+            if (response.data && response.data.address) {
+                const addr = response.data.address;
+
+                // 1. City, StateAbbr (Ideal)
+                if (addr.City && addr.RegionAbbr) {
+                    return `${addr.City}, ${addr.RegionAbbr}`;
+                }
+
+                // 2. City, StateFull
+                if (addr.City && addr.Region) {
+                    return `${addr.City}, ${addr.Region}`;
+                }
+
+                // 3. Subregion (County), StateAbbr
+                if (addr.Subregion && addr.RegionAbbr) {
+                    return `${addr.Subregion}, ${addr.RegionAbbr}`;
+                }
+
+                // 4. Any matchable address string
+                if (addr.Match_addr) {
+                    return addr.Match_addr;
+                }
             }
-            return addr.Match_addr || "Unknown Location";
+            return null;
+        } catch (error) {
+            if (i === retries) {
+                console.error(`Reverse geocoding failed for ${lat},${lon} after ${retries} retries:`, error.message);
+                return null;
+            }
+            // Simple backoff
+            await new Promise(r => setTimeout(r, 500));
         }
-        return null;
-    } catch (error) {
-        console.error(`Reverse geocoding failed for ${lat},${lon}:`, error.message);
-        return null;
     }
+    return null;
 };
 
 module.exports = { geocode, reverseGeocode };
