@@ -201,12 +201,12 @@ export default function App() {
 
         {/* Bottom Strip: Forecast & Recommendations */}
         {weatherData.length > 0 && (
-          <div className="bg-card/95 backdrop-blur-xl border-t border-border p-4 z-[400] shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="bg-card/95 backdrop-blur-xl border-t border-border p-4 z-[400] shadow-[0_-4px_25px_rgba(0,0,0,0.3)]">
+            <div className="flex flex-col lg:flex-row gap-6 h-full items-stretch">
               {/* Forecast Timeline */}
-              <div className="flex flex-col gap-2 overflow-hidden">
+              <div className="flex flex-col gap-2 min-w-0 lg:w-[45%]">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-3 h-3" /> Forecast Timeline
+                  <Clock className="w-3 h-3 text-primary" /> Forecast Timeline
                 </h3>
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none mask-fade-right">
                   {weatherData.filter((_, i) => i % Math.max(1, Math.floor(weatherData.length / 8)) === 0).map((w, i) => (
@@ -214,20 +214,17 @@ export default function App() {
                       key={i}
                       variant="chip"
                       unit={unit}
-                      weather={{
-                        location: `Mile ${(i + 1) * Math.floor(parseInt(metrics.distance) / 8)}`,
-                        temperature: w.weather?.temperature || 0,
-                        windSpeed: 0,
-                        humidity: 0,
-                        condition: 'clear'
-                      }}
+                      weather={w} // Using full weather object which now has city name
                     />
                   ))}
                 </div>
               </div>
 
-              {/* Suggested Stops (Compact) */}
-              <div>
+              {/* Vertical Divider for Large screens */}
+              <div className="hidden lg:block w-px bg-border/50 self-stretch my-1" />
+
+              {/* Suggested Stops */}
+              <div className="flex-1 min-w-0">
                 <PlacesRecommendations places={recommendations} />
               </div>
             </div>

@@ -77,9 +77,23 @@ app.post('/api/route', async (req, res) => {
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
 
     // 4. Weather
-    // OSRM is [lng, lat], OpenMeteo needs [lat, lng]
     const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
-    const weatherData = await getWeatherForPoints(pointsForWeather);
+    const weatherResults = await getWeatherForPoints(pointsForWeather);
+
+    // Add city names to weather points for the timeline
+    const { reverseGeocode } = require('./services/geocodingService');
+    const weatherData = await Promise.all(weatherResults.map(async (w, i) => {
+      const [lat, lng] = pointsForWeather[i];
+      let city = `Mile ${Math.round((i / (weatherResults.length - 1)) * totalDistanceMiles)}`;
+      try {
+        // Sample only every 3rd point to avoid hitting geocode limits too hard
+        if (i % 3 === 0) {
+          const name = await reverseGeocode(lat, lng);
+          if (name) city = name;
+        }
+      } catch (e) { }
+      return { ...w, location: city };
+    }));
 
     // 5. Road Conditions & Cameras
     console.log('Generating road conditions...');

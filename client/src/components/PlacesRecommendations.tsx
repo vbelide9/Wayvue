@@ -44,10 +44,10 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     };
 
     return (
-        <div className="mt-2 flex flex-col gap-4">
+        <div className="flex flex-col gap-3 h-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <MapPin className="w-3 h-3" /> Road Trip Planner
+                    <MapPin className="w-3 h-3 text-primary" /> Suggested Stops
                 </h3>
 
                 {/* Category Filter Chips */}
@@ -58,7 +58,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             onClick={() => setActiveCategory(cat.id)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all border ${activeCategory === cat.id
                                     ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                                    : "bg-card/50 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                    : "bg-card/30 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                 }`}
                         >
                             {cat.icon}
@@ -69,19 +69,19 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
             </div>
 
             {/* Results List */}
-            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none mask-fade-right">
+            <div className="flex-1 flex gap-3 overflow-x-auto pb-2 scrollbar-none mask-fade-right min-h-[100px]">
                 {filteredPlaces.length > 0 ? (
                     filteredPlaces.map((place) => (
                         <div
                             key={place.id}
                             onClick={() => setSelectedPlace(place)}
-                            className="flex-shrink-0 w-64 bg-card/40 backdrop-blur-sm border border-border/50 rounded-xl p-3 hover:bg-card hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden flex items-start gap-3 shadow-sm hover:shadow-md"
+                            className="flex-shrink-0 w-64 bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-3 hover:bg-card/60 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden flex items-start gap-3 shadow-sm hover:shadow-md"
                         >
-                            <div className="p-2 rounded-lg bg-secondary/50 group-hover:bg-primary/10 transition-colors">
+                            <div className="p-2 rounded-lg bg-secondary/30 group-hover:bg-primary/10 transition-colors">
                                 {getIcon(place.type)}
                             </div>
                             <div className="flex-1 min-w-0 pr-4">
-                                <h4 className="font-semibold text-[13px] text-foreground leading-tight group-hover:text-primary transition-colors">{place.title}</h4>
+                                <h4 className="font-semibold text-[13px] text-foreground leading-tight group-hover:text-primary transition-colors truncate">{place.title}</h4>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{place.location}</p>
                                 <div className="mt-2 flex items-center gap-1 text-[9px] text-primary font-medium uppercase tracking-tighter opacity-80 group-hover:opacity-100 transition-opacity">
                                     <Info className="w-2.5 h-2.5" /> Details
@@ -93,9 +93,9 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                         </div>
                     ))
                 ) : (
-                    <div className="w-full py-8 flex flex-col items-center justify-center text-center opacity-50 bg-secondary/10 rounded-xl border border-dashed border-border">
-                        <Filter className="w-8 h-8 mb-2 text-muted-foreground" />
-                        <p className="text-xs font-medium">No {activeCategory} stops found in this area</p>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 bg-secondary/5 rounded-xl border border-dashed border-border min-h-[100px]">
+                        <Filter className="w-6 h-6 mb-1 text-muted-foreground" />
+                        <p className="text-[10px] font-medium">No results</p>
                     </div>
                 )}
             </div>

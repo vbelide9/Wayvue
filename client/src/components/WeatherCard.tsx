@@ -34,10 +34,11 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
 
     // --- VARIANT: CHIP (Timeline) ---
     if (variant === "chip") {
+        const isMile = weather.location.toLowerCase().includes('mile');
         return (
-            <div className="flex flex-col items-center justify-center min-w-[80px] p-2 rounded-lg bg-card border border-border hover:bg-white/5 transition-colors cursor-default">
-                <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider mb-1">
-                    {weather.location.replace('Mile ', '')} mi
+            <div className="flex flex-col items-center justify-center min-w-[100px] p-2 rounded-xl bg-card border border-border hover:bg-white/5 transition-all cursor-default shadow-sm">
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-tighter mb-1 text-center truncate w-full px-1">
+                    {weather.location}
                 </span>
                 {getIcon(weather.condition, "w-6 h-6 mb-1")}
                 <span className="font-bold text-foreground text-sm">

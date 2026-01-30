@@ -5,51 +5,37 @@ const axios = require('axios');
  * Queries for Fuel, Food, and Viewpoints near the given coordinates.
  */
 async function getRecommendations(routeSegments) {
-    const recommendations = [];
-
-    // We'll query 5 strategic stops along the route for better coverage
-    const indices = [
-        Math.floor(routeSegments.length * 0.05), // Start-ish
-        Math.floor(routeSegments.length * 0.25),
-        Math.floor(routeSegments.length * 0.50), // Middle
-        Math.floor(routeSegments.length * 0.75),
-        Math.floor(routeSegments.length * 0.95)  // Near dest
-    ];
+    // We'll query 10 strategic stops along the route for even coverage across the entire journey
+    const indices = Array.from({ length: 10 }, (_, i) =>
+        Math.floor(routeSegments.length * (0.05 + (i * 0.1)))
+    ).filter(idx => idx < routeSegments.length);
 
     const tasks = indices.map(async (idx, i) => {
         const seg = routeSegments[idx];
         if (!seg || !seg.location) return null;
 
-        const { lat, lon } = seg.location;
-        let type, amenityQuery;
+        // Cycle through types to ensure variety across the 10 points
+        const types = ['food', 'gas', 'rest', 'food', 'view', 'gas', 'food', 'rest', 'view', 'food'];
+        type = types[i % types.length];
 
-        // Logic: Vary types across the 5 points
-        if (i === 0) {
-            type = 'food';
+        if (type === 'food') {
             amenityQuery = '["amenity"~"cafe|fast_food|restaurant|diner"]';
-        } else if (i === 1) {
-            type = 'gas';
+        } else if (type === 'gas') {
             amenityQuery = '["amenity"~"fuel|charging_station"]';
-        } else if (i === 2) {
-            type = 'rest';
+        } else if (type === 'rest') {
             amenityQuery = '["amenity"~"rest_area|toilets|bench"]';
-        } else if (i === 3) {
-            type = 'food';
-            amenityQuery = '["amenity"~"restaurant|pub|ice_cream"]';
         } else {
-            type = 'view';
             amenityQuery = '["tourism"~"viewpoint|attraction|museum|park"]';
         }
 
-        // Overpass QL Query: Search within 30000m (30km)
-        // Returning 5 results per point now
+        // Returning more results per point to find "good" ones
         const query = `
             [out:json][timeout:15];
             (
               node${amenityQuery}(around:30000, ${lat}, ${lon});
               way${amenityQuery}(around:30000, ${lat}, ${lon});
             );
-            out center 5;
+            out center 10;
         `;
 
         let place = null;
@@ -71,12 +57,16 @@ async function getRecommendations(routeSegments) {
             nodes.forEach(node => {
                 if (node.tags && (node.tags.name || node.tags.operator)) {
                     const name = node.tags.name || node.tags.operator;
+                    // Quality score: more tags usually means better data/more popular
+                    const qualityScore = Object.keys(node.tags).length;
+
                     recommendations.push({
                         id: `osm-${node.id}`,
                         type: type,
                         location: seg.segment.includes('Segment') ? 'Along Route' : seg.segment.split(',')[0],
                         title: name,
-                        description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest stop and basic services' : 'Local Stop')
+                        description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest stop and basic services' : 'Local Stop'),
+                        quality: qualityScore
                     });
                 }
             });
@@ -118,11 +108,13 @@ async function getRecommendations(routeSegments) {
         return place;
     });
 
-    await Promise.all(tasks);
-
-    // Filter duplicates by title/id
+    // Sort by quality and filter duplicates
     const finalResults = [];
     const seen = new Set();
+
+    // Sort overall by quality score
+    recommendations.sort((a, b) => (b.quality || 0) - (a.quality || 0));
+
     recommendations.forEach(r => {
         if (!seen.has(r.title)) {
             seen.add(r.title);
