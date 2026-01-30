@@ -4,7 +4,7 @@ require('dotenv').config();
 
 const { geocode, reverseGeocode } = require('./services/geocodingService');
 const { getRouteFromOSRM } = require('./services/routeService');
-const { sampleRoute, getDistance } = require('./utils/geometry');
+const { sampleRoute } = require('./utils/geometry');
 const { getWeatherForPoints } = require('./services/weatherService');
 const RealCameraService = require('./services/realCameraService');
 
@@ -77,72 +77,47 @@ app.post('/api/route', async (req, res) => {
 
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
 
-    // Pre-calculate cumulative distances for all coordinates in the route
-    const cumulativeDistances = [0];
-    let totalAccDist = 0;
-    for (let i = 1; i < fullCoordinates.length; i++) {
-      const [ln1, lt1] = fullCoordinates[i - 1];
-      const [ln2, lt2] = fullCoordinates[i];
-      totalAccDist += getDistance(lt1, ln1, lt2, ln2);
-      cumulativeDistances.push(totalAccDist);
-    }
+    // 4, 5, 6, 7. Run enrichments in parallel to save significant time
+    console.log('Running parallel enrichments (Weather, Road, AI, Places)...');
 
     // We'll pre-calculate some values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
     const durationVal = Math.round(routeData.duration / 60) + " min";
 
-    console.log('Running parallel enrichments (Weather, Road, AI, Places)...');
-
     const [weatherData, roadConditions, recommendations] = await Promise.all([
       // A. Weather with City Names
       (async () => {
         const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
+        const { getWeatherForPoints } = require('./services/weatherService');
         const weatherResults = await getWeatherForPoints(pointsForWeather);
-
-        console.log(`Weather service returned ${weatherResults.length} points.`);
-        if (weatherResults.length > 0) {
-          console.log('Sample weather data from service:', JSON.stringify(weatherResults[0], null, 2));
-        }
+        const startTime = Date.now();
+        const totalDurationSeconds = routeData.duration || 0;
 
         return Promise.all(weatherResults.map(async (w, i) => {
-          const [lat, lng] = [w.lat, w.lng];
-          const distMiles = Math.round((i / Math.max(1, weatherResults.length - 1)) * Number(totalDistanceMiles));
-          let city = `Mile ${distMiles}`;
-
-          try {
-            const name = await reverseGeocode(lat, lng);
-            if (name) city = name;
-          } catch (e) {
-            console.error('Reverse geocode failed in weather enrichment:', e.message);
-          }
+          const [lat, lng] = pointsForWeather[i];
+          const progress = i / Math.max(1, weatherResults.length - 1);
+          const distMiles = Math.round(progress * Number(totalDistanceMiles));
 
           // Calculate ETA
-          // Total Duration (seconds) * (i / totalPoints) -> seconds from now
-          const fraction = i / Math.max(1, weatherResults.length - 1);
-          const secondsFromNow = routeData.duration * fraction;
-          const etaDate = new Date(Date.now() + secondsFromNow * 1000);
-          // Format: "2:45 PM"
-          const etaString = etaDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const timeOffsetSeconds = progress * totalDurationSeconds;
+          const etaDate = new Date(startTime + (timeOffsetSeconds * 1000));
+          const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-          const finalWeather = {
-            temperature: (w.weather && typeof w.weather.temperature === 'number') ? w.weather.temperature : null,
-            weathercode: w.weather?.weathercode ?? 0,
-            windSpeed: w.weather?.windSpeed ?? 0,
-            humidity: w.weather?.humidity ?? 0,
-            precipitationProbability: w.weather?.precipitationProbability ?? 0,
-            windDirection: w.weather?.windDirection ?? 0,
-            eta: `ETA ${etaString}`,
+          let city = `Mile ${distMiles}`;
+          try {
+            // Geocode every single point to ensure full city name coverage as requested
+            const name = await reverseGeocode(lat, lng);
+            if (name) city = name;
+          } catch (e) { }
+
+          return {
+            ...w.weather,
+            location: city,
+            lat: w.lat,
+            lng: w.lng,
             distanceFromStart: distMiles,
-            location: city.includes("Mile") ? "Highway Segment" : city, // Prefer generic over "Mile X" if geocode fails
-            lat: lat,
-            lng: lng
+            eta: `ETA ${eta}`
           };
-
-          if (i === 0 || i === weatherResults.length - 1) {
-            console.log(`Enriched weather point ${i}:`, JSON.stringify(finalWeather, null, 2));
-          }
-
-          return finalWeather;
         }));
       })(),
 
@@ -163,16 +138,12 @@ app.post('/api/route', async (req, res) => {
 
           // Derive status from weather
           const w = await getWeather(lat, lng);
-          const code = w?.weathercode ?? 0;
-          console.log(`Road condition weather fetch for segment ${i} (${lat},${lng}): Code ${code}, Temp ${w?.temperature}`);
+          const code = w?.weathercode || 0;
           let status = "good";
           let desc = "Clear roads, normal traffic flow";
           if ([71, 73, 75, 85, 86].includes(code)) { status = "poor"; desc = "Snow/Ice detected."; }
           else if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) { status = "moderate"; desc = "Wet roads."; }
           else if ([45, 48].includes(code)) { status = "moderate"; desc = "Foggy conditions."; }
-
-          // Correct cumulative distance calculation using pre-calculated values
-          const segmentDistMiles = cumulativeDistances[idx];
 
           let cameraObj = null;
           try {
@@ -192,7 +163,7 @@ app.post('/api/route', async (req, res) => {
             segment: locationName,
             status: status,
             description: desc,
-            distance: `${segmentDistMiles.toFixed(0)} mi`,
+            distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
             location: { lat: lat, lon: lng },
             camera: cameraObj
           };
@@ -202,27 +173,15 @@ app.post('/api/route', async (req, res) => {
       // C. Places Recommendations
       (async () => {
         const { getRecommendations } = require('./services/placesService');
-
-        // Generate context points every ~40 miles
-        const samplingIntervalMiles = 40;
-        const numPoints = Math.max(5, Math.floor(totalDistanceMiles / samplingIntervalMiles));
-        const contextPoints = [];
-
-        for (let i = 0; i <= numPoints; i++) {
-          const p = i / numPoints; // percentage 0 to 1
-          // Use slightly less than 1.0 to avoid index out of bounds, clamped
-          const idx = Math.min(fullCoordinates.length - 1, Math.floor(fullCoordinates.length * p));
-
-          // Current distance from start
+        const contextPoints = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0].map(p => {
+          const idx = Math.floor(fullCoordinates.length * 0.999 * p);
           const currentDist = (p * totalDistanceMiles).toFixed(0);
-
-          contextPoints.push({
+          return {
             segment: `${currentDist} mi`,
             location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] },
             miles: Number(currentDist)
-          });
-        }
-
+          };
+        });
         return getRecommendations(contextPoints);
       })()
     ]);
@@ -230,8 +189,6 @@ app.post('/api/route', async (req, res) => {
     // D. Wayvue AI Analysis
     const { generateTripAnalysis } = require('./services/aiService');
     const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
-
-    console.log(`Sending response: ${weatherData.length} weather points, ${roadConditions.length} road conditions.`);
 
     res.json({
       route: routeData.geometry, // OSRM GeoJSON
@@ -245,27 +202,10 @@ app.post('/api/route', async (req, res) => {
       aiAnalysis: aiAnalysis, // New AI Summary
       recommendations: recommendations // New Places
     });
+
   } catch (error) {
     console.error('Route handler error:', error);
     res.status(500).json({ error: 'Failed to generate route data' });
-  }
-});
-
-// New endpoint to resolve exact address on demand
-app.post('/api/place-details', async (req, res) => {
-  const { lat, lon } = req.body;
-
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'Lat and Lon are required' });
-  }
-
-  try {
-    // Request full address
-    const fullAddress = await reverseGeocode(lat, lon, true);
-    res.json({ address: fullAddress });
-  } catch (error) {
-    console.error('Place details error:', error);
-    res.status(500).json({ error: 'Failed to fetch address' });
   }
 });
 

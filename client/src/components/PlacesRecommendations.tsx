@@ -7,67 +7,58 @@ interface Place {
     location: string;
     title: string;
     description: string;
-    detour?: string;
-    address?: string;
-    image?: string;
 }
 
 interface PlacesRecommendationsProps {
     places: Place[] | null;
 }
 
-// Add import at the top (assumed existing imports)
-import { getPlaceDetails } from "../services/api";
-
 export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>("all");
-    const [loadingAddress, setLoadingAddress] = useState(false);
-    const [detailAddress, setDetailAddress] = useState<string | null>(null);
 
-    // Effect to reset and fetch detailed address on selection
-    const handleSelectPlace = async (place: Place) => {
-        setSelectedPlace(place);
-        setDetailAddress(null);
+    const categories = [
+        { id: "all", label: "All Stops", icon: <MapPin className="w-3 h-3" /> },
+        { id: "food", label: "Dining", icon: <Utensils className="w-3 h-3" /> },
+        { id: "gas", label: "Fuel", icon: <Fuel className="w-3 h-3" /> },
+        { id: "view", label: "Scenic", icon: <Camera className="w-3 h-3" /> },
+        { id: "rest", label: "Rest Areas", icon: <TreePine className="w-3 h-3" /> },
+    ];
 
-        // If address is approximate (starts with "Near "), try to fetch real one
-        if (place.address?.startsWith("Near ") && (place as any).lat && (place as any).lon) {
-            setLoadingAddress(true);
-            try {
-                const data = await getPlaceDetails((place as any).lat, (place as any).lon);
-                if (data.address) {
-                    setDetailAddress(data.address);
-                }
-            } catch (e) {
-                console.error("Failed to fetch address details");
-            } finally {
-                setLoadingAddress(false);
-            }
+    const filteredPlaces = useMemo(() => {
+        if (!places) return [];
+        if (activeCategory === "all") return places;
+        return places.filter(p => p.type === activeCategory);
+    }, [places, activeCategory]);
+
+    if (!places || !Array.isArray(places) || places.length === 0) return null;
+
+    const getIcon = (type: string, className = "w-4 h-4") => {
+        switch (type) {
+            case 'food': return <Utensils className={`${className} text-orange-500`} />;
+            case 'gas': return <Fuel className={`${className} text-blue-500`} />;
+            case 'view': return <Camera className={`${className} text-purple-500`} />;
+            case 'rest': return <TreePine className={`${className} text-emerald-500`} />;
+            default: return <MapPin className={`${className} text-primary`} />;
         }
     };
 
-    // ... categories ...
-
-    // ... filteredPlaces ...
-
-    // ... getIcon ...
-
     return (
         <div className="flex flex-col gap-3 h-full">
-            {/* ... Header & Filter ... */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                {/* Same content as original upto line 72 */}
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <MapPin className="w-3 h-3 text-primary" /> Suggested Stops
                 </h3>
+
+                {/* Category Filter Chips */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                     {categories.map((cat) => (
                         <button
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all border ${activeCategory === cat.id
-                                ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                                : "bg-card/30 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                    : "bg-card/30 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                 }`}
                         >
                             {cat.icon}
@@ -78,53 +69,33 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
             </div>
 
             {/* Results List */}
-            <div className="flex-1 flex gap-4 overflow-x-auto pb-2 scrollbar-none mask-fade-right min-h-[110px] items-center">
+            <div className="flex-1 flex gap-3 overflow-x-auto pb-2 scrollbar-none mask-fade-right min-h-[100px]">
                 {filteredPlaces.length > 0 ? (
                     filteredPlaces.map((place) => (
                         <div
                             key={place.id}
-                            onClick={() => handleSelectPlace(place)}
-                            className="flex-shrink-0 min-w-[320px] max-w-[450px] flex-1 bg-card/40 backdrop-blur-md border border-border/50 rounded-xl p-4 hover:bg-card/80 hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden flex items-center gap-4 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                            onClick={() => setSelectedPlace(place)}
+                            className="flex-shrink-0 w-64 bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-3 hover:bg-card/60 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden flex items-start gap-3 shadow-sm hover:shadow-md"
                         >
-                            {/* ... Card Content (unchanged mainly except onClick now calls handleSelectPlace) ... */}
-                            {/* Icon Box */}
-                            <div className="w-10 h-10 rounded-lg bg-secondary/50 group-hover:bg-primary/20 flex items-center justify-center transition-colors shadow-inner">
-                                {getIcon(place.type, "w-5 h-5")}
+                            <div className="p-2 rounded-lg bg-secondary/30 group-hover:bg-primary/10 transition-colors">
+                                {getIcon(place.type)}
                             </div>
-
-                            {/* Text Content */}
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-sm text-foreground leading-tight group-hover:text-primary transition-colors truncate">
-                                    {place.title}
-                                </h4>
-                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1 truncate font-medium">
-                                    <span>{place.location}</span>
-                                    {place.detour && (
-                                        <>
-                                            <span className="w-1 h-1 rounded-full bg-border" />
-                                            <span className="text-orange-400 font-bold flex items-center gap-0.5">
-                                                +{place.detour}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="mt-1.5 flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
-                                        <Info className="w-3 h-3" /> View Details
-                                    </span>
+                            <div className="flex-1 min-w-0 pr-4">
+                                <h4 className="font-semibold text-[13px] text-foreground leading-tight group-hover:text-primary transition-colors truncate">{place.title}</h4>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{place.location}</p>
+                                <div className="mt-2 flex items-center gap-1 text-[9px] text-primary font-medium uppercase tracking-tighter opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <Info className="w-2.5 h-2.5" /> Details
                                 </div>
                             </div>
-
-                            {/* Hover Chevron */}
-                            <div className="absolute right-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                <ChevronRight className="w-5 h-5 text-primary" />
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0">
+                                <ChevronRight className="w-4 h-4 text-primary" />
                             </div>
                         </div>
                     ))
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 bg-secondary/5 rounded-xl border border-dashed border-border min-h-[100px]">
                         <Filter className="w-6 h-6 mb-1 text-muted-foreground" />
-                        <p className="text-[10px] font-medium">No results found for this category</p>
+                        <p className="text-[10px] font-medium">No results</p>
                     </div>
                 )}
             </div>
@@ -133,57 +104,26 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
             {selectedPlace && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-300" onClick={() => setSelectedPlace(null)}>
                     <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className="h-48 bg-gray-900 relative flex items-end justify-start group overflow-hidden">
-                            {selectedPlace.image ? (
-                                <img
-                                    src={selectedPlace.image}
-                                    alt={selectedPlace.title}
-                                    className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                                    }}
-                                />
-                            ) : null}
-
-                            {/* Gradient Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-
-                            {/* Fallback Icon Gradient (shown if no image or error) */}
-                            <div className={`absolute inset-0 bg-gradient-to-br from-primary/30 via-secondary/20 to-card ${selectedPlace.image ? 'hidden' : 'block'}`} />
-
+                        <div className="h-32 bg-gradient-to-br from-primary/30 via-secondary/20 to-card flex items-center justify-center relative">
+                            <div className="absolute inset-0 opacity-10 blur-3xl rounded-full bg-primary animate-pulse" />
+                            {getIcon(selectedPlace.type, "w-12 h-12 relative z-10 drop-shadow-lg")}
                             <button
                                 onClick={() => setSelectedPlace(null)}
-                                className="absolute top-3 right-3 p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 text-white transition-all z-20"
+                                className="absolute top-3 right-3 p-1.5 rounded-full bg-background/50 backdrop-blur-md border border-border hover:bg-background/80 text-foreground transition-all"
                             >
                                 <X className="w-4 h-4" />
                             </button>
-
-                            <div className="relative z-10 p-6 w-full">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-[10px] px-2 py-0.5 bg-primary text-primary-foreground rounded-full font-bold uppercase tracking-widest shadow-sm">
+                        </div>
+                        <div className="p-6">
+                            <div className="flex flex-col gap-1 mb-4">
+                                <h3 className="font-bold text-xl text-foreground tracking-tight">{selectedPlace.title}</h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold uppercase tracking-widest border border-primary/20">
                                         {selectedPlace.type}
                                     </span>
-                                </div>
-                                <h3 className="font-bold text-2xl text-white tracking-tight leading-none shadow-black/50 drop-shadow-md">
-                                    {selectedPlace.title}
-                                </h3>
-                            </div>
-                        </div>
-
-                        <div className="p-6 pt-4">
-                            <div className="flex flex-col gap-3 mb-6">
-                                <div className="flex items-start gap-2 text-muted-foreground">
-                                    <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className={`text-sm font-medium text-foreground ${loadingAddress ? 'animate-pulse' : ''}`}>
-                                            {detailAddress || selectedPlace.address || selectedPlace.location}
-                                        </span>
-                                        {/* Context if needed */}
-                                        {!detailAddress && selectedPlace.address && selectedPlace.location !== selectedPlace.address && (
-                                            <span className="text-xs opacity-70">Near {selectedPlace.location.split('•')[0]}</span>
-                                        )}
-                                    </div>
+                                    <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                                        <MapPin className="w-2.5 h-2.5" /> {selectedPlace.location}
+                                    </span>
                                 </div>
                             </div>
 

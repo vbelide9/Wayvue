@@ -150,6 +150,31 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
         return 'Dry';
     };
 
+    // Legend Component
+    const MapLegend = () => (
+        <div className="absolute bottom-6 left-4 z-[400] bg-card/90 backdrop-blur-md border border-border p-3 rounded-xl shadow-lg flex flex-col gap-2 pointer-events-auto min-w-[120px]">
+            <h4 className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Temperature</h4>
+
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#40513B] shadow-sm"></div>
+                <span className="text-xs font-medium">Cold</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '< 50°' : '< 10°'}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#628141] shadow-sm"></div>
+                <span className="text-xs font-medium">Mild</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '50-77°' : '10-25°'}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#E67E22] shadow-sm"></div>
+                <span className="text-xs font-medium">Hot</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '> 77°' : '> 25°'}</span>
+            </div>
+        </div>
+    );
+
     return (
         <div className="h-full w-full relative z-0">
             <MapContainer
@@ -247,6 +272,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                     ) : null;
                 })}
             </MapContainer>
+
+            {/* Add Legend Overlay */}
+            <MapLegend />
         </div>
     );
 };
