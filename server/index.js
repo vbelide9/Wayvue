@@ -77,74 +77,132 @@ app.post('/api/route', async (req, res) => {
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
 
     // 4. Weather
+    // OSRM is [lng, lat], OpenMeteo needs [lat, lng]
     const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
     const weatherData = await getWeatherForPoints(pointsForWeather);
 
-    // 5. Generate Real Road Conditions
-    // Pick 4 equidistant points (Start, 1/3, 2/3, End)
-    const conditionSegments = [];
-    const segmentIndices = [
+    // 5. Road Conditions & Cameras
+    console.log('Generating road conditions...');
+    const indices = [
       0,
-      Math.floor(weatherData.length * 0.33),
-      Math.floor(weatherData.length * 0.66),
-      weatherData.length - 1
+      Math.floor(fullCoordinates.length * 0.33),
+      Math.floor(fullCoordinates.length * 0.66),
+      fullCoordinates.length - 1
     ];
-    // Remove duplicates if route is short
-    const uniqueIndices = [...new Set(segmentIndices)];
+
+    const uniqueIndices = [...new Set(indices)]; // Remove duplicates
 
     // We need reverse geocoding to get location names
     const { reverseGeocode } = require('./services/geocodingService');
+    const RealCameraService = require('./services/realCameraService');
 
-    const roadConditions = await Promise.all(uniqueIndices.map(async (idx, i) => {
-      const w = weatherData[idx];
-      const [lat, lng] = pointsForWeather[idx];
+    const roadConditions = [];
 
-      let locationName = `Segment ${i + 1}`;
-      if (i === 0) locationName = "Start Area";
-      else if (i === uniqueIndices.length - 1) locationName = "Destination Area";
-      else {
-        // Try to get real city name
+    // Sequential Loop to prevent API Throttling
+    for (const [idx, i] of uniqueIndices.entries()) {
+      console.log(`Processing road segment ${idx + 1}/${uniqueIndices.length}...`);
+
+      const coords = fullCoordinates[i];
+      const lng = coords[0];
+      const lat = coords[1];
+
+      // Reverse Geocode (Get city names for all segments)
+      let locationName = `Segment ${idx + 1}`;
+      try {
+        // Add small delay to be nice to API
+        await new Promise(r => setTimeout(r, 200));
         const realName = await reverseGeocode(lat, lng);
-        if (realName) locationName = realName;
+        if (realName) {
+          locationName = realName;
+        } else if (idx === 0) {
+          locationName = "Start Area";
+        } else if (idx === uniqueIndices.length - 1) {
+          locationName = "Destination Area";
+        }
+      } catch (e) {
+        console.log('Geocode error:', e.message);
+        if (idx === 0) locationName = "Start Area";
+        else if (idx === uniqueIndices.length - 1) locationName = "Destination Area";
       }
 
-      // Determine status based on weather
+      // Weather Logic (Find closest sampled weather point)
+      const weatherIdx = Math.floor((i / fullCoordinates.length) * weatherData.length);
+      const w = weatherData[weatherIdx] || weatherData[0];
+
+      const code = w?.weather?.weather_code || 0;
       let status = "good";
       let desc = "Clear roads, normal traffic flow";
-      const code = w.weather?.weather_code || 0; // Check standard OpenMeteo code property name
 
-      // Snow/Ice
       if ([71, 73, 75, 85, 86].includes(code)) {
         status = "poor";
         desc = "Snow/Ice detected. Drive with caution.";
       }
-      // Rain/Showers
       else if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) {
         status = "moderate";
         desc = "Wet roads, possible visibility reduction.";
       }
-      // Fog
       else if ([45, 48].includes(code)) {
         status = "moderate";
         desc = "Foggy conditions, low visibility.";
       }
 
-      return {
+      // Camera
+      let cameraObj = null;
+      try {
+        // Small delay for camera API too
+        await new Promise(r => setTimeout(r, 200));
+        cameraObj = await RealCameraService.getCamerasNY(lat, lng);
+      } catch (e) { console.log('Cam error:', e.message); }
+
+      if (!cameraObj) {
+        let conditionType = "clear";
+        if (status === 'poor') conditionType = "snow";
+        else if (status === 'moderate') conditionType = "rain";
+
+        const safeImage = `https://placehold.co/1280x720/1a1a1a/1a1a1a`;
+
+        cameraObj = {
+          id: `sim-cam-${i}`,
+          name: `${locationName} Traffic Cam (Simulated)`,
+          url: safeImage,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      roadConditions.push({
         segment: locationName,
         status: status,
         description: desc,
         distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
-        estimatedTime: "..." // We don't have real traffic time, leave placeholder or calc
-      };
-    }));
+        estimatedTime: "...",
+        location: { lat: lat, lon: lng },
+        camera: cameraObj
+      });
+    }
+
+    // 6. Generate Wayvue AI Analysis
+    const { generateTripAnalysis } = require('./services/aiService');
+    const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
+    const durationVal = Math.round(routeData.duration / 60) + " min";
+
+    // We pass the raw locations for analysis
+    const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
+
+    // 7. Generate Places Recommendations
+    const { getRecommendations } = require('./services/placesService');
+    const recommendations = await getRecommendations(roadConditions);
 
     res.json({
-      route: routeData.geometry,
-      sampledPoints: sampledPoints,
+      route: routeData.geometry, // OSRM GeoJSON
+      metrics: {
+        distance: distanceVal,
+        time: durationVal,
+        fuel: `$${(routeData.distance / 1609.34 * 0.15).toFixed(2)}` // Est 15 cents/mile
+      },
       weather: weatherData,
-      roadConditions: roadConditions, // New field with real names
-      duration: routeData.duration,
-      distance: routeData.distance
+      roadConditions: roadConditions,
+      aiAnalysis: aiAnalysis, // New AI Summary
+      recommendations: recommendations // New Places
     });
 
   } catch (error) {

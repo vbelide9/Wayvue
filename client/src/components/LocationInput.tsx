@@ -57,7 +57,10 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                             lon: c.location.x
                         }))
                         setSuggestions(formattedSuggestions)
-                        setShowSuggestions(true)
+                        // Only show suggestions if the input is currently focused
+                        if (wrapperRef.current?.contains(document.activeElement)) {
+                            setShowSuggestions(true)
+                        }
                     }
                 }
             } catch (error) {

@@ -45,9 +45,10 @@ interface MapComponentProps {
     routeGeoJSON?: FeatureCollection | Geometry | null;
     weatherData?: WeatherPoint[];
     unit: 'C' | 'F';
+    selectedLocation?: { lat: number; lng: number } | null;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, unit }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, unit, selectedLocation }) => {
     // Default: San Francisco
     const defaultCenter: LatLngExpression = [37.7749, -122.4194];
 
@@ -82,6 +83,20 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                 map.fitBounds(L.latLngBounds(latLngs as L.LatLngTuple[]), { padding: [50, 50] });
             }
         }, [latLngs, map]);
+        return null;
+    };
+
+    // Helper to fly to selected location
+    const FlyToLocation = ({ location }: { location: { lat: number; lng: number } }) => {
+        const map = useMap();
+        React.useEffect(() => {
+            if (location) {
+                map.flyTo([location.lat, location.lng], 13, {
+                    animate: true,
+                    duration: 1.5
+                });
+            }
+        }, [location, map]);
         return null;
     };
 
@@ -158,6 +173,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                         <RecenterAutomatically latLngs={routePositions} />
                     </>
                 )}
+
+                {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
                 {weatherData && weatherData.map((point, idx) => {
                     const tempC = point.weather?.temperature || 0;

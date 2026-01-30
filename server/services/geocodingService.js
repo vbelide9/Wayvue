@@ -9,7 +9,7 @@ const geocode = async (query) => {
     try {
         const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&SingleLine=${encodeURIComponent(query)}&maxLocations=1`;
 
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: 3000 });
 
         if (response.data && response.data.candidates && response.data.candidates.length > 0) {
             const candidate = response.data.candidates[0];
@@ -37,7 +37,7 @@ const geocode = async (query) => {
 const reverseGeocode = async (lat, lon) => {
     try {
         const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1000`;
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: 2000 });
 
         if (response.data && response.data.address) {
             const addr = response.data.address;
