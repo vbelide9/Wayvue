@@ -1,28 +1,94 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @import "tailwindcss";
 
-@layer theme {
+@theme {
+    --color-border: hsl(var(--border));
+    --color-input: hsl(var(--input));
+    --color-ring: hsl(var(--ring));
+    --color-background: hsl(var(--background));
+    --color-foreground: hsl(var(--foreground));
+
+    --color-primary: hsl(var(--primary));
+    --color-primary-foreground: hsl(var(--primary-foreground));
+
+    --color-secondary: hsl(var(--secondary));
+    --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+    --color-destructive: hsl(var(--destructive));
+    --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+    --color-muted: hsl(var(--muted));
+    --color-muted-foreground: hsl(var(--muted-foreground));
+
+    --color-accent: hsl(var(--accent));
+    --color-accent-foreground: hsl(var(--accent-foreground));
+
+    --color-popover: hsl(var(--popover));
+    --color-popover-foreground: hsl(var(--popover-foreground));
+
+    --color-card: hsl(var(--card));
+    --color-card-foreground: hsl(var(--card-foreground));
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
     :root {
-        --color-background: var(--color-gray-50);
-        --color-foreground: var(--color-gray-900);
+        --background: 91 33% 20%;
+        /* #40513B - Dark Green (Adjusted for HSL) */
+        --foreground: 45 46% 81%;
+        /* #E5D9B6 - Cream */
+
+        --card: 98 15% 31%;
+        --card-foreground: 45 46% 81%;
+
+        --popover: 98 15% 31%;
+        --popover-foreground: 45 46% 81%;
+
+        --primary: 28 80% 52%;
+        /* #E67E22 - Orange */
+        --primary-foreground: 45 46% 81%;
+
+        --secondary: 91 33% 38%;
+        /* #628141 - Olive */
+        --secondary-foreground: 45 46% 81%;
+
+        --muted: 98 15% 31%;
+        --muted-foreground: 45 46% 81%;
+
+        --accent: 91 33% 38%;
+        --accent-foreground: 45 46% 81%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 45 46% 81%;
+
+        --border: 91 33% 38%;
+        --input: 91 33% 38%;
+        --ring: 28 80% 52%;
+
+        --radius: 0.5rem;
     }
 }
 
-/* Custom Leaflet Popup Styling */
-.leaflet-popup-content-wrapper {
-    padding: 0 !important;
-    overflow: hidden;
-    border-radius: 12px !important;
+@layer base {
+    body {
+        @apply bg-background text-foreground;
+    }
 }
 
-.leaflet-popup-content {
-    margin: 0 !important;
-    width: auto !important;
+/* Custom Popup Overrides */
+.leaflet-popup-content-wrapper {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
 .leaflet-popup-tip {
-    background: white;
+    background-color: #E5D9B6 !important;
+}
+
+.custom-popup-overrides .leaflet-popup-content {
+    margin: 0 !important;
 }

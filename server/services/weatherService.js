@@ -5,9 +5,15 @@ const axios = require('axios');
  */
 const getWeather = async (lat, lng) => {
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`;
         const response = await axios.get(url);
-        return response.data.current_weather;
+        const current = response.data.current;
+        return {
+            temperature: current.temperature_2m,
+            weathercode: current.weather_code,
+            windspeed: current.wind_speed_10m,
+            humidity: current.relative_humidity_2m
+        };
     } catch (error) {
         console.error(`Weather fetch failed for ${lat},${lng}:`, error.message);
         return null;

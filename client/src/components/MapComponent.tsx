@@ -134,7 +134,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
     };
 
     return (
-        <div className="h-screen w-full relative z-0">
+        <div className="h-full w-full relative z-0">
             <MapContainer
                 center={defaultCenter}
                 zoom={10}
