@@ -50,8 +50,8 @@ app.post('/api/route', async (req, res) => {
     }
 
     if (!startLoc || !endLoc) {
-      console.log('Geocoding failed');
-      return res.status(404).json({ error: 'Could not find one or both locations' });
+      console.error(`Geocoding failed for Start: ${JSON.stringify(startLoc)} or End: ${JSON.stringify(endLoc)}`);
+      return res.status(422).json({ error: 'Could not resolve one or both locations. Please check your spelling.' });
     }
 
     // 2. Route (OSRM expects lng,lat)
@@ -77,134 +77,97 @@ app.post('/api/route', async (req, res) => {
 
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
 
-    // 4. Weather
-    const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
-    const weatherResults = await getWeatherForPoints(pointsForWeather);
+    // 4, 5, 6, 7. Run enrichments in parallel to save significant time
+    console.log('Running parallel enrichments (Weather, Road, AI, Places)...');
 
-    // Add city names to weather points for the timeline
-    // Sample only every 4th point to keep speed up, but geocode displayed ones
-    const weatherData = await Promise.all(weatherResults.map(async (w, i) => {
-      const [lat, lng] = pointsForWeather[i];
-      const distMiles = Math.round((i / Math.max(1, weatherResults.length - 1)) * Number(totalDistanceMiles));
-      let city = `Mile ${distMiles}`;
-
-      try {
-        // Only geocode every 4th point to balance speed and coverage
-        if (i % 4 === 0 || i === weatherResults.length - 1) {
-          const name = await reverseGeocode(lat, lng);
-          if (name) city = name;
-        }
-      } catch (e) { }
-
-      return { ...w.weather, location: city, lat: w.lat, lng: w.lng };
-    }));
-
-    // 5. Road Conditions & Cameras
-    console.log('Generating road conditions...');
-    const indices = [
-      0,
-      Math.floor(fullCoordinates.length * 0.33),
-      Math.floor(fullCoordinates.length * 0.66),
-      fullCoordinates.length - 1
-    ];
-
-    const uniqueIndices = [...new Set(indices)]; // Remove duplicates
-
-    const roadConditions = [];
-
-    // Sequential Loop to prevent API Throttling
-    for (const [idx, i] of uniqueIndices.entries()) {
-      console.log(`Processing road segment ${idx + 1}/${uniqueIndices.length}...`);
-
-      const coords = fullCoordinates[i];
-      const lng = coords[0];
-      const lat = coords[1];
-
-      // Reverse Geocode (Get city names for all segments)
-      let locationName = `Segment ${idx + 1}`;
-      try {
-        // Add small delay to be nice to API
-        await new Promise(r => setTimeout(r, 200));
-        const realName = await reverseGeocode(lat, lng);
-        if (realName) {
-          locationName = realName;
-        } else if (idx === 0) {
-          locationName = "Start Area";
-        } else if (idx === uniqueIndices.length - 1) {
-          locationName = "Destination Area";
-        }
-      } catch (e) {
-        console.log('Geocode error:', e.message);
-        if (idx === 0) locationName = "Start Area";
-        else if (idx === uniqueIndices.length - 1) locationName = "Destination Area";
-      }
-
-      // Weather Logic (Find closest sampled weather point)
-      const weatherIdx = Math.floor((i / fullCoordinates.length) * weatherData.length);
-      const w = weatherData[weatherIdx] || weatherData[0];
-
-      const code = w?.weather?.weather_code || 0;
-      let status = "good";
-      let desc = "Clear roads, normal traffic flow";
-
-      if ([71, 73, 75, 85, 86].includes(code)) {
-        status = "poor";
-        desc = "Snow/Ice detected. Drive with caution.";
-      }
-      else if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) {
-        status = "moderate";
-        desc = "Wet roads, possible visibility reduction.";
-      }
-      else if ([45, 48].includes(code)) {
-        status = "moderate";
-        desc = "Foggy conditions, low visibility.";
-      }
-
-      // Camera
-      let cameraObj = null;
-      try {
-        // Small delay for camera API too
-        await new Promise(r => setTimeout(r, 200));
-        cameraObj = await RealCameraService.getCamerasNY(lat, lng);
-      } catch (e) { console.log('Cam error:', e.message); }
-
-      if (!cameraObj) {
-        let conditionType = "clear";
-        if (status === 'poor') conditionType = "snow";
-        else if (status === 'moderate') conditionType = "rain";
-
-        const safeImage = `https://placehold.co/1280x720/1a1a1a/1a1a1a`;
-
-        cameraObj = {
-          id: `sim-cam-${i}`,
-          name: `${locationName} Traffic Cam (Simulated)`,
-          url: safeImage,
-          timestamp: new Date().toISOString()
-        };
-      }
-
-      roadConditions.push({
-        segment: locationName,
-        status: status,
-        description: desc,
-        distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
-        estimatedTime: "...",
-        location: { lat: lat, lon: lng },
-        camera: cameraObj
-      });
-    }
-
-    // 6. Generate Wayvue AI Analysis
-    const { generateTripAnalysis } = require('./services/aiService');
+    // We'll pre-calculate some values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
     const durationVal = Math.round(routeData.duration / 60) + " min";
 
-    // We pass the raw locations for analysis
-    const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
+    const [weatherData, roadConditions, recommendations] = await Promise.all([
+      // A. Weather with City Names
+      (async () => {
+        const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
+        const { getWeatherForPoints } = require('./services/weatherService');
+        const weatherResults = await getWeatherForPoints(pointsForWeather);
+        return Promise.all(weatherResults.map(async (w, i) => {
+          const [lat, lng] = pointsForWeather[i];
+          const distMiles = Math.round((i / Math.max(1, weatherResults.length - 1)) * Number(totalDistanceMiles));
+          let city = `Mile ${distMiles}`;
+          try {
+            // Geocode every 6th point for speed (approx 4-5 geocodes total)
+            if (i % 8 === 0 || i === weatherResults.length - 1) {
+              const name = await reverseGeocode(lat, lng);
+              if (name) city = name;
+            }
+          } catch (e) { }
+          return { ...w.weather, location: city, lat: w.lat, lng: w.lng };
+        }));
+      })(),
 
-    // 7. Generate Places Recommendations
-    const { getRecommendations } = require('./services/placesService');
-    const recommendations = await getRecommendations(roadConditions);
+      // B. Road Conditions
+      (async () => {
+        const roadIndices = [0, Math.floor(fullCoordinates.length * 0.33), Math.floor(fullCoordinates.length * 0.66), fullCoordinates.length - 1];
+        const uniqueIndices = [...new Set(roadIndices)];
+        const { getWeather } = require('./services/weatherService');
+        const RealCameraService = require('./services/realCameraService');
+
+        return Promise.all(uniqueIndices.map(async (idx, i) => {
+          const [lng, lat] = fullCoordinates[idx];
+          let locationName = i === 0 ? "Start Area" : i === uniqueIndices.length - 1 ? "Destination Area" : `Segment ${i + 1}`;
+          try {
+            const realName = await reverseGeocode(lat, lng);
+            if (realName) locationName = realName;
+          } catch (e) { }
+
+          // Derive status from weather
+          const w = await getWeather(lat, lng);
+          const code = w?.weathercode || 0;
+          let status = "good";
+          let desc = "Clear roads, normal traffic flow";
+          if ([71, 73, 75, 85, 86].includes(code)) { status = "poor"; desc = "Snow/Ice detected."; }
+          else if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) { status = "moderate"; desc = "Wet roads."; }
+          else if ([45, 48].includes(code)) { status = "moderate"; desc = "Foggy conditions."; }
+
+          let cameraObj = null;
+          try {
+            cameraObj = await RealCameraService.getCamerasNY(lat, lng);
+          } catch (e) { }
+
+          if (!cameraObj) {
+            cameraObj = {
+              id: `sim-cam-${idx}`,
+              name: `${locationName} Traffic Cam (Simulated)`,
+              url: `https://placehold.co/1280x720/1a1a1a/1a1a1a`,
+              timestamp: new Date().toISOString()
+            };
+          }
+
+          return {
+            segment: locationName,
+            status: status,
+            description: desc,
+            distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
+            location: { lat: lat, lon: lng },
+            camera: cameraObj
+          };
+        }));
+      })(),
+
+      // C. Places Recommendations
+      (async () => {
+        const { getRecommendations } = require('./services/placesService');
+        const contextPoints = [0, 0.25, 0.5, 0.75, 1.0].map(p => {
+          const idx = Math.floor(fullCoordinates.length * 0.999 * p);
+          return { segment: 'Route', location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] } };
+        });
+        return getRecommendations(contextPoints);
+      })()
+    ]);
+
+    // D. Wayvue AI Analysis
+    const { generateTripAnalysis } = require('./services/aiService');
+    const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
 
     res.json({
       route: routeData.geometry, // OSRM GeoJSON

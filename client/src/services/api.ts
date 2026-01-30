@@ -4,6 +4,7 @@ const API_URL = '/api'; // Relative path matching Vite proxy
 
 export const api = axios.create({
     baseURL: API_URL,
+    timeout: 90000,
     headers: {
         'Content-Type': 'application/json',
     },

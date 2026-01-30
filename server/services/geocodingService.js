@@ -36,6 +36,9 @@ const geocode = async (query) => {
  */
 const reverseGeocode = async (lat, lon) => {
     try {
+        // Use a small delay to prevent rate limiting from parallel bursts
+        await new Promise(r => setTimeout(r, Math.random() * 500));
+
         const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1000`;
         const response = await axios.get(url, { timeout: 5000 });
 
