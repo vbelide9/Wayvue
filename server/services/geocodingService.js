@@ -37,7 +37,7 @@ const geocode = async (query) => {
 const reverseGeocode = async (lat, lon) => {
     try {
         const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}&distance=1000`;
-        const response = await axios.get(url, { timeout: 2000 });
+        const response = await axios.get(url, { timeout: 5000 });
 
         if (response.data && response.data.address) {
             const addr = response.data.address;

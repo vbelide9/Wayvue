@@ -2,10 +2,11 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const { geocode } = require('./services/geocodingService');
+const { geocode, reverseGeocode } = require('./services/geocodingService');
 const { getRouteFromOSRM } = require('./services/routeService');
 const { sampleRoute } = require('./utils/geometry');
 const { getWeatherForPoints } = require('./services/weatherService');
+const RealCameraService = require('./services/realCameraService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -81,18 +82,21 @@ app.post('/api/route', async (req, res) => {
     const weatherResults = await getWeatherForPoints(pointsForWeather);
 
     // Add city names to weather points for the timeline
-    const { reverseGeocode } = require('./services/geocodingService');
+    // Sample only every 4th point to keep speed up, but geocode displayed ones
     const weatherData = await Promise.all(weatherResults.map(async (w, i) => {
       const [lat, lng] = pointsForWeather[i];
-      let city = `Mile ${Math.round((i / (weatherResults.length - 1)) * totalDistanceMiles)}`;
+      const distMiles = Math.round((i / Math.max(1, weatherResults.length - 1)) * Number(totalDistanceMiles));
+      let city = `Mile ${distMiles}`;
+
       try {
-        // Sample only every 3rd point to avoid hitting geocode limits too hard
-        if (i % 3 === 0) {
+        // Only geocode every 4th point to balance speed and coverage
+        if (i % 4 === 0 || i === weatherResults.length - 1) {
           const name = await reverseGeocode(lat, lng);
           if (name) city = name;
         }
       } catch (e) { }
-      return { ...w, location: city };
+
+      return { ...w.weather, location: city, lat: w.lat, lng: w.lng };
     }));
 
     // 5. Road Conditions & Cameras
@@ -105,10 +109,6 @@ app.post('/api/route', async (req, res) => {
     ];
 
     const uniqueIndices = [...new Set(indices)]; // Remove duplicates
-
-    // We need reverse geocoding to get location names
-    const { reverseGeocode } = require('./services/geocodingService');
-    const RealCameraService = require('./services/realCameraService');
 
     const roadConditions = [];
 
