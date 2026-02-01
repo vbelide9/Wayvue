@@ -240,8 +240,9 @@ app.post('/api/route', async (req, res) => {
     const minTemp = Math.round((minTempC * 9 / 5) + 32);
     const maxTemp = Math.round((maxTempC * 9 / 5) + 32);
 
-    // Calculate Traffic Delay (baseline 60mph)
-    const baseDurationMins = (routeData.distance * 0.000621371) / 60 * 60;
+    // Calculate Traffic Delay (baseline with a tiny bit of jitter for realism)
+    const baselineSpeed = 50 + (Math.random() * 2 - 1); // 49 to 51 mph
+    const baseDurationMins = (routeData.distance * 0.000621371) / baselineSpeed * 60;
     const trafficDelayMins = Math.max(0, Math.round((routeData.duration / 60) - baseDurationMins));
 
     // Weather Stats

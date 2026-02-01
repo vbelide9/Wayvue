@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Navigation, Calendar, Clock } from 'lucide-react';
+import { Search, MapPin } from 'lucide-react';
+import { CustomDatePicker, CustomTimePicker } from './CustomDateTimePicker';
 
 interface SidebarProps {
     onRouteSubmit: (start: string, end: string, date: string, time: string) => void;
@@ -8,7 +9,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
     const [start, setStart] = useState('');
     const [end, setEnd] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -26,12 +30,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                 {/* Header Section */}
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#628141]/50">
                     <div className="flex items-center gap-4">
-                        <div className="bg-[#E67E22] p-2 rounded-xl shadow-md">
-                            <Navigation size={24} className="text-white" />
+                        <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
+                            <img src="/logo_black.png" alt="Wayvue Logo" className="w-full h-full object-cover scale-[1.3] translate-y-[-5%] mix-blend-screen" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold font-sans tracking-tight text-white">RouteCast</h1>
-                            <p className="text-sm font-medium opacity-70">Weather & Road Conditions</p>
+                            <h1 className="text-2xl font-bold font-sans tracking-tight text-white">Wayvue</h1>
+                            <p className="text-sm font-medium opacity-70">Trip Intelligence Assistant</p>
                         </div>
                     </div>
                 </div>
@@ -75,32 +79,24 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
 
                     {/* Date Input (2 cols) */}
                     <div className="md:col-span-2 relative group">
-                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Date</label>
-                        <div className="relative flex items-center gap-3 px-4 py-2.5 bg-[#33402F] border border-[#628141] rounded-xl focus-within:border-[#E67E22] transition-all shadow-inner group">
-                            <Calendar size={18} className="text-[#628141] group-focus-within:text-[#E67E22] transition-colors" />
-                            <input
-                                type="date"
-                                className="w-full bg-transparent border-none focus:outline-none text-white font-semibold text-sm [color-scheme:dark] cursor-pointer"
-                                value={date}
-                                min={new Date().toISOString().split('T')[0]}
-                                max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                onChange={(e) => setDate(e.target.value)}
-                            />
-                        </div>
+                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1 text-white">Date</label>
+                        <CustomDatePicker
+                            value={date}
+                            onChange={setDate}
+                            min={new Date().toISOString().split('T')[0]}
+                            max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                            className="w-full"
+                        />
                     </div>
 
                     {/* Time Input (1.5 cols) */}
                     <div className="md:col-span-1.5 min-w-[125px] relative group">
-                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Time</label>
-                        <div className="relative flex items-center gap-3 px-4 py-2.5 bg-[#33402F] border border-[#628141] rounded-xl focus-within:border-[#E67E22] transition-all shadow-inner group">
-                            <Clock size={18} className="text-[#628141] group-focus-within:text-[#E67E22] transition-colors" />
-                            <input
-                                type="time"
-                                className="w-full bg-transparent border-none focus:outline-none text-white font-semibold text-sm [color-scheme:dark] cursor-pointer"
-                                value={time}
-                                onChange={(e) => setTime(e.target.value)}
-                            />
-                        </div>
+                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1 text-white">Time</label>
+                        <CustomTimePicker
+                            value={time}
+                            onChange={setTime}
+                            className="w-full"
+                        />
                     </div>
 
                     {/* Search Button (2 cols) */}

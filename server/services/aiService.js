@@ -57,12 +57,39 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     const timePart = departureTime ? `at ${departureTime}` : "";
     const timingPrefix = `Departing ${datePart} ${timePart}: `;
 
-    if (trafficDelay > 30) {
-        items.push(`${timingPrefix}Expect significant delays. Departing slightly later might help you skip the worst of it.`);
-    } else if (trafficDelay > 10) {
-        items.push(`${timingPrefix}Minor slowdowns ahead, but nothing that should derail your arrival window.`);
+    // Display delay with a tiny bit of jitter for "human" feel if it's very static
+    const displayDelay = trafficDelay > 0 ? (trafficDelay + (Math.random() > 0.5 ? 1 : -1) * (trafficDelay % 3)) : 0;
+    const finalDelay = Math.max(0, displayDelay);
+
+    if (trafficDelay > 45) {
+        const heavyMessages = [
+            `${timingPrefix}Expect significant heavy volume. Adjusting your departure by 30 minutes could evade the peak.`,
+            `${timingPrefix}Substantial congestion detected. The route is currently under heavy load—patience is key.`,
+            `${timingPrefix}Heavy traffic alert. Your arrival window is shifting due to dense volumes ahead.`
+        ];
+        items.push(heavyMessages[Math.floor(Math.random() * heavyMessages.length)]);
+    } else if (trafficDelay > 20) {
+        const moderateMessages = [
+            `${timingPrefix}Moderate traffic ahead. You're roughly ${finalDelay} minutes behind the optimal pace.`,
+            `${timingPrefix}Flow is slightly throttled. You're seeing a ${finalDelay}-minute variance from clear conditions.`,
+            `${timingPrefix}Expect some periodic braking. Current conditions add about ${finalDelay} minutes to the sprint.`
+        ];
+        items.push(moderateMessages[Math.floor(Math.random() * moderateMessages.length)]);
+    } else if (trafficDelay > 5) {
+        const minorMessages = [
+            `${timingPrefix}Minor fluctuations in flow, but your arrival window remains stable.`,
+            `${timingPrefix}Light activity detected. The route is mostly clear with negligible resistance.`,
+            `${timingPrefix}A few busy stretches, but nothing that significantly impacts your rhythm.`
+        ];
+        items.push(minorMessages[Math.floor(Math.random() * minorMessages.length)]);
     } else {
-        items.push(`${timingPrefix}Clear roads expected—great timing to get ahead of schedule.`);
+        const clearMessages = [
+            `${timingPrefix}Pristine road conditions ahead—perfect for an efficient cruise.`,
+            `${timingPrefix}Zero congestion detected. You’re on track for a remarkably smooth arrival.`,
+            `${timingPrefix}Green corridors all the way! Great timing to stay ahead of schedule.`,
+            `${timingPrefix}The road is entirely yours. Optimal flow reported across all segments.`
+        ];
+        items.push(clearMessages[Math.floor(Math.random() * clearMessages.length)]);
     }
 
     // Time of day awareness
@@ -76,14 +103,16 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     }
 
     // Weather/Comfort trends
-    if (maxTemp - minTemp > 20) {
-        items.push("Significant temperature swing ahead—keep a light layer within reach.");
+    if (precipChance > 60) {
+        items.push("High confidence of rain/snow—ensure your wipers are ready for the stretch ahead.");
+    } else if (precipChance > 30) {
+        items.push("Variable precipitation expected; keep a safe following distance as roads dampen.");
     }
-    if (precipChance > 40) {
-        items.push("Expect visibility to drop as you hit the rainier stretches.");
-    }
-    if (maxWind > 25) {
-        items.push("Noticeable crosswinds ahead; stay focused while passing larger vehicles.");
+
+    if (maxWind > 30) {
+        items.push("Strong gusts ahead—hold a steady line, especially when exiting tunnels or bridges.");
+    } else if (maxWind > 15) {
+        items.push("Noticeable wind activity detected; stay alert for minor steering adjustments.");
     }
 
     // Practical/Fatigue

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight, Calendar } from 'lucide-react';
+import { RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
+import { CustomDatePicker, CustomTimePicker } from './components/CustomDateTimePicker';
 
 // UI Components
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,10 @@ export default function App() {
   const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [departureDate, setDepartureDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departureDate, setDepartureDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
   const [loading, setLoading] = useState(false);
@@ -121,13 +125,15 @@ export default function App() {
             {/* 1. Dashboard Controls Row */}
             <div className="relative z-[410] flex items-center gap-2 pointer-events-auto">
               {/* Brand / Logo */}
-              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3 h-14">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-                  <MapIcon className="w-5 h-5 text-white" />
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3">
+                <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
+                  <img src="/logo_black.png" alt="Wayvue Logo" className="w-full h-full object-cover scale-[1.3] translate-y-[-5%] mix-blend-screen" />
                 </div>
                 <div className="hidden sm:block pr-2">
-                  <h1 className="text-lg font-bold tracking-tight leading-none">Wayvue</h1>
-                  <p className="text-[10px] text-muted-foreground font-medium">Weather Intel</p>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
                 </div>
               </div>
 
@@ -157,26 +163,16 @@ export default function App() {
                   />
                 </div>
                 <div className="w-px h-8 bg-border mx-1" />
-                <div className="flex items-center gap-2 px-2 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-colors group">
-                  <Calendar className="w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="date"
-                    className="h-9 bg-transparent border-none text-xs font-semibold focus:outline-none text-foreground [color-scheme:dark] cursor-pointer"
-                    value={departureDate}
-                    min={new Date().toISOString().split('T')[0]}
-                    max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                    onChange={(e) => setDepartureDate(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2 px-2 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-colors group">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="time"
-                    className="h-9 bg-transparent border-none text-xs font-semibold focus:outline-none text-foreground [color-scheme:dark] cursor-pointer"
-                    value={departureTime}
-                    onChange={(e) => setDepartureTime(e.target.value)}
-                  />
-                </div>
+                <CustomDatePicker
+                  value={departureDate}
+                  onChange={setDepartureDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                />
+                <CustomTimePicker
+                  value={departureTime}
+                  onChange={setDepartureTime}
+                />
                 <Button
                   onClick={() => handleRouteSubmit()}
                   disabled={loading}
