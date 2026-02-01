@@ -25,14 +25,22 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/route', async (req, res) => {
-  const { start, end, startCoords, endCoords } = req.body;
+  const { start, end, startCoords, endCoords, departureDate, departureTime } = req.body;
 
   if (!start || !end) {
     return res.status(400).json({ error: 'Start and End locations are required' });
   }
 
   try {
-    console.log(`Processing route: ${start} -> ${end}`);
+    console.log(`Processing route: ${start} -> ${end}${departureDate ? ' (' + departureDate : ''}${departureTime ? ' @ ' + departureTime : ''}${departureDate ? ')' : ''}`);
+
+    let baseDepTime = Date.now();
+    if (departureDate) {
+      const datePart = departureDate;
+      const timePart = departureTime || "12:00";
+      baseDepTime = new Date(`${datePart}T${timePart}`).getTime();
+      if (isNaN(baseDepTime)) baseDepTime = Date.now();
+    }
 
     // 1. Geocode (Use provided coords if available, else fallback to geocoding)
     let startLoc, endLoc;
@@ -90,20 +98,31 @@ app.post('/api/route', async (req, res) => {
     const [weatherData, roadConditions, recommendations] = await Promise.all([
       // A. Weather with City Names
       (async () => {
-        const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
-        const { getWeatherForPoints } = require('./services/weatherService');
-        const weatherResults = await getWeatherForPoints(pointsForWeather);
-        const startTime = Date.now();
         const totalDurationSeconds = routeData.duration || 0;
+        const pointsForWeather = sampledPoints.map(([lng, lat], i) => {
+          const progress = i / Math.max(1, sampledPoints.length - 1);
+          const timeOffsetSeconds = progress * totalDurationSeconds;
+          const pointEtaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
+          return {
+            lat,
+            lng,
+            dateStr: departureDate,
+            targetHour: pointEtaDate.getHours()
+          };
+        });
+
+        const { getWeatherForPoints } = require('./services/weatherService');
+        const weatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
+        const totalDistanceMiles = (routeData.distance * 0.000621371).toFixed(1);
 
         return Promise.all(weatherResults.map(async (w, i) => {
-          const [lat, lng] = pointsForWeather[i];
+          const { lat, lng, targetHour } = pointsForWeather[i];
           const progress = i / Math.max(1, weatherResults.length - 1);
           const distMiles = Math.round(progress * Number(totalDistanceMiles));
 
-          // Calculate ETA
+          // Calculate ETA for display (using human-friendly string)
           const timeOffsetSeconds = progress * totalDurationSeconds;
-          const etaDate = new Date(startTime + (timeOffsetSeconds * 1000));
+          const etaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
           const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
           let city = `Mile ${distMiles}`;
@@ -140,7 +159,10 @@ app.post('/api/route', async (req, res) => {
           } catch (e) { }
 
           // Derive status from weather
-          const w = await getWeather(lat, lng);
+          const progress = idx / Math.max(1, fullCoordinates.length - 1);
+          const timeOffsetSeconds = progress * (routeData.duration || 0);
+          const etaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
+          const w = await getWeather(lat, lng, departureDate, etaDate.getHours());
           const code = w?.weathercode || 0;
           let status = "good";
           let desc = "Clear roads, normal traffic flow";
@@ -251,7 +273,9 @@ app.post('/api/route', async (req, res) => {
         trafficDelay: trafficDelayMins,
         maxWind,
         precipChance,
-        recommendations: distinctStops
+        recommendations: distinctStops,
+        departureDate,
+        departureTime
       }
     );
 

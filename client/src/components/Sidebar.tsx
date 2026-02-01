@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { Search, MapPin, Navigation } from 'lucide-react';
+import { Search, MapPin, Navigation, Calendar, Clock } from 'lucide-react';
 
 interface SidebarProps {
-    onRouteSubmit: (start: string, end: string) => void;
+    onRouteSubmit: (start: string, end: string, date: string, time: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
     const [start, setStart] = useState('');
     const [end, setEnd] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (start && end) {
-            onRouteSubmit(start, end);
+            onRouteSubmit(start, end, date, time);
         }
     };
 
@@ -35,10 +37,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                 </div>
 
                 {/* Input Section - Grid Layout */}
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
 
-                    {/* Start Input (5 cols) */}
-                    <div className="md:col-span-5 relative group">
+                    {/* Start Input (3.5 cols) */}
+                    <div className="md:col-span-3.5 relative group">
                         <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Starting Point</label>
                         <div className="relative">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#628141] z-10">
@@ -54,8 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                         </div>
                     </div>
 
-                    {/* Destination Input (5 cols) */}
-                    <div className="md:col-span-5 relative group">
+                    {/* Destination Input (3.5 cols) */}
+                    <div className="md:col-span-3.5 relative group">
                         <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Destination</label>
                         <div className="relative">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#E67E22] z-10">
@@ -67,6 +69,36 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                                 className="w-full pl-11 pr-4 py-3 bg-[#33402F] border border-[#628141] rounded-xl focus:outline-none focus:border-[#E67E22] focus:ring-1 focus:ring-[#E67E22] text-white placeholder-gray-500 font-medium transition-all shadow-inner"
                                 value={end}
                                 onChange={(e) => setEnd(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Date Input (2 cols) */}
+                    <div className="md:col-span-2 relative group">
+                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Date</label>
+                        <div className="relative flex items-center gap-3 px-4 py-2.5 bg-[#33402F] border border-[#628141] rounded-xl focus-within:border-[#E67E22] transition-all shadow-inner group">
+                            <Calendar size={18} className="text-[#628141] group-focus-within:text-[#E67E22] transition-colors" />
+                            <input
+                                type="date"
+                                className="w-full bg-transparent border-none focus:outline-none text-white font-semibold text-sm [color-scheme:dark] cursor-pointer"
+                                value={date}
+                                min={new Date().toISOString().split('T')[0]}
+                                max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                onChange={(e) => setDate(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Time Input (1.5 cols) */}
+                    <div className="md:col-span-1.5 min-w-[125px] relative group">
+                        <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1">Time</label>
+                        <div className="relative flex items-center gap-3 px-4 py-2.5 bg-[#33402F] border border-[#628141] rounded-xl focus-within:border-[#E67E22] transition-all shadow-inner group">
+                            <Clock size={18} className="text-[#628141] group-focus-within:text-[#E67E22] transition-colors" />
+                            <input
+                                type="time"
+                                className="w-full bg-transparent border-none focus:outline-none text-white font-semibold text-sm [color-scheme:dark] cursor-pointer"
+                                value={time}
+                                onChange={(e) => setTime(e.target.value)}
                             />
                         </div>
                     </div>

@@ -14,9 +14,11 @@ export const getRoute = async (
     start: string,
     end: string,
     startCoords?: { lat: number, lng: number },
-    endCoords?: { lat: number, lng: number }
+    endCoords?: { lat: number, lng: number },
+    departureDate?: string,
+    departureTime?: string
 ) => {
-    const response = await api.post('/route', { start, end, startCoords, endCoords });
+    const response = await api.post('/route', { start, end, startCoords, endCoords, departureDate, departureTime });
     return response.data;
 };
 

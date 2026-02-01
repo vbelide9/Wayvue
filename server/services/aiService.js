@@ -6,7 +6,8 @@
 function generateTripAnalysis(start, dest, weatherData, distance, duration, roadConditions = [], context = {}) {
     const {
         fuelCost, evCost, minTemp, maxTemp,
-        trafficDelay, maxWind, precipChance, recommendations
+        trafficDelay, maxWind, precipChance, recommendations,
+        departureDate, departureTime
     } = context;
 
     const cleanCity = (c) => c.split(',')[0].trim();
@@ -52,12 +53,26 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     const items = [];
 
     // Timing advice
-    if (trafficDelay > 20) {
-        items.push("Departing slightly later might help you skip the worst of the current congestion.");
-    } else if (trafficDelay > 0) {
-        items.push("Minor slowdowns ahead, but nothing that should derail your arrival window.");
+    const datePart = departureDate ? `on ${departureDate}` : "today";
+    const timePart = departureTime ? `at ${departureTime}` : "";
+    const timingPrefix = `Departing ${datePart} ${timePart}: `;
+
+    if (trafficDelay > 30) {
+        items.push(`${timingPrefix}Expect significant delays. Departing slightly later might help you skip the worst of it.`);
+    } else if (trafficDelay > 10) {
+        items.push(`${timingPrefix}Minor slowdowns ahead, but nothing that should derail your arrival window.`);
     } else {
-        items.push("Clear roads for now—great time to get ahead of schedule.");
+        items.push(`${timingPrefix}Clear roads expected—great timing to get ahead of schedule.`);
+    }
+
+    // Time of day awareness
+    if (departureTime) {
+        const hour = parseInt(departureTime.split(':')[0]);
+        if (hour >= 20 || hour <= 5) {
+            items.push("Night driving ahead—ensure your lighting is optimal and watch for reduced visibility.");
+        } else if (hour >= 6 && hour <= 9) {
+            items.push("Morning departure: Watch for commuter traffic peaks as you bypass major hubs.");
+        }
     }
 
     // Weather/Comfort trends

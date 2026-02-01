@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight, Calendar } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 
@@ -23,6 +23,8 @@ export default function App() {
   const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [departureDate, setDepartureDate] = useState(new Date().toISOString().split('T')[0]);
+  const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
   const [loading, setLoading] = useState(false);
   const [unit, setUnit] = useState<'C' | 'F'>('F');
@@ -72,11 +74,16 @@ export default function App() {
     };
   }, [isResizing, resize, stopResizing]);
 
-  const handleRouteSubmit = async () => {
-    if (!start || !destination) return;
+  const handleRouteSubmit = async (startLoc?: string, destLoc?: string, depDate?: string, depTime?: string) => {
+    const s = startLoc || start;
+    const d = destLoc || destination;
+    const dateToUse = depDate || departureDate;
+    const timeToUse = depTime || departureTime;
+    if (!s || !d) return;
+
     setLoading(true);
     try {
-      const response = await getRoute(start, destination, startCoords, destCoords);
+      const response = await getRoute(s, d, startCoords, destCoords, dateToUse, timeToUse);
 
       if (response.route) {
         setRoute(response.route);
@@ -149,8 +156,29 @@ export default function App() {
                     icon="destination"
                   />
                 </div>
+                <div className="w-px h-8 bg-border mx-1" />
+                <div className="flex items-center gap-2 px-2 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-colors group">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="date"
+                    className="h-9 bg-transparent border-none text-xs font-semibold focus:outline-none text-foreground [color-scheme:dark] cursor-pointer"
+                    value={departureDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                    onChange={(e) => setDepartureDate(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2 px-2 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-colors group">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="time"
+                    className="h-9 bg-transparent border-none text-xs font-semibold focus:outline-none text-foreground [color-scheme:dark] cursor-pointer"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                  />
+                </div>
                 <Button
-                  onClick={handleRouteSubmit}
+                  onClick={() => handleRouteSubmit()}
                   disabled={loading}
                   className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm ml-1"
                 >
@@ -279,47 +307,49 @@ export default function App() {
 
       {/* --- BOTTOM SECTION: FORECAST & SUGGESTED STOPS --- */}
       {/* Full Width Footer - Expands to end of browser window */}
-      {weatherData.length > 0 && (
-        <div className="bg-card/95 backdrop-blur-xl border-t border-border p-4 z-[600] shadow-[0_-4px_25px_rgba(0,0,0,0.3)] shrink-0">
-          <div className="flex flex-col lg:flex-row h-full items-stretch relative" ref={containerRef}>
-            {/* Forecast Timeline - Resizable */}
-            <div
-              className="flex flex-col gap-2 min-w-[300px] shrink-0 transition-[width] duration-0 ease-linear"
-              style={{ width: `${forecastWidth}%` }}
-            >
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Clock className="w-3 h-3 text-primary" /> Forecast Timeline
-              </h3>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none mask-fade-right">
-                {weatherData.filter((_, i) => i % Math.max(1, Math.floor(weatherData.length / 8)) === 0).map((w, i) => (
-                  <WeatherCard
-                    key={i}
-                    variant="chip"
-                    unit={unit}
-                    weather={w}
-                  />
-                ))}
+      {
+        weatherData.length > 0 && (
+          <div className="bg-card/95 backdrop-blur-xl border-t border-border p-4 z-[600] shadow-[0_-4px_25px_rgba(0,0,0,0.3)] shrink-0">
+            <div className="flex flex-col lg:flex-row h-full items-stretch relative" ref={containerRef}>
+              {/* Forecast Timeline - Resizable */}
+              <div
+                className="flex flex-col gap-2 min-w-[300px] shrink-0 transition-[width] duration-0 ease-linear"
+                style={{ width: `${forecastWidth}%` }}
+              >
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-primary" /> Forecast Timeline
+                </h3>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none mask-fade-right">
+                  {weatherData.filter((_, i) => i % Math.max(1, Math.floor(weatherData.length / 8)) === 0).map((w, i) => (
+                    <WeatherCard
+                      key={i}
+                      variant="chip"
+                      unit={unit}
+                      weather={w}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Resizable Handle */}
+              <div
+                className={`hidden lg:flex w-4 -ml-2 -mr-2 z-10 cursor-col-resize items-center justify-center opacity-0 hover:opacity-100 transition-opacitygroup group`}
+                onMouseDown={startResizing}
+              >
+                <div className={`w-1 h-8 rounded-full bg-border group-hover:bg-primary transition-colors ${isResizing ? 'bg-primary' : ''}`}></div>
+              </div>
+
+              {/* Vertical Divider (Visual only, behind handle) */}
+              <div className="hidden lg:block w-px bg-border/50 self-stretch my-1 mx-2" />
+
+              {/* Suggested Stops - Flexible */}
+              <div className="flex-1 min-w-[300px]">
+                <PlacesRecommendations places={recommendations} />
               </div>
             </div>
-
-            {/* Resizable Handle */}
-            <div
-              className={`hidden lg:flex w-4 -ml-2 -mr-2 z-10 cursor-col-resize items-center justify-center opacity-0 hover:opacity-100 transition-opacitygroup group`}
-              onMouseDown={startResizing}
-            >
-              <div className={`w-1 h-8 rounded-full bg-border group-hover:bg-primary transition-colors ${isResizing ? 'bg-primary' : ''}`}></div>
-            </div>
-
-            {/* Vertical Divider (Visual only, behind handle) */}
-            <div className="hidden lg:block w-px bg-border/50 self-stretch my-1 mx-2" />
-
-            {/* Suggested Stops - Flexible */}
-            <div className="flex-1 min-w-[300px]">
-              <PlacesRecommendations places={recommendations} />
-            </div>
           </div>
-        </div>
-      )}
-    </main>
+        )
+      }
+    </main >
   );
 }

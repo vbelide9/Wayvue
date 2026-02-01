@@ -114,3 +114,25 @@
 .scrollbar-none::-webkit-scrollbar {
     display: none;
 }
+
+/* Premium Date/Time Input Cleaning */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    bottom: 0;
+    color: transparent;
+    cursor: pointer;
+    height: auto;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+}
+
+/* Ensure the inputs don't have clunky default padding for icons we hid */
+input[type="date"],
+input[type="time"] {
+    position: relative;
+    appearance: none;
+}

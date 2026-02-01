@@ -15,40 +15,49 @@ const fetchWithRetry = async (url, retries = 3, delay = 500) => {
 };
 
 /**
- * Fetches current weather for a specific coordinate.
+ * Fetches weather for a specific coordinate and optional date.
+ * If date is provided, fetches forecast for that day.
  */
-const getWeather = async (lat, lng) => {
+const getWeather = async (lat, lng, dateStr, targetHour) => {
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=precipitation_probability,wind_direction_10m&forecast_days=1`;
+        let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,wind_direction_10m&timezone=auto`;
+
+        if (dateStr) {
+            // Format YYYY-MM-DD
+            const formattedDate = new Date(dateStr).toISOString().split('T')[0];
+            url += `&start_date=${formattedDate}&end_date=${formattedDate}`;
+        } else {
+            url += `&forecast_days=1`;
+        }
+
         const response = await fetchWithRetry(url);
-        const current = response.data.current;
         const hourly = response.data.hourly;
 
-        // simple: grab the first hour for now (closest to current time)
-        // In a real app, we'd match the ETA time, but for now current hour is a good proxy for "departure time"
-        const currentHourIndex = new Date().getHours();
-        const precipProb = hourly.precipitation_probability ? hourly.precipitation_probability[currentHourIndex] : 0;
-        const windDir = hourly.wind_direction_10m ? hourly.wind_direction_10m[currentHourIndex] : 0;
+        // If we have a specific date, we look at the hourly data
+        // Use provided targetHour or default to mid-day (12:00)
+        let hourIndex = targetHour !== undefined ? parseInt(targetHour) : 12;
+        if (isNaN(hourIndex) || hourIndex < 0 || hourIndex > 23) hourIndex = 12;
+
+        const currentData = response.data.current || {};
 
         return {
-            temperature: current.temperature_2m,
-            weathercode: current.weather_code,
-            windSpeed: current.wind_speed_10m,
-            humidity: current.relative_humidity_2m,
-            precipitationProbability: precipProb,
-            windDirection: windDir
+            temperature: dateStr ? hourly.temperature_2m[hourIndex] : currentData.temperature_2m,
+            weathercode: dateStr ? hourly.weather_code[hourIndex] : currentData.weather_code,
+            windSpeed: dateStr ? hourly.wind_speed_10m[hourIndex] : currentData.wind_speed_10m,
+            humidity: dateStr ? hourly.relative_humidity_2m[hourIndex] : currentData.relative_humidity_2m,
+            precipitationProbability: hourly.precipitation_probability ? hourly.precipitation_probability[hourIndex] : 0,
+            windDirection: hourly.wind_direction_10m ? hourly.wind_direction_10m[hourIndex] : 0
         };
     } catch (error) {
-        console.error(`Weather fetch failed for ${lat},${lng}:`, error.message);
+        console.error(`Weather fetch failed for ${lat},${lng} on ${dateStr || 'today'}:`, error.message);
         return null;
     }
 };
 
 /**
  * Batch fetches weather for multiple points.
- * Note: Open-Meteo is free but rate limited. Be careful with concurrency.
  */
-const getWeatherForPoints = async (points) => {
+const getWeatherForPoints = async (points, dateStr) => {
     // Limit to reasonable number to avoid spamming
     const limitedPoints = points.slice(0, 50);
     const results = [];
@@ -57,9 +66,14 @@ const getWeatherForPoints = async (points) => {
     const CHUNK_SIZE = 5;
     for (let i = 0; i < limitedPoints.length; i += CHUNK_SIZE) {
         const chunk = limitedPoints.slice(i, i + CHUNK_SIZE);
-        const chunkPromises = chunk.map(async (point) => {
-            const [lat, lng] = point;
-            const weather = await getWeather(lat, lng);
+        const chunkPromises = chunk.map(async (pointObj, indexInChunk) => {
+            // pointObj can be [lat, lng] or {lat, lng, dateStr, targetHour}
+            const lat = pointObj.lat !== undefined ? pointObj.lat : pointObj[0];
+            const lng = pointObj.lng !== undefined ? pointObj.lng : pointObj[1];
+            const d = pointObj.dateStr || dateStr;
+            const h = pointObj.targetHour !== undefined ? pointObj.targetHour : undefined;
+
+            const weather = await getWeather(lat, lng, d, h);
             return { lat, lng, weather };
         });
 
