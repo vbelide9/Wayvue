@@ -1,77 +1,94 @@
-import { Sparkles, AlertTriangle, BrainCircuit, ChevronDown, ChevronUp } from "lucide-react";
+import {
+    Sparkles, AlertTriangle, ChevronDown, ChevronUp
+} from "lucide-react";
 import { useState } from "react";
 
 interface WayvueAISummaryProps {
     analysis: {
-        text: string;
+        structured: {
+            overview: { distance: string, duration: string, delay: string | null };
+            fuel: { gas: string, ev: string | null };
+            weather: { tempRange: string, wind: string | null, precipChance: string | null, condition: string };
+            roads: { condition: string, delay: string | null, details: string };
+            stops: { city: string, reason: string }[];
+            tip: string | null;
+        };
+        insights?: {
+            bullets: string[];
+            funMoment: string;
+        };
         tone: string;
     } | null;
 }
 
 export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
 
-    if (!analysis) return null;
+    if (!analysis || !analysis.structured) return null;
 
-    let borderColor = "border-primary/50";
-    let bgGradient = "bg-gradient-to-r from-primary/10 to-transparent";
-    let Icon = Sparkles;
+    const { tone } = analysis;
+    const isCaution = tone === 'caution';
 
-    if (analysis.tone === 'caution') {
-        borderColor = "border-red-500/50";
-        bgGradient = "bg-gradient-to-r from-red-500/10 to-transparent";
-        Icon = AlertTriangle;
-    } else if (analysis.tone === 'moderate') {
-        borderColor = "border-amber-500/50";
-        bgGradient = "bg-gradient-to-r from-amber-500/10 to-transparent";
-        Icon = BrainCircuit;
-    }
-
-    // Generate quick bullet points from text (mock simulation since text is blob)
-    const sentences = analysis.text.split('. ').slice(0, 2).map(s => s.endsWith('.') ? s : s + '.');
+    // Styles
+    const containerClass = isCaution
+        ? "border-red-500/30 bg-gradient-to-br from-red-500/10 to-transparent"
+        : "border-primary/30 bg-gradient-to-br from-primary/10 to-transparent";
 
     return (
-        <div className={`rounded-xl border ${borderColor} ${bgGradient} overflow-hidden backdrop-blur-sm transition-all duration-300`}>
+        <div className={`rounded-xl border ${containerClass} overflow-hidden backdrop-blur-md transition-all duration-300 shadow-lg`}>
+            {/* Header */}
             <div
-                className="p-4 flex items-start justify-between cursor-pointer hover:bg-white/5 active:bg-white/10"
+                className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 active:bg-white/10 border-b border-white/5"
                 onClick={() => setIsOpen(!isOpen)}
             >
-                <div className="flex gap-3">
-                    <div className="p-2 rounded-lg bg-background/50 border border-border shadow-sm h-fit">
-                        <Icon className={`w-4 h-4 ${analysis.tone === 'caution' ? 'text-red-500' : 'text-primary'}`} />
+                <div className="flex items-center gap-3">
+                    <div className={`p-1.5 rounded-lg bg-background/60 border border-white/10 shadow-inner`}>
+                        <Sparkles className={`w-4 h-4 ${isCaution ? 'text-amber-400' : 'text-primary'}`} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                            Wayvue AI Analysis
-                            <span className="text-[10px] normal-case opacity-50 font-normal border border-border px-1.5 rounded-full">Beta</span>
+                        <h3 className="font-bold text-xs tracking-wide text-foreground flex items-center gap-2">
+                            WAYVUE INTELLIGENCE
+                            <span className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-mono">BETA</span>
                         </h3>
-
-                        {!isOpen && (
-                            <div className="mt-1 space-y-1">
-                                {sentences.map((s, i) => (
-                                    <p key={i} className="text-xs text-foreground/90 flex gap-2">
-                                        <span className="text-primary">•</span> {s}
-                                    </p>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
-
-                <button className="text-muted-foreground">
-                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
             </div>
 
             {/* Expanded Content */}
             {isOpen && (
-                <div className="px-4 pb-4 pt-0 animate-in slide-in-from-top-1 fade-in">
-                    <div className="h-px bg-border/50 mb-3" />
-                    <p className="text-foreground text-sm leading-relaxed">
-                        {analysis.text}
-                    </p>
-                    <div className="mt-3 text-[10px] text-muted-foreground font-mono flex items-center justify-end">
-                        POWERED BY WEATHER INTELLIGENCE
+                <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="max-h-[300px] overflow-y-auto p-4 custom-scrollbar">
+                        {/* Simplified Header - Always show Sparkles, maybe Alert next to it if caution */}
+                        {isCaution && (
+                            <div className="mb-4 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                                <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Caution advised</span>
+                            </div>
+                        )}
+
+                        {/* AI Insights Section (Directly) */}
+                        {analysis.insights && (
+                            <div className="space-y-4">
+                                <div className="space-y-2.5">
+                                    {analysis.insights.bullets.map((bullet, i) => (
+                                        <div key={i} className="flex gap-3 items-start">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-1.5 flex-shrink-0" />
+                                            <p className="text-sm text-foreground/90 leading-relaxed">
+                                                {bullet}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="bg-white/5 px-4 py-3 rounded-xl border border-white/10 mt-4">
+                                    <p className="text-xs text-foreground/80 leading-relaxed italic">
+                                        <span className="text-primary font-bold not-italic mr-1.5 uppercase text-[10px] tracking-wider">Fun moment:</span>
+                                        {analysis.insights.funMoment}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

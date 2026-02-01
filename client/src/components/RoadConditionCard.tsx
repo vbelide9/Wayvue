@@ -49,7 +49,7 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                 </span>
             </div>
 
-            <div className="divide-y divide-border overflow-y-auto">
+            <div className="divide-y divide-border overflow-y-auto h-[520px] custom-scrollbar">
                 {conditions.map((condition, idx) => {
                     return (
                         <div
@@ -57,10 +57,10 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                             onClick={() => handleSegmentClick(condition)}
                             className="group transition-all duration-200 cursor-pointer hover:bg-white/5"
                         >
-                            <div className="p-4">
+                            <div className="p-3.5">
                                 <div className="flex items-start gap-3">
                                     {/* Icon Column */}
-                                    <div className="mt-1">
+                                    <div className="mt-1.5">
                                         {condition.status === 'good' ? (
                                             <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                                         ) : condition.status === 'moderate' ? (
@@ -72,8 +72,8 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
 
                                     {/* Content Column */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h4 className="text-sm font-medium truncate text-foreground">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <h4 className="text-sm font-bold truncate text-foreground">
                                                 {condition.segment}
                                             </h4>
                                             {condition.camera && (
@@ -87,17 +87,17 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                                             )}
                                         </div>
 
-                                        <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                                        <p className="text-xs text-muted-foreground leading-snug mb-1.5 line-clamp-2">
                                             {condition.description}
                                         </p>
 
-                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+                                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground/60 font-mono uppercase tracking-widest">
                                             <span>{condition.distance}</span>
                                         </div>
                                     </div>
 
                                     {/* Chevron */}
-                                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5" />
+                                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5 mt-1" />
                                 </div>
                             </div>
                         </div>

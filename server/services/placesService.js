@@ -38,29 +38,29 @@ async function getRecommendations(routeSegments) {
         } catch (e) { }
 
         // Optimized Query:
-        // Split into two output blocks to ensure sparse items aren't drowned out by common ones.
-        // Block 1: Common (Food/Gas) - 5km radius, limit 20
-        // Block 2: Sparse (Charge/Rest/View) - 15km radius, limit 20
+        // switch back to 'node' only for speed.
+        // Block 1: Common (Food/Gas) - 5km radius (Fast)
+        // Block 2: Sparse (Charge/Rest/View) - 15km radius (Broad)
 
         const commonAmenity = "cafe|fast_food|restaurant|diner|fuel";
-        const sparseAmenity = "charging_station|rest_area";
-        const tourismRegex = "viewpoint|museum|park|theme_park";
+        const sparseAmenity = "charging_station|rest_area"; // Removed toilets
+        const tourismRegex = "viewpoint|museum|park|theme_park"; // Removed attraction
         const historicRegex = "memorial|monument|castle|ruins";
         const highwayRegex = "rest_area";
 
         const query = `
-            [out:json][timeout:25];
+            [out:json][timeout:15];
             (
-              nwr["amenity"~"${commonAmenity}"](around:2500, ${lat}, ${lon});
+              node["amenity"~"${commonAmenity}"](around:5000, ${lat}, ${lon});
             );
             out center 20;
             (
-              nwr["amenity"~"${sparseAmenity}"](around:5000, ${lat}, ${lon});
-              nwr["highway"~"${highwayRegex}"](around:5000, ${lat}, ${lon});
-              nwr["tourism"~"${tourismRegex}"](around:5000, ${lat}, ${lon});
-              nwr["historic"~"${historicRegex}"](around:5000, ${lat}, ${lon});
+              node["amenity"~"${sparseAmenity}"](around:15000, ${lat}, ${lon});
+              node["highway"~"${highwayRegex}"](around:15000, ${lat}, ${lon});
+              node["tourism"~"${tourismRegex}"](around:15000, ${lat}, ${lon});
+              node["historic"~"${historicRegex}"](around:15000, ${lat}, ${lon});
             );
-            out center 20;
+            out center 100;
         `;
 
         const mirror = i % 2 === 0 ? 'overpass-api.de' : 'overpass.kumi.systems';
@@ -73,7 +73,7 @@ async function getRecommendations(routeSegments) {
 
             const response = await axios.get(url, {
                 headers: { 'User-Agent': 'WayvueApp/3.0' },
-                timeout: 45000
+                timeout: 15000
             });
             const nodes = response.data.elements || [];
 

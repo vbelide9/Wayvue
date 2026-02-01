@@ -92,3 +92,25 @@
 .custom-popup-overrides .leaflet-popup-content {
     margin: 0 !important;
 }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(230, 126, 34, 0.2);
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(230, 126, 34, 0.4);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}

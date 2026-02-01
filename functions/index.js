@@ -1,3 +1,4 @@
+const functions = require('firebase-functions');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -82,10 +83,7 @@ app.post('/api/route', async (req, res) => {
 
     // We'll pre-calculate some values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
-    const minutes = Math.round(routeData.duration / 60);
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const durationVal = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
+    const durationVal = Math.round(routeData.duration / 60) + " min";
 
     const [weatherData, roadConditions, recommendations] = await Promise.all([
       // A. Weather with City Names
@@ -166,7 +164,7 @@ app.post('/api/route', async (req, res) => {
             segment: locationName,
             status: status,
             description: desc,
-            distance: `${((idx / fullCoordinates.length) * totalDistanceMiles).toFixed(0)} mi`,
+            distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
             location: { lat: lat, lon: lng },
             camera: cameraObj
           };
@@ -176,17 +174,7 @@ app.post('/api/route', async (req, res) => {
       // C. Places Recommendations
       (async () => {
         const { getRecommendations } = require('./services/placesService');
-        // Optimize sampling: Avoid hammering Overpass.
-        // For short trips (<50mi), just check start/mid/end.
-        // For longer trips, check every ~50 miles, max 5 checks.
-        let samplePoints = [0.1, 0.5, 0.9]; // Default 3 points
-        const distanceMiles = distanceVal; // "10.4 miles" -> we need number
-
-        if (totalDistanceMiles > 100) {
-          samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
-        }
-
-        const contextPoints = samplePoints.map(p => {
+        const contextPoints = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0].map(p => {
           const idx = Math.floor(fullCoordinates.length * 0.999 * p);
           const currentDist = (p * totalDistanceMiles).toFixed(0);
           return {
@@ -200,69 +188,15 @@ app.post('/api/route', async (req, res) => {
     ]);
 
     // D. Wayvue AI Analysis
-    // Prepare enriched context
-    const fuelCostStr = `$${(routeData.distance / 1609.34 * 0.15).toFixed(0)}`;
-    const evCostStr = `$${(routeData.distance / 1609.34 * 0.10).toFixed(0)}`;
-
-    // Extract unique cities (limit to 3 distinct ones to avoid clutter)
-    const uniqueCities = [...new Set(weatherData.map(w => w.location).filter(l => l && !l.includes("Mile")))];
-    const cityList = uniqueCities.length > 2
-      ? [uniqueCities[0], uniqueCities[Math.floor(uniqueCities.length / 2)], uniqueCities[uniqueCities.length - 1]]
-      : uniqueCities;
-
-    // Extract temp range (Celsius from source)
-    const temps = weatherData.map(w => w.temperature).filter(t => !isNaN(t));
-    const minTempC = Math.min(...temps);
-    const maxTempC = Math.max(...temps);
-    // Convert to F for AI text
-    const minTemp = Math.round((minTempC * 9 / 5) + 32);
-    const maxTemp = Math.round((maxTempC * 9 / 5) + 32);
-
-    // Calculate Traffic Delay (baseline 60mph)
-    const baseDurationMins = (routeData.distance * 0.000621371) / 60 * 60;
-    const trafficDelayMins = Math.max(0, Math.round((routeData.duration / 60) - baseDurationMins));
-
-    // Weather Stats
-    const maxWindKm = Math.max(...weatherData.map(w => w.windSpeed || 0));
-    const maxWind = Math.round(maxWindKm * 0.621371); // Convert km/h -> mph
-    const precipCount = weatherData.filter(w => [51, 61, 63, 80, 81, 95, 96, 99, 71, 73, 75, 85, 86].includes(w.weather?.weather_code)).length;
-    const precipChance = Math.round((precipCount / weatherData.length) * 100);
-
-    // Suggested Stops (Top 3 Unique Cities)
-    const distinctStops = [];
-    const seenCities = new Set();
-    for (const r of recommendations) {
-      const city = r.location.split('•')[0].trim();
-      if (!seenCities.has(city)) {
-        seenCities.add(city);
-        distinctStops.push({ city, reason: r.type });
-      }
-      if (distinctStops.length >= 3) break;
-    }
-
     const { generateTripAnalysis } = require('./services/aiService');
-    const aiAnalysis = generateTripAnalysis(
-      start, end, weatherData, distanceVal, durationVal, roadConditions,
-      {
-        fuelCost: fuelCostStr,
-        evCost: evCostStr,
-        cities: cityList,
-        minTemp, maxTemp,
-        trafficDelay: trafficDelayMins,
-        maxWind,
-        precipChance,
-        recommendations: distinctStops
-      }
-    );
-
+    const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
 
     res.json({
       route: routeData.geometry, // OSRM GeoJSON
       metrics: {
         distance: distanceVal,
         time: durationVal,
-        fuel: fuelCostStr, // Est 15 cents/mile (Gas)
-        ev: evCostStr // Est 10 cents/mile (EV)
+        fuel: `$${(routeData.distance / 1609.34 * 0.15).toFixed(2)}` // Est 15 cents/mile
       },
       weather: weatherData,
       roadConditions: roadConditions,
@@ -276,6 +210,4 @@ app.post('/api/route', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+exports.api = functions.runWith({ maxInstances: 2 }).https.onRequest(app);

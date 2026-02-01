@@ -1,44 +1,106 @@
 /**
- * Generates a natural language summary of the trip based on weather and road conditions.
- * Acts as a simulated "AI" analyst.
+ * Generates a concise, premium Wayvue AI Analysis.
+ * Persona: Wayvue Trip Intelligence Assistant.
+ * Strict adherence to data. No fluff.
  */
-function generateTripAnalysis(start, dest, weatherData, distance) {
-    const conditions = [];
-    let severeCount = 0;
-    let rainCount = 0;
+function generateTripAnalysis(start, dest, weatherData, distance, duration, roadConditions = [], context = {}) {
+    const {
+        fuelCost, evCost, minTemp, maxTemp,
+        trafficDelay, maxWind, precipChance, recommendations
+    } = context;
 
-    // Analyze weather codes
-    weatherData.forEach(p => {
-        const code = p.weather?.weather_code || 0;
-        if ([71, 73, 75, 85, 86].includes(code)) severeCount++; // Snow
-        if ([51, 61, 63, 80, 81, 95, 96, 99].includes(code)) rainCount++; // Rain
-    });
+    const cleanCity = (c) => c.split(',')[0].trim();
 
-    // Generate Narrative
-    let tone = "positive";
-    let summary = `Your trip from ${start.split(',')[0]} to ${dest.split(',')[0]} covers ${distance}. `;
+    // 1. Overview Stats
+    const overview = {
+        distance: distance,
+        duration: duration,
+        delay: trafficDelay > 10 ? `${trafficDelay} min` : null,
+        eta: "Calculated" // Client can calc or just rely on duration
+    };
 
-    if (severeCount > 0) {
-        tone = "caution";
-        summary += "⚠️ CAUTION: Heavy snow or ice detected along the route. Recommend delaying travel or using winter tires. Visibility will be low.";
-    } else if (rainCount > 2) {
-        tone = "moderate";
-        summary += "Expect wet road conditions and possible hydroplaning risks. Drive carefully, especially in the mid-section of the route.";
+    // 2. Fuel
+    const fuel = {
+        gas: fuelCost || "N/A",
+        ev: evCost || null
+    };
+
+    // 3. Weather
+    const weather = {
+        tempRange: `${minTemp}° - ${maxTemp}°`,
+        wind: maxWind > 15 ? `${maxWind} mph` : null,
+        precipChance: precipChance > 0 ? `${precipChance}%` : null,
+        condition: precipChance > 50 ? "Rain/Snow" : "Clear"
+    };
+
+    // 4. Roads
+    const roadStatus = {
+        condition: trafficDelay > 15 ? "Congested" : "Clear",
+        delay: trafficDelay > 0 ? `${trafficDelay} min` : null,
+        details: roadConditions.filter(r => r.status !== 'good').length > 0
+            ? `Slowdowns near ${cleanCity(roadConditions.find(r => r.status !== 'good').segment)}`
+            : "Traffic flowing normally"
+    };
+
+    // 5. Stops
+    const stops = (recommendations || []).map(r => ({
+        city: cleanCity(r.city),
+        reason: r.reason.replace(/_/g, ' ')
+    }));
+
+    // 6. Natural Language Insights
+    const items = [];
+
+    // Timing advice
+    if (trafficDelay > 20) {
+        items.push("Departing slightly later might help you skip the worst of the current congestion.");
+    } else if (trafficDelay > 0) {
+        items.push("Minor slowdowns ahead, but nothing that should derail your arrival window.");
     } else {
-        summary += "✅ Conditions look great! Clear skies and dry roads expected for most of the journey. Enjoy the drive.";
+        items.push("Clear roads for now—great time to get ahead of schedule.");
     }
 
-    // Add "AI" specific advice
-    const funFact = [
-        "Did you know? This route is 15% more scenic than the highway alternative.",
-        "Pro tip: Stop every 2 hours to stretch and stay alert.",
-        "Fuel check: Ensure you have a full tank before leaving the city limits."
-    ];
+    // Weather/Comfort trends
+    if (maxTemp - minTemp > 20) {
+        items.push("Significant temperature swing ahead—keep a light layer within reach.");
+    }
+    if (precipChance > 40) {
+        items.push("Expect visibility to drop as you hit the rainier stretches.");
+    }
+    if (maxWind > 25) {
+        items.push("Noticeable crosswinds ahead; stay focused while passing larger vehicles.");
+    }
 
-    summary += " " + funFact[Math.floor(Math.random() * funFact.length)];
+    // Practical/Fatigue
+    const hours = parseInt(duration);
+    if (hours >= 4) {
+        items.push("This is a long haul—aim for a 15-minute stretch break every two hours to stay sharp.");
+    }
+
+    // Fun Moment
+    const funMoments = [
+        `Headed to ${cleanCity(dest)}? Great choice. The drive is half the fun.`,
+        "Windows down, volume up—this stretch is made for a solid road-trip playlist.",
+        "Keep an eye out for local diners along this route; they usually have the best coffee.",
+        "Road trips are about the detours. If a scenic overlook catches your eye, take it."
+    ];
+    const funMoment = funMoments[Math.floor(Math.random() * funMoments.length)];
+
+    // Determine Tone
+    const tone = trafficDelay > 30 || precipChance > 60 ? "caution" : "positive";
 
     return {
-        text: summary,
+        structured: {
+            overview,
+            fuel,
+            weather,
+            roads: roadStatus,
+            stops
+        },
+        insights: {
+            bullets: items.slice(0, 4),
+            funMoment: funMoment
+        },
         tone: tone
     };
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
@@ -29,6 +29,48 @@ export default function App() {
 
   // Selection State for Interaction
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(null);
+
+  // Resizable Layout State
+  const [forecastWidth, setForecastWidth] = useState(45); // percentage
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback(
+    (mouseMoveEvent: MouseEvent) => {
+      if (isResizing && containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newWidth = ((mouseMoveEvent.clientX - containerRect.left) / containerRect.width) * 100;
+
+        // Constraints
+        if (newWidth >= 30 && newWidth <= 70) {
+          setForecastWidth(newWidth);
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", resize);
+      window.addEventListener("mouseup", stopResizing);
+    } else {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    }
+    return () => {
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
 
   const handleRouteSubmit = async () => {
     if (!start || !destination) return;
@@ -239,9 +281,12 @@ export default function App() {
       {/* Full Width Footer - Expands to end of browser window */}
       {weatherData.length > 0 && (
         <div className="bg-card/95 backdrop-blur-xl border-t border-border p-4 z-[600] shadow-[0_-4px_25px_rgba(0,0,0,0.3)] shrink-0">
-          <div className="flex flex-col lg:flex-row gap-6 h-full items-stretch">
-            {/* Forecast Timeline */}
-            <div className="flex flex-col gap-2 min-w-0 lg:w-[45%]">
+          <div className="flex flex-col lg:flex-row h-full items-stretch relative" ref={containerRef}>
+            {/* Forecast Timeline - Resizable */}
+            <div
+              className="flex flex-col gap-2 min-w-[300px] shrink-0 transition-[width] duration-0 ease-linear"
+              style={{ width: `${forecastWidth}%` }}
+            >
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Clock className="w-3 h-3 text-primary" /> Forecast Timeline
               </h3>
@@ -257,11 +302,19 @@ export default function App() {
               </div>
             </div>
 
-            {/* Vertical Divider for Large screens */}
-            <div className="hidden lg:block w-px bg-border/50 self-stretch my-1" />
+            {/* Resizable Handle */}
+            <div
+              className={`hidden lg:flex w-4 -ml-2 -mr-2 z-10 cursor-col-resize items-center justify-center opacity-0 hover:opacity-100 transition-opacitygroup group`}
+              onMouseDown={startResizing}
+            >
+              <div className={`w-1 h-8 rounded-full bg-border group-hover:bg-primary transition-colors ${isResizing ? 'bg-primary' : ''}`}></div>
+            </div>
 
-            {/* Suggested Stops */}
-            <div className="flex-1 min-w-0">
+            {/* Vertical Divider (Visual only, behind handle) */}
+            <div className="hidden lg:block w-px bg-border/50 self-stretch my-1 mx-2" />
+
+            {/* Suggested Stops - Flexible */}
+            <div className="flex-1 min-w-[300px]">
               <PlacesRecommendations places={recommendations} />
             </div>
           </div>
