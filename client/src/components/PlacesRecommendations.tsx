@@ -1,4 +1,4 @@
-import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, Filter, Coffee, Landmark, TreePine, Info } from "lucide-react";
+import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, Filter, Coffee, TreePine, Info, Zap } from "lucide-react";
 import { useState, useMemo } from "react";
 
 interface Place {
@@ -21,6 +21,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
         { id: "all", label: "All Stops", icon: <MapPin className="w-3 h-3" /> },
         { id: "food", label: "Dining", icon: <Utensils className="w-3 h-3" /> },
         { id: "gas", label: "Fuel", icon: <Fuel className="w-3 h-3" /> },
+        { id: "charging", label: "Charging", icon: <Zap className="w-3 h-3" /> },
         { id: "view", label: "Scenic", icon: <Camera className="w-3 h-3" /> },
         { id: "rest", label: "Rest Areas", icon: <TreePine className="w-3 h-3" /> },
     ];
@@ -37,6 +38,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
         switch (type) {
             case 'food': return <Utensils className={`${className} text-orange-500`} />;
             case 'gas': return <Fuel className={`${className} text-blue-500`} />;
+            case 'charging': return <Zap className={`${className} text-yellow-500`} />;
             case 'view': return <Camera className={`${className} text-purple-500`} />;
             case 'rest': return <TreePine className={`${className} text-emerald-500`} />;
             default: return <MapPin className={`${className} text-primary`} />;
@@ -57,8 +59,8 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-all border ${activeCategory === cat.id
-                                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                                    : "bg-card/30 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                : "bg-card/30 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                                 }`}
                         >
                             {cat.icon}

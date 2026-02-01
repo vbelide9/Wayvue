@@ -163,7 +163,7 @@ app.post('/api/route', async (req, res) => {
             segment: locationName,
             status: status,
             description: desc,
-            distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
+            distance: `${((idx / fullCoordinates.length) * totalDistanceMiles).toFixed(0)} mi`,
             location: { lat: lat, lon: lng },
             camera: cameraObj
           };
@@ -173,7 +173,17 @@ app.post('/api/route', async (req, res) => {
       // C. Places Recommendations
       (async () => {
         const { getRecommendations } = require('./services/placesService');
-        const contextPoints = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0].map(p => {
+        // Optimize sampling: Avoid hammering Overpass.
+        // For short trips (<50mi), just check start/mid/end.
+        // For longer trips, check every ~50 miles, max 5 checks.
+        let samplePoints = [0.1, 0.5, 0.9]; // Default 3 points
+        const distanceMiles = distanceVal; // "10.4 miles" -> we need number
+
+        if (totalDistanceMiles > 100) {
+          samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
+        }
+
+        const contextPoints = samplePoints.map(p => {
           const idx = Math.floor(fullCoordinates.length * 0.999 * p);
           const currentDist = (p * totalDistanceMiles).toFixed(0);
           return {
@@ -195,7 +205,8 @@ app.post('/api/route', async (req, res) => {
       metrics: {
         distance: distanceVal,
         time: durationVal,
-        fuel: `$${(routeData.distance / 1609.34 * 0.15).toFixed(2)}` // Est 15 cents/mile
+        fuel: `$${(routeData.distance / 1609.34 * 0.15).toFixed(2)}`, // Est 15 cents/mile (Gas)
+        ev: `$${(routeData.distance / 1609.34 * 0.10).toFixed(2)}` // Est 10 cents/mile (EV)
       },
       weather: weatherData,
       roadConditions: roadConditions,

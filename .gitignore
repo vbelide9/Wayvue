@@ -36,3 +36,10 @@ Thumbs.db
 # Wayvue Specific
 brain/
 .gemini/
+
+# Temporary logs and test files
+*.log
+*.txt
+response*.json
+server/test_overpass.js
+server_log*.txt

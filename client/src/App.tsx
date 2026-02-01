@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Map as MapIcon, RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 
@@ -20,7 +20,7 @@ export default function App() {
   const [route, setRoute] = useState<any>(null);
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
-  const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal" });
+  const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
@@ -143,6 +143,11 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <Fuel className="w-4 h-4 text-green-500" />
                     <span className="text-sm font-bold">{metrics.fuel}</span>
+                  </div>
+                  <div className="h-4 w-px bg-border"></div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm font-bold">{metrics.ev}</span>
                   </div>
                   <div className="h-4 w-px bg-border"></div>
                   <div className="flex items-center gap-2">
