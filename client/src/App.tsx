@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight } from 'lucide-react';
+import { RefreshCw, Navigation, Clock, Fuel, Zap, AlertTriangle, ArrowRight, CloudRain, Brain } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CustomDatePicker, CustomTimePicker } from './components/CustomDateTimePicker';
@@ -36,11 +36,17 @@ export default function App() {
   // Selection State for Interaction
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(null);
 
-  // Resizable Layout State
+  // Resizable Layout State (Bottom Panel)
   const [forecastWidth, setForecastWidth] = useState(45); // percentage
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Resize logic for AI Panel (Right Sidebar)
+  const [aiPanelHeight, setAiPanelHeight] = useState(320);
+  const isSidebarResizing = useRef(false);
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
+
+  // Bottom Panel Resize Handlers
   const startResizing = useCallback(() => {
     setIsResizing(true);
   }, []);
@@ -55,7 +61,6 @@ export default function App() {
         const containerRect = containerRef.current.getBoundingClientRect();
         const newWidth = ((mouseMoveEvent.clientX - containerRect.left) / containerRect.width) * 100;
 
-        // Constraints
         if (newWidth >= 30 && newWidth <= 70) {
           setForecastWidth(newWidth);
         }
@@ -77,6 +82,43 @@ export default function App() {
       window.removeEventListener("mouseup", stopResizing);
     };
   }, [isResizing, resize, stopResizing]);
+
+
+  // Right Sidebar Resize Handlers
+  const startSidebarResizing = useCallback((e: React.MouseEvent) => {
+    isSidebarResizing.current = true;
+    document.addEventListener('mousemove', handleSidebarResize);
+    document.addEventListener('mouseup', stopSidebarResizing);
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  const stopSidebarResizing = useCallback(() => {
+    isSidebarResizing.current = false;
+    document.removeEventListener('mousemove', handleSidebarResize);
+    document.removeEventListener('mouseup', stopSidebarResizing);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }, []);
+
+  const handleSidebarResize = useCallback((e: MouseEvent) => {
+    if (!isSidebarResizing.current || !sidebarContainerRef.current) return;
+    const sidebarRect = sidebarContainerRef.current.getBoundingClientRect();
+    const newHeight = e.clientY - sidebarRect.top;
+
+    // Constraints
+    if (newHeight >= 60 && newHeight <= sidebarRect.height - 100) {
+      setAiPanelHeight(newHeight);
+    }
+  }, []);
+
+  // Cleanup Sidebar listeners
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleSidebarResize);
+      document.removeEventListener('mouseup', stopSidebarResizing);
+    };
+  }, [handleSidebarResize, stopSidebarResizing]);
 
   const handleRouteSubmit = async (startLoc?: string, destLoc?: string, depDate?: string, depTime?: string) => {
     const s = startLoc || start;
@@ -127,7 +169,7 @@ export default function App() {
               {/* Brand / Logo */}
               <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3">
                 <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
-                  <img src="/logo_black.png" alt="Wayvue Logo" className="w-full h-full object-cover scale-[1.3] translate-y-[-5%] mix-blend-screen" />
+                  <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
                 </div>
                 <div className="hidden sm:block pr-2">
                   <div className="flex items-center gap-2">
@@ -275,32 +317,73 @@ export default function App() {
         {/* RIGHT COLUMN: PERSISTENT SIDEBAR (35%) */}
         {/* Note: This is now a sibling to the Map Column in the upper section */}
         <div className="hidden lg:flex lg:basis-[35%] w-full max-w-md border-l border-border bg-card shadow-2xl z-[500] flex-col h-full">
-          {/* AI Summary Section */}
-          <div className="p-4 border-b border-border bg-gradient-to-b from-card to-background">
-            <WayvueAISummary analysis={aiAnalysis} />
-          </div>
+          {/* Right Panel - Route Details */}
+          <div
+            ref={sidebarContainerRef}
+            className="w-[400px] flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl transition-all duration-300 z-20"
+          >
+            {/* Wayvue AI Summary */}
+            {aiAnalysis ? (
+              <div
+                style={{ height: aiPanelHeight }}
+                className="flex-none z-10 relative shrink-0 min-h-[60px]"
+              >
+                <WayvueAISummary analysis={aiAnalysis} />
 
-          {/* Scrollable Road Conditions Panel */}
-          <div className="flex-1 overflow-hidden relative">
-            <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
-              {/* Placeholder if no route */}
-              {roadConditions.length === 0 && !loading && (
-                <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-                  <Navigation className="w-12 h-12 mb-4 opacity-50" />
-                  <p className="font-medium">Enter a route to view segment details</p>
+                {/* Resize Handle */}
+                <div
+                  className="absolute bottom-0 left-0 w-full h-3 translate-y-1.5 cursor-row-resize flex justify-center items-center group z-50 hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                  onMouseDown={startSidebarResizing}
+                >
+                  <div className="w-12 h-1 rounded-full bg-white/20 group-hover:bg-primary/60 transition-colors shadow-sm" />
                 </div>
-              )}
+              </div>
+            ) : (
+              <div className="flex-none z-10">
+                <WayvueAISummary analysis={aiAnalysis} />
+              </div>
+            )}
 
-              <RoadConditionCard
-                conditions={roadConditions}
-                onSegmentSelect={handleSegmentSelect}
-              />
+            {/* Scrollable Road Conditions Panel */}
+            <div className="flex-1 overflow-hidden relative pt-2">
+              <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                {/* Placeholder if no route */}
+                {roadConditions.length === 0 && !loading && (
+                  <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
+                    <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-24 h-24 flex items-center justify-center mb-6">
+                      <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
+                    </div>
+                    <h2 className="text-xl font-bold mb-2">Wayvue</h2>
+                    <p className="font-medium mb-8">Enter a route to view segment details</p>
+
+                    {/* Feature Highlights */}
+                    <div className="grid grid-cols-3 gap-4 w-full max-w-[90%]">
+                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                        <CloudRain className="w-5 h-5 text-sky-300" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Real-time Weather</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                        <AlertTriangle className="w-5 h-5 text-yellow-300" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Road Conditions</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                        <Brain className="w-5 h-5 text-fuchsia-300" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">AI Analysis</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <RoadConditionCard
+                  conditions={roadConditions}
+                  onSegmentSelect={handleSegmentSelect}
+                />
+              </div>
             </div>
           </div>
+
         </div>
-
       </div>
-
       {/* --- BOTTOM SECTION: FORECAST & SUGGESTED STOPS --- */}
       {/* Full Width Footer - Expands to end of browser window */}
       {
@@ -346,6 +429,6 @@ export default function App() {
           </div>
         )
       }
-    </main >
+    </main>
   );
 }

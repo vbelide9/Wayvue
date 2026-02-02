@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circular container is transparent -->
+  
+  <!-- Outer Circle (Orange) -->
+  <circle cx="50" cy="50" r="45" stroke="#E67E22" stroke-width="3"/>
+  
+  <!-- 3 Mountains (Orange) -->
+  <!-- Left Peak -->
+  <path d="M25 60 L35 45 L42 55" stroke="#E67E22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center Main Peak -->
+  <path d="M35 55 L50 25 L65 55" stroke="#E67E22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right Peak -->
+  <path d="M58 55 L65 45 L75 60" stroke="#E67E22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Waves (Orange) -->
+  <path d="M25 70 C35 65 40 75 50 70 C60 65 65 75 75 70" stroke="#E67E22" stroke-width="3" stroke-linecap="round"/>
+  <path d="M25 80 C35 75 40 85 50 80 C60 75 65 85 75 80" stroke="#E67E22" stroke-width="3" stroke-linecap="round"/>
+</svg>

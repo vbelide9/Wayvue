@@ -35,10 +35,10 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
         : "border-primary/30 bg-gradient-to-br from-primary/10 to-transparent";
 
     return (
-        <div className={`rounded-xl border ${containerClass} overflow-hidden backdrop-blur-md transition-all duration-300 shadow-lg`}>
+        <div className={`rounded-xl border ${containerClass} overflow-hidden backdrop-blur-md transition-all duration-300 shadow-lg flex flex-col h-full`}>
             {/* Header */}
             <div
-                className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 active:bg-white/10 border-b border-white/5"
+                className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 active:bg-white/10 border-b border-white/5 flex-none"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
@@ -57,8 +57,8 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
 
             {/* Expanded Content */}
             {isOpen && (
-                <div className="animate-in slide-in-from-top-2 fade-in duration-300">
-                    <div className="max-h-[300px] overflow-y-auto p-4 custom-scrollbar">
+                <div className="animate-in slide-in-from-top-2 fade-in duration-300 flex-1 overflow-hidden flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                         {/* Simplified Header - Always show Sparkles, maybe Alert next to it if caution */}
                         {isCaution && (
                             <div className="mb-4 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">

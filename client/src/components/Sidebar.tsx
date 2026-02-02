@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#628141]/50">
                     <div className="flex items-center gap-4">
                         <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
-                            <img src="/logo_black.png" alt="Wayvue Logo" className="w-full h-full object-cover scale-[1.3] translate-y-[-5%] mix-blend-screen" />
+                            <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold font-sans tracking-tight text-white">Wayvue</h1>
