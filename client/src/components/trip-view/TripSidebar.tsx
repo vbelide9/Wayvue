@@ -1,0 +1,85 @@
+import { useState } from 'react';
+import { TripTabs, type TabId } from './TripTabs';
+import { OverviewTab } from './tabs/OverviewTab';
+import { ForecastTab } from './tabs/ForecastTab';
+import { StopsTab } from './tabs/StopsTab';
+import { RoadTab } from './tabs/RoadTab';
+import { type RoadCondition } from '@/components/RoadConditionCard';
+
+interface TripSidebarProps {
+    aiAnalysis: any;
+    recommendations: any[];
+    roadConditions: RoadCondition[];
+    weatherData: any[];
+    unit: 'C' | 'F';
+    onSegmentSelect: (lat: number, lng: number) => void;
+}
+
+export function TripSidebar({
+    aiAnalysis,
+    recommendations,
+    roadConditions,
+    weatherData,
+    unit,
+    onSegmentSelect
+}: TripSidebarProps) {
+    const [activeTab, setActiveTab] = useState<TabId>('overview');
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'overview':
+                // Check if aiAnalysis has the nested structure or direct structure.
+                // In App.tsx we construct: fullAiAnalysis = { ...response.aiAnalysis, tripScore: ..., departureInsights: ... }
+                // TripConfidenceCard expects score, etc. OverviewTab handles passing it down.
+                // For now pass the whole object.
+                // Note: aiAnalysis.tripScore might be an object { score, label, deductions } or just score?
+                // Looking at App.tsx, response.tripScore is passed. 
+                // Let's assume OverviewTab handles the parsing or verify OverviewTab props.
+                // OverviewTab expects { tripScore, aiAnalysis }.
+                // If aiAnalysis.tripScore exists and is an object, we should extract the score number.
+                // Or if aiAnalysis.tripScore is the score number itself.
+
+                // Let's pass the raw aiAnalysis and let OverviewTab handle specific fields if possible, 
+                // but OverviewTab props are currently defined as { tripScore: number, aiAnalysis: any }.
+                // We should pass explicit score if we have it.
+
+                return <OverviewTab
+                    tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
+                    aiAnalysis={aiAnalysis}
+                />;
+            case 'forecast':
+                return <ForecastTab weatherData={weatherData} unit={unit} />;
+            case 'stops':
+                return <StopsTab recommendations={recommendations} />;
+            case 'road':
+                return <RoadTab
+                    roadConditions={roadConditions}
+                    onSegmentSelect={(condition) => {
+                        if (condition.location) {
+                            onSegmentSelect(condition.location.lat, condition.location.lon);
+                        }
+                    }}
+                />;
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-20 overflow-hidden w-full max-w-md">
+
+            {/* Tabs Header */}
+            <div className="p-3 border-b border-border bg-card/50">
+                <TripTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            </div>
+
+            {/* Tab Content Area */}
+            <div className="flex-1 overflow-hidden relative">
+                {/* Use key to force re-render animation if desired, or keep same container */}
+                <div key={activeTab} className="h-full animate-in fade-in slide-in-from-right-2 duration-300">
+                    {renderContent()}
+                </div>
+            </div>
+        </div>
+    );
+}

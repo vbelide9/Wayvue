@@ -194,8 +194,55 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
         </div>
     );
 
+    // Layer Visibility State
+    const [layers, setLayers] = React.useState({
+        weather: true,
+        traffic: true,
+        segments: true
+    });
+
+    const toggleLayer = (layer: 'weather' | 'traffic' | 'segments') => {
+        setLayers(prev => ({ ...prev, [layer]: !prev[layer] }));
+    };
+
+    // Layer Control Component
+    const LayerControl = () => (
+        <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2 pointer-events-auto">
+            <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-2 rounded-xl shadow-2xl flex flex-col gap-1 w-[140px]">
+                <span className="text-[9px] uppercase tracking-widest font-bold text-white/50 px-2 py-1">Map Layers</span>
+
+                <button
+                    onClick={() => toggleLayer('weather')}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.weather ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                >
+                    <div className={`w-1.5 h-1.5 rounded-full ${layers.weather ? 'bg-amber-400 shadow-[0_0_6px_#fbbf24]' : 'bg-transparent border border-white/20'}`} />
+                    Weather
+                </button>
+
+                <button
+                    onClick={() => toggleLayer('segments')}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.segments ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                >
+                    <div className={`w-1.5 h-1.5 rounded-full ${layers.segments ? 'bg-blue-400 shadow-[0_0_6px_#60a5fa]' : 'bg-transparent border border-white/20'}`} />
+                    Segments
+                </button>
+
+                <button
+                    onClick={() => toggleLayer('traffic')}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.traffic ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                >
+                    <div className={`w-1.5 h-1.5 rounded-full ${layers.traffic ? 'bg-red-400 shadow-[0_0_6px_#f87171]' : 'bg-transparent border border-white/20'}`} />
+                    Traffic
+                </button>
+            </div>
+        </div>
+    );
+
     return (
         <div className="h-full w-full relative z-0">
+            {/* Layer Control Overlay */}
+            <LayerControl />
+
             <MapContainer
                 center={defaultCenter}
                 zoom={10}
@@ -210,11 +257,22 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
 
                 {routePositions && (
                     <>
+                        {/* Base Route Line */}
                         <Polyline
                             positions={routePositions}
-                            color="#3b82f6"
-                            weight={5}
-                            opacity={0.75}
+                            color="#3b82f6" // Default Blue
+                            weight={6}
+                            opacity={0.4}
+                            lineCap="round"
+                            lineJoin="round"
+                        />
+                        {/* Highlight Route Line (Simulating data coloring) */}
+                        <Polyline
+                            positions={routePositions}
+                            color="#60a5fa" // Lighter Blue Overlay
+                            weight={3}
+                            opacity={0.8}
+                            dashArray={layers.traffic ? undefined : '1, 10'} // Dash it if traffic off (visual style)
                         />
                         <RecenterAutomatically latLngs={routePositions} />
                     </>
@@ -222,8 +280,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
 
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
-                {/* Clutter Reduction: Filter to max ~15 points distributed evenly */}
-                {weatherData && weatherData.filter((_, idx) => {
+                {/* Weather Markers (Controlled by Layer) */}
+                {layers.weather && weatherData && weatherData.filter((_, idx) => {
                     // Always show first and last
                     if (idx === 0 || idx === weatherData.length - 1) return true;
                     // Calculate dynamic stride to keep total under 15
@@ -234,15 +292,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                     const hasTemp = tempC !== undefined && tempC !== null;
 
                     // Earthy Palette Mapping
-
-
                     const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
                     const weatherDesc = getWeatherDescription(point.weathercode || 0);
                     const roadCond = getRoadCondition(point.weathercode || 0);
 
                     return point ? (
                         <Marker
-                            key={idx}
+                            key={`weather-${idx}`}
                             position={[point.lat, point.lng]}
                             icon={createWeatherIcon(tempC as any)}
                         >

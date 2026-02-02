@@ -70,14 +70,14 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                 </div>
             </div>
 
-            {/* Results List */}
-            <div className="flex-1 flex gap-3 overflow-x-auto pb-2 scrollbar-none mask-fade-right min-h-[100px]">
+            {/* Results List - Vertical Stack */}
+            <div className="flex-1 flex flex-col gap-3 min-h-[100px]">
                 {filteredPlaces.length > 0 ? (
                     filteredPlaces.map((place) => (
                         <div
                             key={place.id}
                             onClick={() => setSelectedPlace(place)}
-                            className="flex-shrink-0 w-64 bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-3 hover:bg-card/60 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden flex items-start gap-3 shadow-sm hover:shadow-md"
+                            className="w-full bg-card/30 backdrop-blur-sm border border-border/50 rounded-xl p-3 hover:bg-card/60 hover:border-primary/30 transition-all cursor-pointer group relative overflow-hidden flex items-start gap-3 shadow-sm hover:shadow-md"
                         >
                             <div className="p-2 rounded-lg bg-secondary/30 group-hover:bg-primary/10 transition-colors">
                                 {getIcon(place.type)}
