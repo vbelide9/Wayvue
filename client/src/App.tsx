@@ -320,7 +320,7 @@ export default function App() {
           {/* Right Panel - Route Details */}
           <div
             ref={sidebarContainerRef}
-            className="w-[400px] flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl transition-all duration-300 z-20"
+            className="w-full flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl transition-all duration-300 z-20"
           >
             {/* Wayvue AI Summary */}
             {aiAnalysis ? (
@@ -345,35 +345,36 @@ export default function App() {
             )}
 
             {/* Scrollable Road Conditions Panel */}
-            <div className="flex-1 overflow-hidden relative pt-2">
-              <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
-                {/* Placeholder if no route */}
-                {roadConditions.length === 0 && !loading && (
-                  <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-                    <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-24 h-24 flex items-center justify-center mb-6">
-                      <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
-                    </div>
-                    <h2 className="text-xl font-bold mb-2">Wayvue</h2>
-                    <p className="font-medium mb-8">Enter a route to view segment details</p>
+            {/* Scrollable Road Conditions Panel */}
+            <div className="flex-1 overflow-hidden relative pt-2 min-h-0 flex flex-col">
+              {/* Placeholder if no route */}
+              {roadConditions.length === 0 && !loading && (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50 absolute inset-0 z-0">
+                  <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-24 h-24 flex items-center justify-center mb-6">
+                    <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
+                  </div>
+                  <h2 className="text-xl font-bold mb-2">Wayvue</h2>
+                  <p className="font-medium mb-8">Enter a route to view segment details</p>
 
-                    {/* Feature Highlights */}
-                    <div className="grid grid-cols-3 gap-4 w-full max-w-[90%]">
-                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
-                        <CloudRain className="w-5 h-5 text-sky-300" />
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Real-time Weather</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
-                        <AlertTriangle className="w-5 h-5 text-yellow-300" />
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Road Conditions</span>
-                      </div>
-                      <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
-                        <Brain className="w-5 h-5 text-fuchsia-300" />
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">AI Analysis</span>
-                      </div>
+                  {/* Feature Highlights */}
+                  <div className="grid grid-cols-3 gap-4 w-full max-w-[90%]">
+                    <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                      <CloudRain className="w-5 h-5 text-sky-300" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Real-time Weather</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                      <AlertTriangle className="w-5 h-5 text-yellow-300" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Road Conditions</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2 text-center p-3 rounded-xl bg-secondary/30 border border-border/50">
+                      <Brain className="w-5 h-5 text-fuchsia-300" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">AI Analysis</span>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
+              <div className="relative z-10 h-full">
                 <RoadConditionCard
                   conditions={roadConditions}
                   onSegmentSelect={handleSegmentSelect}

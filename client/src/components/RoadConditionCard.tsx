@@ -38,8 +38,8 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
     };
 
     return (
-        <div className="flex flex-col h-full bg-card/50">
-            <div className="p-4 border-b border-border flex items-center justify-between bg-card sticky top-0 z-10">
+        <div className="flex flex-col h-full bg-card/95 backdrop-blur-xl rounded-xl border border-border overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-card sticky top-0 z-10 shrink-0">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <Construction className="w-5 h-5 text-primary" />
                     Road Conditions
@@ -49,7 +49,7 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                 </span>
             </div>
 
-            <div className="divide-y divide-border overflow-y-auto h-[520px] custom-scrollbar">
+            <div className="divide-y divide-border overflow-y-auto flex-1 custom-scrollbar min-h-0">
                 {conditions.map((condition, idx) => {
                     return (
                         <div

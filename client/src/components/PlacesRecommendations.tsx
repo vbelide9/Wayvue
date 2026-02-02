@@ -47,13 +47,13 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
 
     return (
         <div className="flex flex-col gap-3 h-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 shrink-0">
                     <MapPin className="w-3 h-3 text-primary" /> Suggested Stops
                 </h3>
 
                 {/* Category Filter Chips */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex flex-wrap items-center gap-1.5">
                     {categories.map((cat) => (
                         <button
                             key={cat.id}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Thermometer, Sun, Cloud, CloudRain, Snowflake, Zap, Wind, Umbrella, AlertTriangle, CheckCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Polyline, ZoomControl, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -18,6 +19,8 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// ... existing code ...
+
 interface WeatherPoint {
     lat: number;
     lng: number;
@@ -26,7 +29,11 @@ interface WeatherPoint {
     location: string;
     humidity?: number;
     windSpeed?: number;
+    precipitationProbability?: number;
 }
+
+// ... existing code ...
+
 
 // Map WMO codes to text
 const getWeatherDescription = (code: number) => {
@@ -150,27 +157,40 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
         return 'Dry';
     };
 
+
     // Legend Component
     const MapLegend = () => (
-        <div className="absolute bottom-6 left-4 z-[400] bg-card/90 backdrop-blur-md border border-border p-3 rounded-xl shadow-lg flex flex-col gap-2 pointer-events-auto min-w-[120px]">
-            <h4 className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Temperature</h4>
-
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#40513B] shadow-sm"></div>
-                <span className="text-xs font-medium">Cold</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '< 50°' : '< 10°'}</span>
+        <div className="absolute bottom-8 left-4 z-[400] bg-[#E5D9B6] backdrop-blur-xl border border-black/10 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[140px] animate-in slide-in-from-bottom-4 fade-in duration-700">
+            <div className="flex items-center gap-2 mb-1 border-b border-black/10 pb-2">
+                <Thermometer className="w-3 h-3 text-primary" />
+                <h4 className="text-[10px] uppercase tracking-widest font-bold text-black/80">Temperature</h4>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#628141] shadow-sm"></div>
-                <span className="text-xs font-medium">Mild</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '50-77°' : '10-25°'}</span>
+            <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute w-4 h-4 bg-[#40513B]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#40513B] shadow-[0_0_8px_rgba(64,81,59,0.8)] z-10 relative"></div>
+                </div>
+                <span className="text-xs font-medium text-black/80">Cold</span>
+                <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '< 50°' : '< 10°'}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#E67E22] shadow-sm"></div>
-                <span className="text-xs font-medium">Hot</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">{unit === 'F' ? '> 77°' : '> 25°'}</span>
+            <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute w-4 h-4 bg-[#628141]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#628141] shadow-[0_0_8px_rgba(98,129,65,0.8)] z-10 relative"></div>
+                </div>
+                <span className="text-xs font-medium text-black/80">Mild</span>
+                <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '50–77°' : '10–25°'}</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute w-4 h-4 bg-[#E67E22]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#E67E22] shadow-[0_0_8px_rgba(230,126,34,0.8)] z-10 relative"></div>
+                </div>
+                <span className="text-xs font-medium text-black/80">Hot</span>
+                <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '> 77°' : '> 25°'}</span>
             </div>
         </div>
     );
@@ -223,47 +243,73 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                             icon={createWeatherIcon(tempC as any)}
                         >
                             <Popup className="custom-popup-overrides">
-                                <div className="flex flex-col min-w-[160px] font-sans">
-                                    {/* Colored Header: CONDITION */}
-                                    <div
-                                        style={{ backgroundColor: bgColor }}
-                                        className="text-[#E5D9B6] px-4 py-3 text-center relative overflow-hidden flex items-center justify-center min-h-[50px]"
-                                    >
-                                        <div className="relative z-10">
-                                            <p className="font-bold text-lg uppercase tracking-wider leading-tight">
+                                <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">
+                                    {/* Glass Header */}
+                                    <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5">
+                                        <div className="flex items-center gap-1.5">
+                                            {/* Dynamic Icon based on code */}
+                                            {point.weathercode <= 2 ? <Sun className="w-3.5 h-3.5 text-amber-400" /> :
+                                                point.weathercode <= 48 ? <Cloud className="w-3.5 h-3.5 text-gray-400" /> :
+                                                    point.weathercode <= 67 ? <CloudRain className="w-3.5 h-3.5 text-blue-400" /> :
+                                                        point.weathercode <= 77 ? <Snowflake className="w-3.5 h-3.5 text-cyan-200" /> :
+                                                            point.weathercode <= 99 ? <Zap className="w-3.5 h-3.5 text-yellow-400" /> :
+                                                                <Cloud className="w-3.5 h-3.5 text-gray-400" />}
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 leading-none mt-0.5">
                                                 {weatherDesc}
-                                            </p>
+                                            </span>
                                         </div>
-                                        {/* Subtle decorative circle */}
-                                        <div className="absolute -top-6 -right-6 w-16 h-16 bg-white opacity-10 rounded-full blur-xl"></div>
+                                        {/* Status Dot */}
+                                        <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
+                                            (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
+                                                'bg-[#628141] text-[#628141]'
+                                            }`} />
                                     </div>
 
-                                    {/* Content Body: TEMP & ROAD */}
-                                    <div
-                                        style={{ backgroundColor: '#E5D9B6' }}
-                                        className="p-4 text-center flex flex-col gap-2"
-                                    >
-                                        {/* Big Temp */}
-                                        <div className="flex items-center justify-center gap-1 text-[#40513B]">
-                                            <span className="font-extrabold text-5xl tracking-tighter">
-                                                {hasTemp ? tempDisplay + '°' : 'N/A'}
+                                    {/* Content Body */}
+                                    <div className="p-3 flex flex-col gap-3">
+                                        {/* Temperature Display */}
+                                        <div className="flex items-center justify-center gap-0.5 mt-1">
+                                            <span className="font-thin text-[3.5rem] tracking-tighter text-white leading-none">
+                                                {hasTemp ? tempDisplay : '--'}
                                             </span>
-                                            <span className="text-xl font-bold uppercase opacity-60 mt-2">
-                                                {unit}
+                                            <span className="text-lg font-light text-white/60 mb-4 self-end">
+                                                °{unit}
                                             </span>
                                         </div>
 
-                                        {/* Divider */}
-                                        <div className="h-px bg-[#40513B] opacity-10 w-full my-1"></div>
+                                        {/* Wind & Rain Grid */}
+                                        <div className="grid grid-cols-2 gap-2 w-full">
+                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                    <Wind className="w-2.5 h-2.5" />
+                                                    <span className="text-[9px] uppercase font-bold tracking-wider">Wind</span>
+                                                </div>
+                                                <span className="text-xs font-semibold text-white">
+                                                    {Math.round(point.windSpeed || 0)} <span className="text-[9px] font-normal opacity-70">km/h</span>
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                    <Umbrella className="w-2.5 h-2.5" />
+                                                    <span className="text-[9px] uppercase font-bold tracking-wider">Rain</span>
+                                                </div>
+                                                <span className="text-xs font-semibold text-white">
+                                                    {point.precipitationProbability || 0}<span className="text-[9px] font-normal opacity-70">%</span>
+                                                </span>
+                                            </div>
+                                        </div>
 
-                                        {/* Road Condition */}
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-[10px] uppercase tracking-widest font-bold text-[#40513B] opacity-60">
-                                                Road Conditions
-                                            </span>
-                                            <span className="font-bold text-[#40513B] text-sm mt-0.5">
+                                        {/* Road Condition Tag */}
+                                        <div className="flex justify-center">
+                                            <div className={`
+                                                flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest shadow-lg
+                                                ${roadCond === 'Dry' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 shadow-emerald-900/20' :
+                                                    roadCond === 'Icy / Snowy' ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200 shadow-cyan-900/20' :
+                                                        'bg-amber-500/20 border-amber-500/30 text-amber-200 shadow-amber-900/20'}
+                                            `}>
+                                                {roadCond === 'Dry' ? <CheckCircle className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
                                                 {roadCond}
-                                            </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
