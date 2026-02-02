@@ -16,35 +16,7 @@ import { DeparturePlanner } from './components/DeparturePlanner'
 
 export default function App() {
 
-  // Update InsightData interface
-  interface InsightData {
-    structured: {
-      overview: {
-        distance: string
-        duration: string
-        delay: string | null
-        eta: string
-      }
-      fuel: { gas: string | null; ev: string | null }
-      weather: {
-        tempRange: string
-        wind: string | null
-        precipChance: string | null
-        condition: string
-      }
-      roads: {
-        condition: string
-        delay: string | null
-        details: string
-      }
-      stops: Array<{ city: string; reason: string }>
-    }
-    insights: {
-      bullets: string[]
-      funMoment: string
-    }
-    tone: "positive" | "caution"
-  }
+
   // State
   const [start, setStart] = useState("New York, NY");
   const [destination, setDestination] = useState("Buffalo, NY");

@@ -313,9 +313,10 @@ app.post('/api/route', async (req, res) => {
         const results = await Promise.all(offsets.map(async (offset) => {
           const futureTime = new Date(now.getTime() + offset * 60 * 60 * 1000);
           const hour = futureTime.getHours();
+          const dateStr = futureTime.toISOString().split('T')[0]; // UTC Date (e.g., 2026-02-02)
 
-          // Get weather for start location at that future hour
-          const w = await getWeather(startLat, startLng, null, hour);
+          // Get weather for start location at that future time (Force UTC matching)
+          const w = await getWeather(startLat, startLng, dateStr, hour, 'UTC');
 
           if (w) {
             // Approximate/Heuristic context for future time
@@ -350,6 +351,7 @@ app.post('/api/route', async (req, res) => {
             return {
               offsetHours: offset,
               time: futureTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              ts: futureTime.getTime(), // Add raw timestamp for client-side formatting
               score: scoreObj.score,
               label: scoreObj.label,
               precip: w.precipitationProbability || 0,

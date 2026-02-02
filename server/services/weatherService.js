@@ -18,9 +18,9 @@ const fetchWithRetry = async (url, retries = 3, delay = 500) => {
  * Fetches weather for a specific coordinate and optional date.
  * If date is provided, fetches forecast for that day.
  */
-const getWeather = async (lat, lng, dateStr, targetHour) => {
+const getWeather = async (lat, lng, dateStr, targetHour, timezone = 'auto') => {
     try {
-        let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,wind_direction_10m&timezone=auto`;
+        let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,wind_direction_10m&timezone=${timezone}`;
 
         if (dateStr) {
             // Format YYYY-MM-DD

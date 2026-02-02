@@ -9,6 +9,7 @@ interface Insight {
     precip: number;
     temp: number;
     trafficLabel?: string;
+    ts?: number;
 }
 
 interface DeparturePlannerProps {
@@ -39,6 +40,11 @@ export function DeparturePlanner({ insights, unit = 'C' }: DeparturePlannerProps
                     const color = insight.score >= 80 ? "green" : insight.score >= 60 ? "yellow" : "red";
                     const isBest = idx === 0 || insights.every(i => i.score <= insight.score); // Simple "best" check logic
 
+                    // Format time locally if timestamp is available
+                    const localTime = insight.ts
+                        ? new Date(insight.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                        : insight.time;
+
                     return (
                         <div
                             key={idx}
@@ -57,7 +63,7 @@ export function DeparturePlanner({ insights, unit = 'C' }: DeparturePlannerProps
                                 </span>
                             )}
 
-                            <span className="text-xs font-mono text-muted-foreground mb-1">{insight.time}</span>
+                            <span className="text-xs font-mono text-muted-foreground mb-1">{localTime}</span>
                             <span className={`text-xl font-bold text-${color}-400`}>{insight.score}</span>
                             <span className={`text-[10px] uppercase font-bold text-${color}-500/80`}>{insight.label}</span>
 

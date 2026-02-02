@@ -33,7 +33,15 @@ app.post('/api/route', async (req, res) => {
   }
 
   try {
-    console.log(`Processing route: ${start} -> ${end}`);
+    console.log(`Processing route: ${start} -> ${end}${departureDate ? ' (' + departureDate : ''}${departureTime ? ' @ ' + departureTime : ''}${departureDate ? ')' : ''}`);
+
+    let baseDepTime = Date.now();
+    if (departureDate) {
+      const datePart = departureDate;
+      const timePart = departureTime || "12:00";
+      baseDepTime = new Date(`${datePart}T${timePart}`).getTime();
+      if (isNaN(baseDepTime)) baseDepTime = Date.now();
+    }
 
     // 1. Geocode (Use provided coords if available, else fallback to geocoding)
     let startLoc, endLoc;
@@ -95,9 +103,7 @@ app.post('/api/route', async (req, res) => {
         const pointsForWeather = sampledPoints.map(([lng, lat], i) => {
           const progress = i / Math.max(1, sampledPoints.length - 1);
           const timeOffsetSeconds = progress * totalDurationSeconds;
-          // default date now if not provided
-          const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
-          const pointEtaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
+          const pointEtaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
           return {
             lat,
             lng,
@@ -110,17 +116,14 @@ app.post('/api/route', async (req, res) => {
         const weatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
         const totalDistanceMiles = (routeData.distance * 0.000621371).toFixed(1);
 
-        // re-calc base time for ETA display
-        const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
-
         return Promise.all(weatherResults.map(async (w, i) => {
-          const { lat, lng } = pointsForWeather[i];
+          const { lat, lng, targetHour } = pointsForWeather[i];
           const progress = i / Math.max(1, weatherResults.length - 1);
           const distMiles = Math.round(progress * Number(totalDistanceMiles));
 
           // Calculate ETA for display (using human-friendly string)
           const timeOffsetSeconds = progress * totalDurationSeconds;
-          const etaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
+          const etaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
           const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
           let city = `Mile ${distMiles}`;
@@ -149,10 +152,6 @@ app.post('/api/route', async (req, res) => {
         const { getWeather } = require('./services/weatherService');
         const RealCameraService = require('./services/realCameraService');
 
-        // base time for road conditions
-        const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
-
-
         return Promise.all(uniqueIndices.map(async (idx, i) => {
           const [lng, lat] = fullCoordinates[idx];
           let locationName = i === 0 ? "Start Area" : i === uniqueIndices.length - 1 ? "Destination Area" : `Segment ${i + 1}`;
@@ -164,7 +163,7 @@ app.post('/api/route', async (req, res) => {
           // Derive status from weather
           const progress = idx / Math.max(1, fullCoordinates.length - 1);
           const timeOffsetSeconds = progress * (routeData.duration || 0);
-          const etaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
+          const etaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
           const w = await getWeather(lat, lng, departureDate, etaDate.getHours());
           const code = w?.weathercode || 0;
           let status = "good";
@@ -266,22 +265,116 @@ app.post('/api/route', async (req, res) => {
       if (distinctStops.length >= 3) break;
     }
 
-    const { generateTripAnalysis } = require('./services/aiService');
+    const { generateTripAnalysis, calculateTripScore } = require('./services/aiService');
+    const { getWeather } = require('./services/weatherService');
+
+    const aiContext = {
+      fuelCost: fuelCostStr,
+      evCost: evCostStr,
+      cities: cityList,
+      minTemp, maxTemp,
+      trafficDelay: trafficDelayMins,
+      maxWind,
+      precipChance,
+      recommendations: distinctStops,
+      roadConditions: roadConditions, // Pass full road conditions for AI
+      departureDate,
+      departureTime
+    };
+
     const aiAnalysis = generateTripAnalysis(
-      start, end, weatherData, distanceVal, durationVal, roadConditions,
-      {
-        fuelCost: fuelCostStr,
-        evCost: evCostStr,
-        cities: cityList,
-        minTemp, maxTemp,
-        trafficDelay: trafficDelayMins,
-        maxWind,
-        precipChance,
-        recommendations: distinctStops,
-        departureDate,
-        departureTime
-      }
+      start, end, weatherData, distanceVal, durationVal, roadConditions, aiContext
     );
+
+    // E. Trip Confidence Score
+    const safetyScore = calculateTripScore(aiContext);
+
+    // F. Smart Departure Insights (Heuristic: Check start location weather for next 4 hours)
+    // We assume the start location dictating the "leave now" quality for short-medium trips
+    const departureInsights = [];
+
+    // Check if departureDate is today (or not set)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = !departureDate || departureDate === todayStr;
+
+    // DEBUG LOG
+    console.log(`[SmartDeparture] Date: ${departureDate || 'NONE'}, UTC: ${todayStr}, isToday: ${isToday}`);
+
+    if (isToday) { // Only do "Leave Now" optimization for today
+      try {
+        const now = new Date();
+        const offsets = [1, 2, 3]; // +1h, +2h, +3h
+
+        // We need coords for start location
+        const startLat = startLoc.lat;
+        const startLng = startLoc.lon;
+
+        console.log(`[SmartDeparture] StartLoc: ${startLat}, ${startLng}`);
+
+        const results = await Promise.all(offsets.map(async (offset) => {
+          const futureTime = new Date(now.getTime() + offset * 60 * 60 * 1000);
+          const hour = futureTime.getHours();
+          const dateStr = futureTime.toISOString().split('T')[0]; // UTC Date (e.g., 2026-02-02)
+
+          // Get weather for start location at that future time (Force UTC matching)
+          const w = await getWeather(startLat, startLng, dateStr, hour, 'UTC');
+
+          if (w) {
+            // Approximate/Heuristic context for future time
+            // We assume traffic improves after 9am or 6pm, worst at 8am/5pm
+            let estimatedDelay = trafficDelayMins;
+            let trafficLabel = "Normal";
+
+            // Dynamic Traffic Heuristic based on hour of day
+            if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+              estimatedDelay += Math.floor(Math.random() * 15) + 10; // Peak traffic (add 10-25 mins)
+              trafficLabel = "Heavy";
+            } else if (hour >= 22 || hour <= 5) {
+              estimatedDelay = 0; // Clear roads at night
+              trafficLabel = "Clear";
+            } else {
+              // Mid-day variance
+              estimatedDelay += Math.floor(Math.random() * 10) - 5;
+              estimatedDelay = Math.max(0, estimatedDelay);
+              trafficLabel = estimatedDelay > 10 ? "Busy" : "Normal";
+            }
+
+            const futureContext = {
+              ...aiContext,
+              trafficDelay: estimatedDelay,
+              precipChance: w.precipitationProbability || 0,
+              maxWind: w.windSpeed || 0,
+              minTemp: w.temperature,
+              roadConditions: roadConditions
+            };
+
+            const scoreObj = calculateTripScore(futureContext);
+            return {
+              offsetHours: offset,
+              time: futureTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              ts: futureTime.getTime(), // Add raw timestamp for client-side formatting
+              score: scoreObj.score,
+              label: scoreObj.label,
+              precip: w.precipitationProbability || 0,
+              temp: w.temperature,
+              trafficLabel: trafficLabel
+            };
+          }
+          return null;
+        }));
+
+        // Filter out nulls and assign to departureInsights in order
+        const validResults = results.filter(r => r !== null);
+        departureInsights.push(...validResults);
+
+      } catch (e) {
+        console.log("Departure insights error", e.message);
+      }
+    }
+
+    // DEBUG LOG
+    console.log(`[SmartDeparture] FINAL insights count: ${departureInsights.length}`);
+
 
 
     res.json({
@@ -294,8 +387,10 @@ app.post('/api/route', async (req, res) => {
       },
       weather: weatherData,
       roadConditions: roadConditions,
-      aiAnalysis: aiAnalysis, // New AI Summary
-      recommendations: recommendations // New Places
+      aiAnalysis: aiAnalysis,
+      tripScore: safetyScore, // NEW
+      departureInsights: departureInsights, // NEW
+      recommendations: recommendations
     });
 
   } catch (error) {

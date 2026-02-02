@@ -6,7 +6,7 @@ const axios = require('axios');
 const fetchWithRetry = async (url, retries = 3, delay = 500) => {
     for (let i = 0; i < retries; i++) {
         try {
-            return await axios.get(url, { timeout: 5000 });
+            return await axios.get(url, { timeout: 10000 }); // INCREASED TIMEOUT to 10s
         } catch (error) {
             if (i === retries - 1) throw error;
             await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
@@ -18,9 +18,9 @@ const fetchWithRetry = async (url, retries = 3, delay = 500) => {
  * Fetches weather for a specific coordinate and optional date.
  * If date is provided, fetches forecast for that day.
  */
-const getWeather = async (lat, lng, dateStr, targetHour) => {
+const getWeather = async (lat, lng, dateStr, targetHour, timezone = 'auto') => {
     try {
-        let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,wind_direction_10m&timezone=auto`;
+        let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,wind_direction_10m&timezone=${timezone}`;
 
         if (dateStr) {
             // Format YYYY-MM-DD
@@ -40,11 +40,20 @@ const getWeather = async (lat, lng, dateStr, targetHour) => {
 
         const currentData = response.data.current || {};
 
+        const useHourly = targetHour !== undefined || dateStr;
+
+        // DEBUG LOG
+        if (useHourly) {
+            console.log(`[WeatherService] Fetching ${lat},${lng} for Hour: ${hourIndex} (useHourly: ${useHourly})`);
+            console.log(`[WeatherService] Temp at index ${hourIndex}: ${hourly.temperature_2m[hourIndex]}`);
+            console.log(`[WeatherService] URL: ${url}`);
+        }
+
         return {
-            temperature: dateStr ? hourly.temperature_2m[hourIndex] : currentData.temperature_2m,
-            weathercode: dateStr ? hourly.weather_code[hourIndex] : currentData.weather_code,
-            windSpeed: dateStr ? hourly.wind_speed_10m[hourIndex] : currentData.wind_speed_10m,
-            humidity: dateStr ? hourly.relative_humidity_2m[hourIndex] : currentData.relative_humidity_2m,
+            temperature: useHourly ? hourly.temperature_2m[hourIndex] : currentData.temperature_2m,
+            weathercode: useHourly ? hourly.weather_code[hourIndex] : currentData.weather_code,
+            windSpeed: useHourly ? hourly.wind_speed_10m[hourIndex] : currentData.wind_speed_10m,
+            humidity: useHourly ? hourly.relative_humidity_2m[hourIndex] : currentData.relative_humidity_2m,
             precipitationProbability: hourly.precipitation_probability ? hourly.precipitation_probability[hourIndex] : 0,
             windDirection: hourly.wind_direction_10m ? hourly.wind_direction_10m[hourIndex] : 0
         };
