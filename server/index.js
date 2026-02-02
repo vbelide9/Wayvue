@@ -103,16 +103,51 @@ app.post('/api/route', async (req, res) => {
           const progress = i / Math.max(1, sampledPoints.length - 1);
           const timeOffsetSeconds = progress * totalDurationSeconds;
           const pointEtaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
+          // Use the ACTUAL date at that point, because the trip might cross into the next day
+          const pointDateStr = pointEtaDate.toISOString().split('T')[0];
           return {
             lat,
             lng,
-            dateStr: departureDate,
+            dateStr: pointDateStr,
             targetHour: pointEtaDate.getHours()
           };
         });
 
         const { getWeatherForPoints } = require('./services/weatherService');
-        const weatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
+        const rawWeatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
+
+        // Gap Filling: If a point failed (null weather), fill with nearest valid neighbor
+        const weatherResults = rawWeatherResults.map((item, idx, arr) => {
+          if (item.weather && item.weather.temperature !== undefined) return item;
+
+          // Find nearest valid
+          let left = idx - 1;
+          let right = idx + 1;
+          let replacement = null;
+
+          while (left >= 0 || right < arr.length) {
+            if (left >= 0 && arr[left].weather) { replacement = arr[left]; break; }
+            if (right < arr.length && arr[right].weather) { replacement = arr[right]; break; }
+            left--;
+            right++;
+          }
+
+          // If still null (all failed?), provide generous fallback
+          if (!replacement) return {
+            ...item,
+            weather: {
+              temperature: 20,
+              weathercode: 0,
+              windSpeed: 5,
+              humidity: 50,
+              precipitationProbability: 0,
+              description: "Estimated"
+            }
+          };
+
+          return { ...item, weather: replacement.weather };
+        });
+
         const totalDistanceMiles = (routeData.distance * 0.000621371).toFixed(1);
 
         return Promise.all(weatherResults.map(async (w, i) => {

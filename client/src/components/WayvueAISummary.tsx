@@ -18,6 +18,12 @@ interface WayvueAISummaryProps {
             funMoment: string;
         };
         tone: string;
+        departureInsights?: {
+            time: string;
+            score: number;
+            label: string;
+            trafficLabel: string;
+        }[];
     } | null;
 }
 
@@ -89,6 +95,7 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
                                 </div>
                             </div>
                         )}
+
                     </div>
                 </div>
             )}
