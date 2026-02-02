@@ -27,7 +27,18 @@ Wayvue is an advanced trip intelligence application designed to enhance your tra
 - **Framework**: Express
 - **Utilities**: Mapbox Polyline, Dotenv
 
-## 📦 Installation
+## � APIs & Services
+
+The application integrates several powerful APIs to provide real-time data:
+
+- **Routing**: [OSRM (Open Source Routing Machine)](http://project-osrm.org/) - Calculates optimal driving routes.
+- **Geocoding**: [ArcGIS World Geocoding Service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) - Converts addresses to coordinates and vice versa.
+- **Weather**: [Open-Meteo](https://open-meteo.com/) - Provides high-precision weather forecasts along the route.
+- **Places**: [Overpass API (OpenStreetMap)](https://wiki.openstreetmap.org/wiki/Overpass_API) - Fetches points of interest like restaurants, gas stations, and scenic spots.
+- **Traffic Cameras**: 511NY (New York State DOT) - Fetches real-time traffic camera feeds (requires API Key).
+- **Intelligence**: Internal Logic Engine - Generates smart trip summaries and recommendations.
+
+## �📦 Installation
 
 1.  **Clone the repository**
     ```bash
