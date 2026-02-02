@@ -11,8 +11,40 @@ import { WeatherCard } from '@/components/WeatherCard';
 import { RoadConditionCard, type RoadCondition } from '@/components/RoadConditionCard';
 import { WayvueAISummary } from "@/components/WayvueAISummary"
 import { PlacesRecommendations } from "@/components/PlacesRecommendations"
+import { TripConfidenceCard } from './components/TripConfidenceCard'
+import { DeparturePlanner } from './components/DeparturePlanner'
 
 export default function App() {
+
+  // Update InsightData interface
+  interface InsightData {
+    structured: {
+      overview: {
+        distance: string
+        duration: string
+        delay: string | null
+        eta: string
+      }
+      fuel: { gas: string | null; ev: string | null }
+      weather: {
+        tempRange: string
+        wind: string | null
+        precipChance: string | null
+        condition: string
+      }
+      roads: {
+        condition: string
+        delay: string | null
+        details: string
+      }
+      stops: Array<{ city: string; reason: string }>
+    }
+    insights: {
+      bullets: string[]
+      funMoment: string
+    }
+    tone: "positive" | "caution"
+  }
   // State
   const [start, setStart] = useState("New York, NY");
   const [destination, setDestination] = useState("Buffalo, NY");
@@ -136,7 +168,13 @@ export default function App() {
         if (response.metrics) setMetrics(response.metrics);
         setWeatherData(response.weather || []);
         setRoadConditions(response.roadConditions || []);
-        setAiAnalysis(response.aiAnalysis);
+        // Create a merged object for aiAnalysis state that includes the new fields from the root response
+        const fullAiAnalysis = {
+          ...response.aiAnalysis,
+          tripScore: response.tripScore,
+          departureInsights: response.departureInsights
+        };
+        setAiAnalysis(fullAiAnalysis);
         setRecommendations(response.recommendations || []);
       }
     } catch (error: any) {
@@ -326,9 +364,27 @@ export default function App() {
             {aiAnalysis ? (
               <div
                 style={{ height: aiPanelHeight }}
-                className="flex-none z-10 relative shrink-0 min-h-[60px]"
+                className="flex-none z-10 relative shrink-0 min-h-[60px] overflow-y-auto"
               >
-                <WayvueAISummary analysis={aiAnalysis} />
+                <div className="space-y-4 p-4 pb-12">
+                  <WayvueAISummary analysis={aiAnalysis} />
+
+                  {/* Trip Confidence */}
+                  {aiAnalysis && (aiAnalysis as any).tripScore && (
+                    <TripConfidenceCard
+                      score={(aiAnalysis as any).tripScore.score}
+                      label={(aiAnalysis as any).tripScore.label}
+                      deductions={(aiAnalysis as any).tripScore.deductions}
+                    />
+                  )}
+
+                  {aiAnalysis && (aiAnalysis as any).departureInsights && (aiAnalysis as any).departureInsights.length > 0 && (
+                    <DeparturePlanner
+                      insights={(aiAnalysis as any).departureInsights}
+                      unit={unit}
+                    />
+                  )}
+                </div>
 
                 {/* Resize Handle */}
                 <div

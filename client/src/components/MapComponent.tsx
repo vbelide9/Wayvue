@@ -113,8 +113,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
         const hasTemp = tempC !== undefined && tempC !== null;
         const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
 
-        // Inline colors to ensure no Tailwind issues
-        // Earthy Palette
+        // Earthy Palette (Live Site Match)
         let bgColor = '#628141'; // Mild
         if (tempC < 10) bgColor = '#40513B'; // Cold
         if (tempC > 25) bgColor = '#E67E22'; // Hot
@@ -123,13 +122,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
             className: 'custom-weather-icon',
             html: `<div style="
                 background-color: ${bgColor}; 
-                color: #E5D9B6; 
+                color: #E5DAB8; 
                 padding: 6px 14px; 
                 border-radius: 12px; 
                 font-weight: 800; 
                 font-size: 15px; 
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
-                border: 2px solid #E5D9B6;
+                border: 2px solid #E5DAB8;
                 display: flex; 
                 align-items: center; 
                 justify-content: center; 
@@ -160,7 +159,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
 
     // Legend Component
     const MapLegend = () => (
-        <div className="absolute bottom-8 left-4 z-[400] bg-[#E5D9B6] backdrop-blur-xl border border-black/10 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[140px] animate-in slide-in-from-bottom-4 fade-in duration-700">
+        <div className="absolute bottom-8 left-4 z-[400] bg-[#E5DAB8] backdrop-blur-xl border border-black/10 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[140px] animate-in slide-in-from-bottom-4 fade-in duration-700">
             <div className="flex items-center gap-2 mb-1 border-b border-black/10 pb-2">
                 <Thermometer className="w-3 h-3 text-primary" />
                 <h4 className="text-[10px] uppercase tracking-widest font-bold text-black/80">Temperature</h4>
@@ -223,7 +222,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
 
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
-                {weatherData && weatherData.map((point, idx) => {
+                {/* Clutter Reduction: Filter to max ~15 points distributed evenly */}
+                {weatherData && weatherData.filter((_, idx) => {
+                    // Always show first and last
+                    if (idx === 0 || idx === weatherData.length - 1) return true;
+                    // Calculate dynamic stride to keep total under 15
+                    const stride = Math.ceil(weatherData.length / 15);
+                    return idx % stride === 0;
+                }).map((point, idx) => {
                     const tempC = point.temperature;
                     const hasTemp = tempC !== undefined && tempC !== null;
 

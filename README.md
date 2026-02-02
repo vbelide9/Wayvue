@@ -1,47 +1,41 @@
 # Wayvue | Trip Intelligence
 
-Wayvue is an advanced trip intelligence application designed to enhance your travel experience by providing real-time weather updates, road conditions, and AI-powered route summaries.
+Wayvue is an advanced trip intelligence dashboard designed to enhance your travel experience. It combines real-time weather, routing data, and AI-driven insights to calculate trip safety and suggest optimal departure times.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **Interactive Map**: Visualize your route with real-time weather overlays and markers using Leaflet.
-- **Trip Intelligence**: Get AI-powered summaries of your trip, including potential hazards and scenic recommendations.
-- **Real-Time Weather**: View current temperature, wind speed, and precipitation along your route.
-- **Road Conditions**: Stay informed about traffic alerts, construction zones, and accidents.
-- **suggested Stops**: Discover interesting places to stop, including rest areas, scenic viewpoints, and restaurants.
-- **Smart Routing**: Calculate the optimal route based on distance, time, and weather conditions.
-- **Responsive Design**: Enjoy a seamless experience on both desktop and mobile devices with resizable panels.
+### 🧠 AI Trip Intelligence
+-   **Trip Confidence Score**: A 0-100% safety rating based on weather, wind, traffic, and road conditions.
+    -   *dynamic penalties* for rain, snow, high winds, and congestion.
+    -   *Snow/Ice Detection*: Severe penalties (-40 points) applied when winter conditions are detected.
+-   **Smart Departure Planner**: Predictive analysis showing the "Best Time to Leave" over the next 3 hours to avoid storms or traffic.
+-   **Natural Language Summary**: A concise, friendly assistant that summarizes your entire route.
 
-## 🛠️ Tech Stack
+### 🗺️ Interactive Mapping
+-   **Smart Route Visualization**: Real-time route rendering with color-coded segments for traffic.
+-   **Weather Overlays**: Live weather data (Sun, Rain, Snow, Wind) mapped directly to route segments.
+-   **Road Conditions**: Alerts for traffic jams, accidents, and weather hazards.
 
-### Client
-- **Framework**: React 19
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS 4
-- **Maps**: Leaflet / React-Leaflet
-- **Icons**: Lucide React
-- **HTTP Client**: Axios
+### 📍 Points of Interest
+-   **Suggested Stops**: Intelligently recommends Gas, Food, EV Charging, and Scenic spots along your path using OpenStreetMap.
 
-### Server
-- **Runtime**: Node.js
-- **Framework**: Express
-- **Utilities**: Mapbox Polyline, Dotenv
+### 💻 Modern UI
+-   **Responsive Dashboard**: Resizable panels for map, AI insights, and weather timeline.
+-   **Wind & Fuel Indicators**: Visual cues for wind direction/speed and fuel cost estimation.
 
-## 🏗️ Architecture
-For a detailed overview of the system architecture, component breakdown, and data flow, please refer to the [Architecture Documentation](./ARCHITECTURE.md).
+## 🛠️ Tech Stack & Services
 
-## 🔌 APIs & Services
+**Client**: React 19, Vite, Tailwind CSS 4, Lucide React, Leaflet  
+**Server**: Node.js, Express
 
-The application integrates several powerful APIs to provide real-time data:
+**Integrated Services (Free / Demo Tier)**:
+-   **Routing**: [OSRM](http://project-osrm.org/) (Open Source Routing Machine)
+-   **Weather**: [Open-Meteo](https://open-mteo.com/) (Hourly forecast & history)
+-   **Geocoding**: [ArcGIS REST API](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm)
+-   **Places**: [Overpass API (OpenStreetMap)](https://wiki.openstreetmap.org/wiki/Overpass_API)
+-   **Traffic Cameras**: 511NY (Simulated/Fallback support included)
 
-- **Routing**: [OSRM (Open Source Routing Machine)](http://project-osrm.org/) - Calculates optimal driving routes.
-- **Geocoding**: [ArcGIS World Geocoding Service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) - Converts addresses to coordinates and vice versa.
-- **Weather**: [Open-Meteo](https://open-mteo.com/) - Provides high-precision weather forecasts along the route.
-- **Places**: [Overpass API (OpenStreetMap)](https://wiki.openstreetmap.org/wiki/Overpass_API) - Fetches points of interest like restaurants, gas stations, and scenic spots.
-- **Traffic Cameras**: 511NY (New York State DOT) - Fetches real-time traffic camera feeds (requires API Key).
-- **Intelligence**: Internal Logic Engine - Generates smart trip summaries and recommendations.
-
-## �📦 Installation
+## 📦 Installation
 
 1.  **Clone the repository**
     ```bash
@@ -62,29 +56,29 @@ The application integrates several powerful APIs to provide real-time data:
     ```
 
 4.  **Environment Setup**
-    - Create a `.env` file in the `server` directory and add your API keys (e.g., Gemini, Mapbox, Weather APIs).
-    - Create a `.env` file in the `client` directory if needed.
+    -   The app is pre-configured to work with free public APIs out of the box.
+    -   Create a `.env` file in `server/` if you wish to override defaults (e.g., `PORT=3001`).
 
 ## 🏃‍♂️ Usage
 
-1.  **Start the Backend Server**
+1.  **Start the Backend**
     ```bash
     cd server
     node index.js
     ```
-    The server typically runs on port `3000` or `5000`.
+    *Runs on http://localhost:3001*
 
-2.  **Start the Frontend Development Server**
+2.  **Start the Frontend**
     ```bash
     cd client
     npm run dev
     ```
-    Access the application at `http://localhost:5173`.
+    *Runs on http://localhost:5173*
+
+3.  **Explore**: Enter a "Start" and "End" location (e.g., "New York, NY" to "Boston, MA") and click **Calculate**.
 
 ## 🤝 Contributing
-
 Contributions are welcome! Please fork the repository and create a pull request with your changes.
 
 ## 📄 License
-
 This project is licensed under the ISC License.

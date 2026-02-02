@@ -136,7 +136,8 @@ app.post('/api/route', async (req, res) => {
             lat: w.lat,
             lng: w.lng,
             distanceFromStart: distMiles,
-            eta: `ETA ${eta}`
+            eta: `ETA ${eta}`,
+            gasPrice: (2.90 + Math.random() * 0.7).toFixed(2) // Simulated Gas Price ($2.90 - $3.60)
           };
         }));
       })(),

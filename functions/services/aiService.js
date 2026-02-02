@@ -115,6 +115,14 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
         items.push("Noticeable wind activity detected; stay alert for minor steering adjustments.");
     }
 
+    // Gas Price Analysis
+    const gasPrices = weatherData.filter(w => w.gasPrice).map(w => ({ price: parseFloat(w.gasPrice), loc: w.location }));
+    if (gasPrices.length > 0) {
+        gasPrices.sort((a, b) => a.price - b.price);
+        const bestGas = gasPrices[0];
+        items.push(`Fuel Tip: Lowest gas estimated at $${bestGas.price} near ${bestGas.loc}.`);
+    }
+
     // Practical/Fatigue
     const hours = parseInt(duration);
     if (hours >= 4) {

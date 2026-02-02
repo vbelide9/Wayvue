@@ -115,6 +115,14 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
         items.push("Noticeable wind activity detected; stay alert for minor steering adjustments.");
     }
 
+    // Gas Price Analysis
+    const gasPrices = weatherData.filter(w => w.gasPrice).map(w => ({ price: parseFloat(w.gasPrice), loc: w.location }));
+    if (gasPrices.length > 0) {
+        gasPrices.sort((a, b) => a.price - b.price);
+        const bestGas = gasPrices[0];
+        items.push(`Fuel Tip: Lowest gas estimated at $${bestGas.price} near ${bestGas.loc}.`);
+    }
+
     // Practical/Fatigue
     const hours = parseInt(duration);
     if (hours >= 4) {
@@ -149,4 +157,70 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     };
 }
 
-module.exports = { generateTripAnalysis };
+/**
+ * Caclulates a 0-100 Trip Confidence Score.
+ */
+function calculateTripScore(context) {
+    let score = 100;
+    const deductions = [];
+
+    const { precipChance, maxWind, trafficDelay, roadConditions, minTemp } = context;
+
+    // 1. Precip Penalty
+    if (precipChance > 70) {
+        score -= 30;
+        deductions.push({ type: 'High Chance of Rain/Snow', val: -30 });
+    } else if (precipChance > 30) {
+        score -= 15;
+        deductions.push({ type: 'Possible Rain', val: -15 });
+    }
+
+    // 2. Wind Penalty
+    if (maxWind > 40) {
+        score -= 25;
+        deductions.push({ type: 'Dangerous Winds', val: -25 });
+    } else if (maxWind > 20) {
+        score -= 10;
+        deductions.push({ type: 'Gusty Conditions', val: -10 });
+    }
+
+    // 3. Traffic Penalty
+    if (trafficDelay > 45) {
+        score -= 20;
+        deductions.push({ type: 'Heavy Traffic', val: -20 });
+    } else if (trafficDelay > 15) {
+        score -= 10;
+        deductions.push({ type: 'Moderate Congestion', val: -10 });
+    }
+
+    // 4. Road Condition Penalty (Snow/Ice)
+    const snowRoads = roadConditions.filter(r => r.description && r.description.includes("Snow")).length;
+    const badRoads = roadConditions.filter(r => r.status === 'poor').length;
+
+    if (snowRoads > 0) {
+        score -= 40;
+        deductions.push({ type: 'Snow/Ice on Route', val: -40 });
+    } else if (badRoads > 0) {
+        score -= 25;
+        deductions.push({ type: 'Poor Road Conditions', val: -25 });
+    }
+
+    // 5. Extreme Temp Penalty
+    if (minTemp < 10) { // < 10F is very cold
+        score -= 10;
+        deductions.push({ type: 'Extreme Cold', val: -10 });
+    }
+
+    // Clamp score
+    score = Math.max(0, Math.min(100, score));
+
+    // Label
+    let label = "Excellent";
+    if (score < 60) label = "Risky";
+    else if (score < 80) label = "Fair";
+    else if (score < 90) label = "Good";
+
+    return { score, label, deductions };
+}
+
+module.exports = { generateTripAnalysis, calculateTripScore };

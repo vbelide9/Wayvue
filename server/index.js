@@ -138,7 +138,8 @@ app.post('/api/route', async (req, res) => {
             lat: w.lat,
             lng: w.lng,
             distanceFromStart: distMiles,
-            eta: `ETA ${eta}`
+            eta: `ETA ${eta}`,
+            gasPrice: (2.90 + Math.random() * 0.7).toFixed(2) // Simulated Gas Price ($2.90 - $3.60)
           };
         }));
       })(),
@@ -263,22 +264,115 @@ app.post('/api/route', async (req, res) => {
       if (distinctStops.length >= 3) break;
     }
 
-    const { generateTripAnalysis } = require('./services/aiService');
+    const { generateTripAnalysis, calculateTripScore } = require('./services/aiService');
+    const { getWeather } = require('./services/weatherService');
+
+    const aiContext = {
+      fuelCost: fuelCostStr,
+      evCost: evCostStr,
+      cities: cityList,
+      minTemp, maxTemp,
+      trafficDelay: trafficDelayMins,
+      maxWind,
+      precipChance,
+      recommendations: distinctStops,
+      roadConditions: roadConditions, // Pass full road conditions for AI
+      departureDate,
+      departureTime
+    };
+
     const aiAnalysis = generateTripAnalysis(
-      start, end, weatherData, distanceVal, durationVal, roadConditions,
-      {
-        fuelCost: fuelCostStr,
-        evCost: evCostStr,
-        cities: cityList,
-        minTemp, maxTemp,
-        trafficDelay: trafficDelayMins,
-        maxWind,
-        precipChance,
-        recommendations: distinctStops,
-        departureDate,
-        departureTime
-      }
+      start, end, weatherData, distanceVal, durationVal, roadConditions, aiContext
     );
+
+    // E. Trip Confidence Score
+    const safetyScore = calculateTripScore(aiContext);
+
+    // F. Smart Departure Insights (Heuristic: Check start location weather for next 4 hours)
+    // We assume the start location dictating the "leave now" quality for short-medium trips
+    const departureInsights = [];
+
+    // Check if departureDate is today (or not set)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = !departureDate || departureDate === todayStr;
+
+    // DEBUG LOG
+    console.log(`[SmartDeparture] Date: ${departureDate || 'NONE'}, UTC: ${todayStr}, isToday: ${isToday}`);
+
+    if (isToday) { // Only do "Leave Now" optimization for today
+      try {
+        const now = new Date();
+        const offsets = [1, 2, 3]; // +1h, +2h, +3h
+
+        // We need coords for start location
+        const startLat = startLoc.lat;
+        const startLng = startLoc.lon;
+
+        console.log(`[SmartDeparture] StartLoc: ${startLat}, ${startLng}`);
+
+        const results = await Promise.all(offsets.map(async (offset) => {
+          const futureTime = new Date(now.getTime() + offset * 60 * 60 * 1000);
+          const hour = futureTime.getHours();
+
+          // Get weather for start location at that future hour
+          const w = await getWeather(startLat, startLng, null, hour);
+
+          if (w) {
+            // Approximate/Heuristic context for future time
+            // We assume traffic improves after 9am or 6pm, worst at 8am/5pm
+            let estimatedDelay = trafficDelayMins;
+            let trafficLabel = "Normal";
+
+            // Dynamic Traffic Heuristic based on hour of day
+            if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+              estimatedDelay += Math.floor(Math.random() * 15) + 10; // Peak traffic (add 10-25 mins)
+              trafficLabel = "Heavy";
+            } else if (hour >= 22 || hour <= 5) {
+              estimatedDelay = 0; // Clear roads at night
+              trafficLabel = "Clear";
+            } else {
+              // Mid-day variance
+              estimatedDelay += Math.floor(Math.random() * 10) - 5;
+              estimatedDelay = Math.max(0, estimatedDelay);
+              trafficLabel = estimatedDelay > 10 ? "Busy" : "Normal";
+            }
+
+            const futureContext = {
+              ...aiContext,
+              trafficDelay: estimatedDelay,
+              precipChance: w.precipitationProbability || 0,
+              maxWind: w.windSpeed || 0,
+              minTemp: w.temperature,
+              roadConditions: roadConditions
+            };
+
+            const scoreObj = calculateTripScore(futureContext);
+            return {
+              offsetHours: offset,
+              time: futureTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+              score: scoreObj.score,
+              label: scoreObj.label,
+              precip: w.precipitationProbability || 0,
+              temp: w.temperature,
+              trafficLabel: trafficLabel
+            };
+          }
+          return null;
+        }));
+
+        // Filter out nulls and assign to departureInsights in order
+        const validResults = results.filter(r => r !== null);
+        departureInsights.push(...validResults);
+
+      } catch (e) {
+        console.log("Departure insights error", e.message);
+      }
+    }
+
+    // DEBUG LOG
+    console.log(`[SmartDeparture] FINAL insights count: ${departureInsights.length}`);
+
+
 
 
     res.json({
@@ -291,8 +385,10 @@ app.post('/api/route', async (req, res) => {
       },
       weather: weatherData,
       roadConditions: roadConditions,
-      aiAnalysis: aiAnalysis, // New AI Summary
-      recommendations: recommendations // New Places
+      aiAnalysis: aiAnalysis,
+      tripScore: safetyScore, // NEW
+      departureInsights: departureInsights, // NEW
+      recommendations: recommendations
     });
 
   } catch (error) {

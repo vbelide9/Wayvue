@@ -40,11 +40,20 @@ const getWeather = async (lat, lng, dateStr, targetHour) => {
 
         const currentData = response.data.current || {};
 
+        const useHourly = targetHour !== undefined || dateStr;
+
+        // DEBUG LOG
+        if (useHourly) {
+            console.log(`[WeatherService] Fetching ${lat},${lng} for Hour: ${hourIndex} (useHourly: ${useHourly})`);
+            console.log(`[WeatherService] Temp at index ${hourIndex}: ${hourly.temperature_2m[hourIndex]}`);
+            console.log(`[WeatherService] URL: ${url}`);
+        }
+
         return {
-            temperature: dateStr ? hourly.temperature_2m[hourIndex] : currentData.temperature_2m,
-            weathercode: dateStr ? hourly.weather_code[hourIndex] : currentData.weather_code,
-            windSpeed: dateStr ? hourly.wind_speed_10m[hourIndex] : currentData.wind_speed_10m,
-            humidity: dateStr ? hourly.relative_humidity_2m[hourIndex] : currentData.relative_humidity_2m,
+            temperature: useHourly ? hourly.temperature_2m[hourIndex] : currentData.temperature_2m,
+            weathercode: useHourly ? hourly.weather_code[hourIndex] : currentData.weather_code,
+            windSpeed: useHourly ? hourly.wind_speed_10m[hourIndex] : currentData.wind_speed_10m,
+            humidity: useHourly ? hourly.relative_humidity_2m[hourIndex] : currentData.relative_humidity_2m,
             precipitationProbability: hourly.precipitation_probability ? hourly.precipitation_probability[hourIndex] : 0,
             windDirection: hourly.wind_direction_10m ? hourly.wind_direction_10m[hourIndex] : 0
         };

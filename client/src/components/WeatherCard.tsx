@@ -1,4 +1,4 @@
-import { Sun, Cloud, CloudRain, CloudSnow, Wind, Droplets, MapPin, ArrowUp, AlertTriangle, CheckCircle, AlertOctagon } from "lucide-react"
+import { Sun, Cloud, CloudRain, CloudSnow, Wind, Droplets, MapPin, ArrowUp, AlertTriangle, CheckCircle, AlertOctagon, Fuel } from "lucide-react"
 
 interface WeatherData {
     location: string
@@ -11,6 +11,7 @@ interface WeatherData {
     precipitationProbability?: number
     eta?: string
     distanceFromStart?: number
+    gasPrice?: string
 }
 
 interface WeatherCardProps {
@@ -118,9 +119,9 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     </div>
 
                     {/* Metrics: Signals (Wind & Precip) */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50 mb-1">
+                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/50 mb-1">
                         {/* Precip */}
-                        <div className="flex items-center gap-1.5" title="Precipitation Probability">
+                        <div className="flex items-center gap-1" title="Precipitation Probability">
                             {(unit === 'F' ? weather.temperature <= 32 : weather.temperature <= 0)
                                 ? <CloudSnow className="w-3 h-3 text-white" />
                                 : <Droplets className="w-3 h-3 text-blue-400" />
@@ -128,15 +129,20 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                             <span className="text-[10px] font-semibold text-foreground/80">{precip}%</span>
                         </div>
                         {/* Wind */}
-                        <div className="flex items-center gap-1.5" title={`Wind: ${weather.windSpeed} mph`}>
-                            <Wind className="w-3 h-3 text-gray-400" />
-                            <div className="flex items-center gap-0.5">
-                                <span className="text-[10px] font-semibold text-foreground/80">{Math.round(weather.windSpeed)}</span>
+                        <div className="flex items-center gap-1 justify-center" title="Wind Speed & Direction">
+                            <div className="flex items-center">
+                                <Wind className="w-3 h-3 text-foreground/50" />
                                 <ArrowUp
-                                    className="w-2.5 h-2.5 text-muted-foreground"
+                                    className="w-2.5 h-2.5 text-blue-400 -ml-0.5"
                                     style={{ transform: `rotate(${windDir}deg)` }}
                                 />
                             </div>
+                            <span className="text-[10px] font-semibold text-foreground/80">{Math.round(weather.windSpeed)}</span>
+                        </div>
+                        {/* Gas Price */}
+                        <div className="flex items-center gap-1 justify-end" title="Est. Gas Price">
+                            <Fuel className="w-4 h-4 text-orange-400" />
+                            <span className="text-[10px] font-semibold text-foreground/80">${weather.gasPrice || '--'}</span>
                         </div>
                     </div>
                 </div>
