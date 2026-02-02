@@ -85,7 +85,7 @@ export default function App() {
 
 
   // Right Sidebar Resize Handlers
-  const startSidebarResizing = useCallback((e: React.MouseEvent) => {
+  const startSidebarResizing = useCallback(() => {
     isSidebarResizing.current = true;
     document.addEventListener('mousemove', handleSidebarResize);
     document.addEventListener('mouseup', stopSidebarResizing);

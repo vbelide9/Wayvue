@@ -26,7 +26,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.post('/api/route', async (req, res) => {
-  const { start, end, startCoords, endCoords } = req.body;
+  const { start, end, startCoords, endCoords, departureDate, departureTime } = req.body;
 
   if (!start || !end) {
     return res.status(400).json({ error: 'Start and End locations are required' });
@@ -83,25 +83,44 @@ app.post('/api/route', async (req, res) => {
 
     // We'll pre-calculate some values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
-    const durationVal = Math.round(routeData.duration / 60) + " min";
+    const minutes = Math.round(routeData.duration / 60);
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const durationVal = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
 
     const [weatherData, roadConditions, recommendations] = await Promise.all([
       // A. Weather with City Names
       (async () => {
-        const pointsForWeather = sampledPoints.map(([lng, lat]) => [lat, lng]);
-        const { getWeatherForPoints } = require('./services/weatherService');
-        const weatherResults = await getWeatherForPoints(pointsForWeather);
-        const startTime = Date.now();
         const totalDurationSeconds = routeData.duration || 0;
+        const pointsForWeather = sampledPoints.map(([lng, lat], i) => {
+          const progress = i / Math.max(1, sampledPoints.length - 1);
+          const timeOffsetSeconds = progress * totalDurationSeconds;
+          // default date now if not provided
+          const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
+          const pointEtaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
+          return {
+            lat,
+            lng,
+            dateStr: departureDate,
+            targetHour: pointEtaDate.getHours()
+          };
+        });
+
+        const { getWeatherForPoints } = require('./services/weatherService');
+        const weatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
+        const totalDistanceMiles = (routeData.distance * 0.000621371).toFixed(1);
+
+        // re-calc base time for ETA display
+        const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
 
         return Promise.all(weatherResults.map(async (w, i) => {
-          const [lat, lng] = pointsForWeather[i];
+          const { lat, lng } = pointsForWeather[i];
           const progress = i / Math.max(1, weatherResults.length - 1);
           const distMiles = Math.round(progress * Number(totalDistanceMiles));
 
-          // Calculate ETA
+          // Calculate ETA for display (using human-friendly string)
           const timeOffsetSeconds = progress * totalDurationSeconds;
-          const etaDate = new Date(startTime + (timeOffsetSeconds * 1000));
+          const etaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
           const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
           let city = `Mile ${distMiles}`;
@@ -129,6 +148,10 @@ app.post('/api/route', async (req, res) => {
         const { getWeather } = require('./services/weatherService');
         const RealCameraService = require('./services/realCameraService');
 
+        // base time for road conditions
+        const baseTime = departureDate ? new Date(`${departureDate}T${departureTime || "12:00"}`).getTime() : Date.now();
+
+
         return Promise.all(uniqueIndices.map(async (idx, i) => {
           const [lng, lat] = fullCoordinates[idx];
           let locationName = i === 0 ? "Start Area" : i === uniqueIndices.length - 1 ? "Destination Area" : `Segment ${i + 1}`;
@@ -138,7 +161,10 @@ app.post('/api/route', async (req, res) => {
           } catch (e) { }
 
           // Derive status from weather
-          const w = await getWeather(lat, lng);
+          const progress = idx / Math.max(1, fullCoordinates.length - 1);
+          const timeOffsetSeconds = progress * (routeData.duration || 0);
+          const etaDate = new Date(baseTime + (timeOffsetSeconds * 1000));
+          const w = await getWeather(lat, lng, departureDate, etaDate.getHours());
           const code = w?.weathercode || 0;
           let status = "good";
           let desc = "Clear roads, normal traffic flow";
@@ -164,7 +190,7 @@ app.post('/api/route', async (req, res) => {
             segment: locationName,
             status: status,
             description: desc,
-            distance: `${(totalDistanceMiles / uniqueIndices.length).toFixed(0)} mi`,
+            distance: `${((idx / fullCoordinates.length) * totalDistanceMiles).toFixed(0)} mi`,
             location: { lat: lat, lon: lng },
             camera: cameraObj
           };
@@ -174,7 +200,17 @@ app.post('/api/route', async (req, res) => {
       // C. Places Recommendations
       (async () => {
         const { getRecommendations } = require('./services/placesService');
-        const contextPoints = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0].map(p => {
+        // Optimize sampling: Avoid hammering Overpass.
+        // For short trips (<50mi), just check start/mid/end.
+        // For longer trips, check every ~50 miles, max 5 checks.
+        let samplePoints = [0.1, 0.5, 0.9]; // Default 3 points
+        const distanceMiles = distanceVal; // "10.4 miles" -> we need number
+
+        if (totalDistanceMiles > 100) {
+          samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
+        }
+
+        const contextPoints = samplePoints.map(p => {
           const idx = Math.floor(fullCoordinates.length * 0.999 * p);
           const currentDist = (p * totalDistanceMiles).toFixed(0);
           return {
@@ -188,15 +224,72 @@ app.post('/api/route', async (req, res) => {
     ]);
 
     // D. Wayvue AI Analysis
+    // Prepare enriched context
+    const fuelCostStr = `$${(routeData.distance / 1609.34 * 0.15).toFixed(0)}`;
+    const evCostStr = `$${(routeData.distance / 1609.34 * 0.10).toFixed(0)}`;
+
+    // Extract unique cities (limit to 3 distinct ones to avoid clutter)
+    const uniqueCities = [...new Set(weatherData.map(w => w.location).filter(l => l && !l.includes("Mile")))];
+    const cityList = uniqueCities.length > 2
+      ? [uniqueCities[0], uniqueCities[Math.floor(uniqueCities.length / 2)], uniqueCities[uniqueCities.length - 1]]
+      : uniqueCities;
+
+    // Extract temp range (Celsius from source)
+    const temps = weatherData.map(w => w.temperature).filter(t => !isNaN(t));
+    const minTempC = Math.min(...temps);
+    const maxTempC = Math.max(...temps);
+    // Convert to F for AI text
+    const minTemp = Math.round((minTempC * 9 / 5) + 32);
+    const maxTemp = Math.round((maxTempC * 9 / 5) + 32);
+
+    // Calculate Traffic Delay (baseline with a tiny bit of jitter for realism)
+    const baselineSpeed = 50 + (Math.random() * 2 - 1); // 49 to 51 mph
+    const baseDurationMins = (routeData.distance * 0.000621371) / baselineSpeed * 60;
+    const trafficDelayMins = Math.max(0, Math.round((routeData.duration / 60) - baseDurationMins));
+
+    // Weather Stats
+    const maxWindKm = Math.max(...weatherData.map(w => w.windSpeed || 0));
+    const maxWind = Math.round(maxWindKm * 0.621371); // Convert km/h -> mph
+    const precipCount = weatherData.filter(w => [51, 61, 63, 80, 81, 95, 96, 99, 71, 73, 75, 85, 86].includes(w.weather?.weather_code)).length;
+    const precipChance = Math.round((precipCount / weatherData.length) * 100);
+
+    // Suggested Stops (Top 3 Unique Cities)
+    const distinctStops = [];
+    const seenCities = new Set();
+    for (const r of recommendations) {
+      const city = r.location.split('•')[0].trim();
+      if (!seenCities.has(city)) {
+        seenCities.add(city);
+        distinctStops.push({ city, reason: r.type });
+      }
+      if (distinctStops.length >= 3) break;
+    }
+
     const { generateTripAnalysis } = require('./services/aiService');
-    const aiAnalysis = generateTripAnalysis(start, end, weatherData, distanceVal);
+    const aiAnalysis = generateTripAnalysis(
+      start, end, weatherData, distanceVal, durationVal, roadConditions,
+      {
+        fuelCost: fuelCostStr,
+        evCost: evCostStr,
+        cities: cityList,
+        minTemp, maxTemp,
+        trafficDelay: trafficDelayMins,
+        maxWind,
+        precipChance,
+        recommendations: distinctStops,
+        departureDate,
+        departureTime
+      }
+    );
+
 
     res.json({
       route: routeData.geometry, // OSRM GeoJSON
       metrics: {
         distance: distanceVal,
         time: durationVal,
-        fuel: `$${(routeData.distance / 1609.34 * 0.15).toFixed(2)}` // Est 15 cents/mile
+        fuel: fuelCostStr, // Est 15 cents/mile (Gas)
+        ev: evCostStr // Est 10 cents/mile (EV)
       },
       weather: weatherData,
       roadConditions: roadConditions,

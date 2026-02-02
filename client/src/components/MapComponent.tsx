@@ -228,9 +228,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                     const hasTemp = tempC !== undefined && tempC !== null;
 
                     // Earthy Palette Mapping
-                    let bgColor = '#628141';
-                    if (tempC < 10) bgColor = '#40513B';
-                    if (tempC > 25) bgColor = '#E67E22';
+
 
                     const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
                     const weatherDesc = getWeatherDescription(point.weathercode || 0);
