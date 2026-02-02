@@ -183,7 +183,7 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
 
     // --- VARIANT: CARD (Default) ---
     return (
-        <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3">
+        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex flex-col gap-2 shadow-sm">
             <div className="flex justify-between items-start">
                 <div>
                     <h3 className="font-bold text-foreground text-lg truncate max-w-[150px]" title={weather.location}>
@@ -192,6 +192,21 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     <p className="text-xs text-muted-foreground uppercase tracking-wider">
                         {type === 'start' ? 'Start' : type === 'destination' ? 'Destination' : 'Forecast'}
                     </p>
+                    {/* ETA & Distance Context */}
+                    {(weather.eta || weather.distanceFromStart !== undefined) && (
+                        <div className="flex items-center gap-2 mt-1">
+                            {weather.eta && (
+                                <span className="text-[11px] font-medium text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded-md">
+                                    {weather.eta}
+                                </span>
+                            )}
+                            {weather.distanceFromStart !== undefined && (
+                                <span className="text-[11px] font-medium text-muted-foreground font-mono">
+                                    {weather.distanceFromStart} mi
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 {getIcon(condition, "w-8 h-8")}
             </div>
