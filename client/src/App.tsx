@@ -47,16 +47,19 @@ export default function App() {
   // View Mode State
   const [viewMode, setViewMode] = useState<'planning' | 'trip'>('planning');
 
-  const handleRouteSubmit = async (startLoc?: string, destLoc?: string, depDate?: string, depTime?: string) => {
+  const handleRouteSubmit = async (startLoc?: string, destLoc?: string, depDate?: string, depTime?: string, startCoordsOverride?: any, destCoordsOverride?: any) => {
     const s = startLoc || start;
     const d = destLoc || destination;
     const dateToUse = depDate || departureDate;
     const timeToUse = depTime || departureTime;
+    const sCoords = startCoordsOverride || startCoords;
+    const dCoords = destCoordsOverride || destCoords;
+
     if (!s || !d) return;
 
     setLoading(true);
     try {
-      const response = await getRoute(s, d, startCoords, destCoords, dateToUse, timeToUse);
+      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse);
 
       if (response.route) {
         setRoute(response.route);
@@ -252,6 +255,17 @@ export default function App() {
       unit={unit}
       onUnitChange={setUnit}
       onBack={handleBackToPlanning}
+      onSearch={async (newStart, newEnd, newStartCoords, newEndCoords) => {
+        // Update state first
+        setStart(newStart);
+        setDestination(newEnd);
+        if (newStartCoords) setStartCoords(newStartCoords);
+        if (newEndCoords) setDestCoords(newEndCoords);
+
+        // Trigger route calc with new values directly to ensure latest data is used
+        // handleRouteSubmit accepts optional overrides
+        await handleRouteSubmit(newStart, newEnd, undefined, undefined, newStartCoords, newEndCoords);
+      }}
       onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
       map={
         <MapComponent

@@ -25,6 +25,7 @@ interface TripViewLayoutProps {
     // Callbacks
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
+    onSearch: (start: string, end: string, startCoords?: any, endCoords?: any) => void;
     onSegmentSelect: (lat: number, lng: number) => void;
 
     // Slots
@@ -43,6 +44,7 @@ export function TripViewLayout({
     unit,
     onUnitChange,
     onBack,
+    onSearch,
     onSegmentSelect,
     map
 }: TripViewLayoutProps) {
@@ -62,6 +64,7 @@ export function TripViewLayout({
                 unit={unit}
                 onUnitChange={onUnitChange}
                 onBack={onBack}
+                onSearch={onSearch}
             />
 
             {/* 2. Main Content Area */}
