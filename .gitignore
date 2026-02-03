@@ -44,3 +44,6 @@ brain/
 response*.json
 server/test_overpass.js
 server_log*.txt
+
+# Firebase
+.firebase/
