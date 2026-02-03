@@ -2,7 +2,7 @@ import { MapPin, Navigation, Compass } from 'lucide-react';
 
 export function EmptyState() {
     return (
-        <div className="flex flex-col items-center justify-center h-full w-full p-8 text-center animate-in fade-in duration-700">
+        <div className="flex flex-col items-center justify-start md:justify-center h-full w-full px-8 pb-8 pt-[400px] md:p-8 text-center animate-in fade-in duration-700">
             <div className="relative mb-8 group">
                 <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 group-hover:scale-175 transition-transform duration-1000"></div>
                 <div className="relative bg-card/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl ring-1 ring-white/10">

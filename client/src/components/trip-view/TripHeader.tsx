@@ -1,4 +1,4 @@
-import { ChevronLeft, Navigation, Clock, Shield, ShieldCheck, ShieldAlert, AlertTriangle, ArrowRight, Search, X } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -134,18 +134,7 @@ export function TripHeader({ start, destination, metrics, tripScore, alertCount,
                             </div>
                         </div>
 
-                        {/* Metric: Score */}
-                        {tripScore && (
-                            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full border border-border/50 shrink-0 ${tripScore.score >= 80 ? 'bg-green-500/10 text-green-600' :
-                                tripScore.score >= 60 ? 'bg-yellow-500/10 text-yellow-600' :
-                                    'bg-red-500/10 text-red-600'
-                                }`}>
-                                {tripScore.score >= 80 ? <ShieldCheck className="w-3.5 h-3.5" /> :
-                                    tripScore.score >= 60 ? <Shield className="w-3.5 h-3.5" /> :
-                                        <ShieldAlert className="w-3.5 h-3.5" />}
-                                <span className="text-xs font-bold whitespace-nowrap">{tripScore.score}% Safe</span>
-                            </div>
-                        )}
+
 
                         {/* Metric: Alerts */}
                         {alertCount > 0 && (

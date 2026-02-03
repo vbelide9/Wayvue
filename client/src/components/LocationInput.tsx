@@ -1,4 +1,4 @@
-import { MapPin, Navigation, Loader2 } from "lucide-react"
+import { MapPin, Navigation, Loader2, Locate } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useRef } from "react"
 
@@ -111,8 +111,53 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                     placeholder={placeholder}
                     className="pl-10 bg-card border-border h-11 text-base focus-visible:ring-primary/50"
                 />
+                {/* Current Location Button (Only for Start input and when empty or explicitly requested, but standard pattern is always show on right) */}
+                {icon === "start" && !isLoading && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (navigator.geolocation) {
+                                setIsLoading(true);
+                                navigator.geolocation.getCurrentPosition(async (pos) => {
+                                    try {
+                                        const { latitude, longitude } = pos.coords;
+                                        // Reverse Geocode using ArcGIS
+                                        const res = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${longitude},${latitude}`);
+                                        if (res.ok) {
+                                            const data = await res.json();
+                                            if (data.address) {
+                                                const address = data.address.LongLabel || data.address.Match_addr;
+                                                onChange(address);
+                                                if (onSelect) {
+                                                    onSelect({
+                                                        lat: latitude,
+                                                        lng: longitude,
+                                                        display_name: address
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error("Geolocation failed", e);
+                                    } finally {
+                                        setIsLoading(false);
+                                    }
+                                }, (err) => {
+                                    console.error("Geolocation error", err);
+                                    setIsLoading(false);
+                                    alert("Could not access location. Please enable permissions.");
+                                });
+                            }
+                        }}
+                        className="absolute right-3 top-3.5 text-muted-foreground hover:text-primary transition-colors z-20"
+                        title="Use Current Location"
+                    >
+                        <Locate className="w-4 h-4" />
+                    </button>
+                )}
+
                 {isLoading && (
-                    <div className="absolute right-3 top-3.5 text-muted-foreground animate-spin">
+                    <div className="absolute right-3 top-3.5 text-muted-foreground animate-spin z-30">
                         <Loader2 className="w-4 h-4" />
                     </div>
                 )}

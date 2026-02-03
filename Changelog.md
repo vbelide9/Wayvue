@@ -2,7 +2,27 @@
 
 All notable changes to the **Wayvue** project will be documented in this file.
 
-## [v1.2.2] - 2026-02-03
+
+
+
+
+
+## [v1.2.7] - 2026-02-03
+### Fixed
+- **Mobile Icon Visibility**: Addressed an issue where the central navigation icon was hidden on mobile due to the new taller header. Applied specific responsive spacing (`pt-[400px]` on mobile) to ensure the icon is visible below the search box, while strictly correctly maintaining the standard layout on laptop/desktop screens.
+
+### Changed
+- **Mobile Header Layout**: Refactored the top navigation bar for mobile devices. The "Search Locations" input bar is now placed on its own row below the logo and controls, ensuring it is always perfectly centered and has ample space for input. Desktop layout remains a single unified row.
+
+### Fixed
+- **Mobile Home Screen Layout**: Fixed an issue where the central "Navigation Compass" icon was hidden behind the input bar on mobile devices. Added responsive spacing to ensure the "Where to today?" section and its icon are fully visible and centered below the controls.
+
+### Added
+- **Current Location Button**: Added a "Locate Me" button (crosshair icon) to the Start Location input on mobile. This addresses user feedback about missing navigation functionality, allowing users to quickly fill their current location.
+
+### Fixed
+- **Calculation Error Handling**: Resolved an issue where invalid start/end locations or API failures would cause the app to silently reset to the home screen. Added clear error messages to the inputs bar to guide the user (e.g., "Please enter both a start and destination").
+
 ### Fixed
 - **Tablet Layout**: Fixed an issue where the results panel on iPad/Tablet was constrained to a small width (`max-w-md`), leaving empty space. It now fills the full width in the stacked layout.
 

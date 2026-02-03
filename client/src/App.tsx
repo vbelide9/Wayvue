@@ -41,14 +41,16 @@ export default function App() {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number, lng: number } | null>(null);
 
 
-
-
-
+  // Error State
+  const [error, setError] = useState<string | null>(null);
 
   // View Mode State
   const [viewMode, setViewMode] = useState<'planning' | 'trip'>('planning');
 
   const handleRouteSubmit = async (startLoc?: string, destLoc?: string, depDate?: string, depTime?: string, startCoordsOverride?: any, destCoordsOverride?: any) => {
+    setError(null); // Clear previous errors
+
+    // Use overrides if provided, or fallback to current state
     const s = startLoc || start;
     const d = destLoc || destination;
     const dateToUse = depDate || departureDate;
@@ -56,13 +58,16 @@ export default function App() {
     const sCoords = startCoordsOverride || startCoords;
     const dCoords = destCoordsOverride || destCoords;
 
-    if (!s || !d) return;
+    if (!s || !d) {
+      setError("Please enter both a start and destination.");
+      return;
+    }
 
     setLoading(true);
     try {
       const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse);
 
-      if (response.route) {
+      if (response && response.route) {
         setRoute(response.route);
         if (response.metrics) setMetrics(response.metrics);
         setWeatherData(response.weather || []);
@@ -78,10 +83,18 @@ export default function App() {
 
         // Switch to Trip View
         setViewMode('trip');
+      } else {
+        console.error("Route API returned success but no route data found.");
+        setError("Could not calculate a route. Please try different locations.");
       }
     } catch (error: any) {
-      console.error(error);
-      alert(`Failed to get route: ${error.message || 'Unknown error'}`);
+      console.error("Route calculation error:", error);
+      // Handle the 422 (Validation) specifically if possible, or generic
+      if (error.response && error.response.status === 422) {
+        setError("Could not find one of those locations. Please check for typos.");
+      } else {
+        setError(`Failed to calculate route: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -117,22 +130,31 @@ export default function App() {
           {/* Top Summary Ribbon (This contains the Inputs) */}
           <div className="absolute top-4 left-4 right-4 z-[400] flex flex-col gap-2 pointer-events-none">
             {/* 1. Dashboard Controls Row */}
-            <div className="relative z-[410] flex items-center gap-2 pointer-events-auto">
+            <div className="relative z-[410] grid grid-cols-2 md:flex md:items-center gap-2 pointer-events-auto w-full px-2 sm:px-0">
               {/* Brand / Logo */}
-              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3">
-                <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3 order-1 md:order-1 col-span-1 mr-auto md:mr-0">
+                <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center shrink-0">
                   <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
                 </div>
                 <div className="block pr-2">
                   <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
+                    <h1 className="text-lg font-bold tracking-tight leading-none text-foreground hidden sm:block">Wayvue</h1>
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
+                  <p className="text-[10px] text-muted-foreground font-medium hidden sm:block">Trip Intelligence</p>
                 </div>
               </div>
 
               {/* Inputs Bar */}
-              <div className="flex-1 bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-1 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-2 h-auto sm:h-14 transition-all duration-300 ease-in-out">
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-1 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-2 h-auto sm:h-14 transition-all duration-300 ease-in-out relative order-3 md:order-2 col-span-2 w-full md:flex-1 md:max-w-2xl md:mx-auto">
+                {/* Error Message Toast/Banner */}
+                {error && (
+                  <div className="absolute top-full left-0 right-0 mt-2 z-[500]">
+                    <div className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 text-center border border-destructive/50">
+                      {error}
+                    </div>
+                  </div>
+                )}
+
                 {/* Primary Row: Start -> End */}
                 <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
                   <div className="flex-1 min-w-0">
@@ -192,7 +214,7 @@ export default function App() {
               </div>
 
               {/* Units Toggle */}
-              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-1 shadow-lg h-14 flex items-center">
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-1 shadow-lg h-14 flex items-center justify-center order-2 md:order-3 col-span-1 ml-auto md:ml-0">
                 <div className="flex bg-secondary/50 rounded-lg p-1">
                   <button onClick={() => setUnit('C')} className={`w-8 h-8 flex items-center justify-center rounded-md text-xs font-bold transition-colors ${unit === 'C' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>°C</button>
                   <button onClick={() => setUnit('F')} className={`w-8 h-8 flex items-center justify-center rounded-md text-xs font-bold transition-colors ${unit === 'F' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>°F</button>
