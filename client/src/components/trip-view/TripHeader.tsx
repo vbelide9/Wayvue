@@ -1,4 +1,4 @@
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -121,8 +121,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                 <div className="relative flex-1 flex justify-end min-w-0 mask-linear-fade">
                     <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 pl-4 pr-1">
 
-                        {/* Metric: Time & Distance */}
-                        <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 rounded-full border border-border/50 shrink-0">
+                        {/* Metric: Time, Distance, Fuel, EV */}
+                        <div className="flex items-center gap-3 px-3 py-2 bg-secondary/50 rounded-full border border-border/50 shrink-0">
                             <div className="flex items-center gap-1.5">
                                 <Clock className="w-3.5 h-3.5 text-blue-500" />
                                 <span className="text-xs font-bold whitespace-nowrap">{metrics.time}</span>
@@ -132,15 +132,35 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                 <Navigation className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.distance}</span>
                             </div>
+
+                            {/* Fuel Price */}
+                            {metrics.fuel && metrics.fuel !== "0 gal" && (
+                                <>
+                                    <div className="w-px h-3 bg-border" />
+                                    <div className="flex items-center gap-1.5">
+                                        <Fuel className="w-3.5 h-3.5 text-orange-500" />
+                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.fuel}</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* EV Price */}
+                            {metrics.ev && metrics.ev !== "$0" && (
+                                <>
+                                    <div className="w-px h-3 bg-border" />
+                                    <div className="flex items-center gap-1.5">
+                                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
+                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.ev}</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
-
-
 
                         {/* Metric: Alerts */}
                         {alertCount > 0 && (
                             <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 shrink-0">
                                 <AlertTriangle className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold whitespace-nowrap">{alertCount}</span>
+                                <span className="text-xs font-bold whitespace-nowrap">{alertCount} Alerts</span>
                             </div>
                         )}
                     </div>

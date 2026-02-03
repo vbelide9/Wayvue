@@ -7,7 +7,22 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
-## [v1.2.7] - 2026-02-03
+
+
+
+## [v1.2.10] - 2026-02-03
+### Fixed
+- **Input Icon Overlap**: Added right padding to the start location input to prevent long text (e.g., "New York, NY") from overlapping with the "Current Location" icon.
+
+## [v1.2.9] - 2026-02-03
+### Changed
+- **Empty State Copy**: Updated the main heading from "Where to today?" to "Plan your escape." to better align with the target audience.
+
+## [v1.2.8] - 2026-02-03
+### Added
+- **Extended Trip Header Metrics**: Restored the display of Gas Price (Fuel), Electric Price (EV), and Alert counts in the trip view header.
+- **Responsive Metrics Bar**: Implemented a scrollable container for header metrics on mobile, ensuring all data (Time, Dist, Fuel, EV, Alerts) fits without breaking layout.
+
 ### Fixed
 - **Mobile Icon Visibility**: Addressed an issue where the central navigation icon was hidden on mobile due to the new taller header. Applied specific responsive spacing (`pt-[400px]` on mobile) to ensure the icon is visible below the search box, while strictly correctly maintaining the standard layout on laptop/desktop screens.
 

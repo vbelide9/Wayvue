@@ -11,7 +11,7 @@ export function EmptyState() {
             </div>
 
             <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60 mb-4 tracking-tight">
-                Where to today?
+                Plan your escape.
             </h2>
 
             <p className="text-muted-foreground/80 max-w-md text-lg leading-relaxed mb-8">

@@ -109,7 +109,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                         }
                     }}
                     placeholder={placeholder}
-                    className="pl-10 bg-card border-border h-11 text-base focus-visible:ring-primary/50"
+                    className="pl-10 pr-10 bg-card border-border h-11 text-base focus-visible:ring-primary/50"
                 />
                 {/* Current Location Button (Only for Start input and when empty or explicitly requested, but standard pattern is always show on right) */}
                 {icon === "start" && !isLoading && (
