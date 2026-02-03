@@ -66,7 +66,7 @@ export function TripSidebar({
     };
 
     return (
-        <div className="flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-20 overflow-hidden w-full max-w-md">
+        <div className="flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-20 overflow-hidden w-full lg:max-w-md">
 
             {/* Tabs Header */}
             <div className="p-3 border-b border-border bg-card/50">

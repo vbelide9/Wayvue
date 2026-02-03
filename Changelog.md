@@ -2,6 +2,10 @@
 
 All notable changes to the **Wayvue** project will be documented in this file.
 
+## [v1.2.2] - 2026-02-03
+### Fixed
+- **Tablet Layout**: Fixed an issue where the results panel on iPad/Tablet was constrained to a small width (`max-w-md`), leaving empty space. It now fills the full width in the stacked layout.
+
 ## [v1.2.1] - 2026-02-03
 ### Fixed
 - **Mobile Logo Visibility**: Unhidden the "Wayvue" logo text on mobile screens (removed `hidden sm:block`).
