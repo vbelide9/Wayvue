@@ -29,11 +29,12 @@ Wayvue is an advanced trip intelligence dashboard designed to enhance your trave
 **Server**: Node.js, Express
 
 **Integrated Services (Free / Demo Tier)**:
+-   **Geocoding & Reverse Geocoding**: [ArcGIS REST API](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm)
 -   **Routing**: [OSRM](http://project-osrm.org/) (Open Source Routing Machine)
 -   **Weather**: [Open-Meteo](https://open-mteo.com/) (Hourly forecast & history)
--   **Geocoding**: [ArcGIS REST API](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm)
 -   **Places**: [Overpass API (OpenStreetMap)](https://wiki.openstreetmap.org/wiki/Overpass_API)
--   **Traffic Cameras**: 511NY (Simulated/Fallback support included)
+-   **Traffic Cameras**: 511NY (New York only)
+-   **AI Engine**: Custom internal logic (Simulated AI Analysis)
 
 ## 📦 Installation
 
