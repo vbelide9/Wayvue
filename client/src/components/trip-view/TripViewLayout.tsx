@@ -68,17 +68,17 @@ export function TripViewLayout({
             />
 
             {/* 2. Main Content Area */}
-            <div className="flex-1 flex overflow-hidden relative z-0">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative z-0">
 
-                {/* Map Area (Flex Grow) */}
-                <div className="flex-1 relative z-0 min-w-0 bg-background/5">
+                {/* Map Area (Grow on Desktop, 45% height on Mobile) */}
+                <div className="relative z-0 min-w-0 bg-background/5 h-[45%] lg:h-auto lg:flex-1 w-full lg:w-auto order-1 lg:order-1">
                     {map}
 
                     {/* Optional Overlay Weather Cards on Map Corner could go here if needed */}
                 </div>
 
-                {/* Right Sidebar (Fixed Width) */}
-                <div className="hidden lg:flex w-[400px] shrink-0 border-l border-border bg-card z-20 shadow-xl h-full">
+                {/* Right Sidebar (Fixed Width on Desktop, Fill remaning on Mobile) */}
+                <div className="flex flex-col w-full h-[55%] lg:w-[400px] lg:h-full shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card z-20 shadow-xl order-2 lg:order-2">
                     <TripSidebar
                         aiAnalysis={aiAnalysis}
                         recommendations={recommendations}

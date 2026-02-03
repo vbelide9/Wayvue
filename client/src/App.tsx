@@ -132,7 +132,7 @@ export default function App() {
               </div>
 
               {/* Inputs Bar */}
-              <div className="flex-1 bg-card/90 backdrop-blur-md border border-border rounded-xl p-1 shadow-lg flex items-center gap-2 h-14">
+              <div className="flex-1 bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-1 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-2 h-auto sm:h-14">
                 <div className="flex-1 min-w-0">
                   <LocationInput
                     value={start}
@@ -144,7 +144,7 @@ export default function App() {
                     icon="start"
                   />
                 </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 hidden sm:block" />
                 <div className="flex-1 min-w-0">
                   <LocationInput
                     value={destination}
@@ -156,24 +156,30 @@ export default function App() {
                     icon="destination"
                   />
                 </div>
-                <div className="w-px h-8 bg-border mx-1" />
-                <CustomDatePicker
-                  value={departureDate}
-                  onChange={setDepartureDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                />
-                <CustomTimePicker
-                  value={departureTime}
-                  onChange={setDepartureTime}
-                />
+                <div className="w-px h-8 bg-border mx-1 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 sm:flex-none">
+                    <CustomDatePicker
+                      value={departureDate}
+                      onChange={setDepartureDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      max={new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div className="flex-1 sm:flex-none">
+                    <CustomTimePicker
+                      value={departureTime}
+                      onChange={setDepartureTime}
+                    />
+                  </div>
+                </div>
                 <Button
                   onClick={() => handleRouteSubmit()}
                   disabled={loading}
-                  className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm ml-1"
+                  className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm sm:ml-1 w-full sm:w-auto"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
-                  <span className="hidden xl:inline ml-2">Calculate</span>
+                  <span className="inline ml-2">Calculate</span>
                 </Button>
               </div>
 
