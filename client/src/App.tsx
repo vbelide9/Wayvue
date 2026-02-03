@@ -123,7 +123,7 @@ export default function App() {
                 <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center">
                   <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
                 </div>
-                <div className="hidden sm:block pr-2">
+                <div className="block pr-2">
                   <div className="flex items-center gap-2">
                     <h1 className="text-lg font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
                   </div>

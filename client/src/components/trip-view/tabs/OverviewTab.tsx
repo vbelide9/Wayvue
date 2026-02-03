@@ -35,15 +35,13 @@ export function OverviewTab({ tripScore, aiAnalysis }: OverviewTabProps) {
                 />
             )}
 
-            {/* 2. Smart Schedule Card */}
+            {/* 2. AI Summary Card (Moved to top as requested) */}
+            <WayvueAISummary analysis={aiAnalysis} />
+
+            {/* 3. Smart Schedule Card */}
             {aiAnalysis?.departureInsights && aiAnalysis.departureInsights.length > 0 && (
                 <SmartScheduleCard insights={aiAnalysis.departureInsights} />
             )}
-
-            {/* 3. AI Summary Card */}
-            {/* We unwrap the WayvueAISummary to just be a card, or use it as is. 
-                For now, use as is to minimize regression. */}
-            <WayvueAISummary analysis={aiAnalysis} />
 
             {/* 3. Empty State / Loading placeholder if no analysis */}
             {!aiAnalysis && (

@@ -45,7 +45,7 @@ export function TripHeader({ start, destination, metrics, tripScore, alertCount,
     };
 
     return (
-        <div className="flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative" ref={containerRef}>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative gap-3 md:gap-0" ref={containerRef}>
 
             {/* Left: Back & Route */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
