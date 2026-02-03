@@ -132,32 +132,39 @@ export default function App() {
               </div>
 
               {/* Inputs Bar */}
-              <div className="flex-1 bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-1 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-2 h-auto sm:h-14">
-                <div className="flex-1 min-w-0">
-                  <LocationInput
-                    value={start}
-                    onChange={setStart}
-                    onSelect={setStartCoords}
-                    label="Start Location"
-                    variant="minimal"
-                    placeholder="Start"
-                    icon="start"
-                  />
+              <div className="flex-1 bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-1 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center gap-2 h-auto sm:h-14 transition-all duration-300 ease-in-out">
+                {/* Primary Row: Start -> End */}
+                <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <LocationInput
+                      value={start}
+                      onChange={setStart}
+                      onSelect={setStartCoords}
+                      label="Start Location"
+                      variant="minimal"
+                      placeholder="Start"
+                      icon="start"
+                    />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 hidden sm:block self-center" />
+                  <div className="flex-1 min-w-0">
+                    <LocationInput
+                      value={destination}
+                      onChange={setDestination}
+                      onSelect={setDestCoords}
+                      label="Destination Location"
+                      variant="minimal"
+                      placeholder="End"
+                      icon="destination"
+                    />
+                  </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 hidden sm:block" />
-                <div className="flex-1 min-w-0">
-                  <LocationInput
-                    value={destination}
-                    onChange={setDestination}
-                    onSelect={setDestCoords}
-                    label="Destination Location"
-                    variant="minimal"
-                    placeholder="End"
-                    icon="destination"
-                  />
-                </div>
+
                 <div className="w-px h-8 bg-border mx-1 hidden sm:block" />
-                <div className="flex items-center gap-2">
+
+                {/* Secondary Row: Date/Time (Collapsible on Mobile could be nice, or just compact side-by-side) */}
+                {/* For now, keeping them visible but compact side-by-side on mobile to avoid extra clicks, but styled cleaner */}
+                <div className="flex items-center gap-2 border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
                   <div className="flex-1 sm:flex-none">
                     <CustomDatePicker
                       value={departureDate}
@@ -173,13 +180,14 @@ export default function App() {
                     />
                   </div>
                 </div>
+
                 <Button
                   onClick={() => handleRouteSubmit()}
                   disabled={loading}
-                  className="h-10 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm sm:ml-1 w-full sm:w-auto"
+                  className="h-10 sm:h-10 px-6 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm sm:ml-1 w-full sm:w-auto mt-1 sm:mt-0 font-bold tracking-wide"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
-                  <span className="inline ml-2">Calculate</span>
+                  <span className="inline ml-2">{loading ? 'Planning...' : 'Go'}</span>
                 </Button>
               </div>
 

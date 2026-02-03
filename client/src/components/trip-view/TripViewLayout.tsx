@@ -78,7 +78,13 @@ export function TripViewLayout({
                 </div>
 
                 {/* Right Sidebar (Fixed Width on Desktop, Fill remaning on Mobile) */}
-                <div className="flex flex-col w-full h-[55%] lg:w-[400px] lg:h-full shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card z-20 shadow-xl order-2 lg:order-2">
+                <div className="flex flex-col w-full h-[55%] lg:w-[400px] lg:h-full shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] lg:shadow-xl order-2 lg:order-2 rounded-t-3xl lg:rounded-none overflow-hidden relative">
+
+                    {/* Mobile Drag Handle Indicator */}
+                    <div className="lg:hidden absolute top-0 left-0 right-0 h-6 flex items-center justify-center pointer-events-none z-30 bg-card/50 backdrop-blur-sm">
+                        <div className="w-12 h-1.5 bg-muted rounded-full opacity-50" />
+                    </div>
+
                     <TripSidebar
                         aiAnalysis={aiAnalysis}
                         recommendations={recommendations}
