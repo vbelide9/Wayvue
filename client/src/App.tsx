@@ -3,6 +3,7 @@ import { RefreshCw, Navigation, ArrowRight } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CustomDatePicker, CustomTimePicker } from './components/CustomDateTimePicker';
+import { LoadingScreen } from './components/LoadingScreen';
 
 // UI Components
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,10 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden relative z-0">
         {/* LEFT COLUMN: MAP & OVERLAYS */}
         <div className="flex-1 lg:basis-[65%] flex flex-col relative min-w-0">
+
+          {/* Loading Screen Overlay */}
+          {loading && <LoadingScreen />}
+
           {/* Top Summary Ribbon (This contains the Inputs) */}
           <div className="absolute top-4 left-4 right-4 z-[400] flex flex-col gap-2 pointer-events-none">
             {/* 1. Dashboard Controls Row */}
