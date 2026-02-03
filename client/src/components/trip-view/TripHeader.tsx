@@ -23,7 +23,7 @@ interface TripHeaderProps {
     onSearch: (start: string, end: string, startCoords?: any, endCoords?: any) => void;
 }
 
-export function TripHeader({ start, destination, metrics, tripScore, alertCount, unit, onUnitChange, onBack, onSearch }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
