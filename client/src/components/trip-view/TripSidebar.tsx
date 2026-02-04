@@ -96,7 +96,7 @@ export function TripSidebar({
                                     : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
                                     }`}
                             >
-                                Destination Trip
+                                Return Trip
                             </button>
                         </div>
                     </div>

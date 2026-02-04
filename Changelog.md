@@ -8,6 +8,14 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
+## [v1.2.12] - 2026-02-04
+### Added
+- **Range Rover Discovery Icon**: Upgraded the moving car marker to a high-fidelity SVG resembling a Range Rover Discovery with panoramic roof, roof rails, and detailed lighting.
+- **Physics-Based Animation**: Implemented advanced interpolation logic for the car animation.
+    - **Smoothing**: Dampened rotation to eliminate "tumbling" and added a "lookahead" feature (50m) to smooth out micro-jitters in the route data.
+    - **Pacing**: Slowed down the animation loop (25s) for a more realistic "cruising" feel.
+    - **Lookahead**: Implemented a 50m lookahead for bearing calculations, ensuring the car steers towards the road ahead rather than reacting to immediate zig-zags.
+
 
 ## [v1.2.11] - 2026-02-04
 ### Changed

@@ -33,7 +33,7 @@ export default function App() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [departureDate, setDepartureDate] = useState(() => {
     const d = new Date();
-    return `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} -${String(d.getDate()).padStart(2, '0')} `;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
@@ -41,7 +41,7 @@ export default function App() {
   const [returnDate, setReturnDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1); // Default return next day
-    return `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} -${String(d.getDate()).padStart(2, '0')} `;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [returnTime, setReturnTime] = useState('10:00');
 
@@ -98,7 +98,9 @@ export default function App() {
     startCoordsOverride?: any,
     destCoordsOverride?: any,
     overrideRoundTrip?: boolean,
-    overridePreference?: 'fastest' | 'scenic'
+    overridePreference?: 'fastest' | 'scenic',
+    returnDateOverride?: string,
+    returnTimeOverride?: string
   ) => {
     setError(null); // Clear previous errors
 
@@ -110,12 +112,20 @@ export default function App() {
     const sCoords = startCoordsOverride || startCoords;
     const dCoords = destCoordsOverride || destCoords;
 
+    // Return overrides
+    const returnDateToUse = returnDateOverride || returnDate;
+    const returnTimeToUse = returnTimeOverride || returnTime;
+
     // Determine Round Trip / Preference (Override > State)
     const rtToUse = overrideRoundTrip !== undefined ? overrideRoundTrip : isRoundTrip;
     const prefToUse = overridePreference || routePreference;
 
     // Update state if overrides are provided (to sync UI)
     if (overrideRoundTrip !== undefined) setIsRoundTrip(overrideRoundTrip);
+
+    // Update Return Date/Time State if overridden
+    if (returnDateOverride) setReturnDate(returnDateOverride);
+    if (returnTimeOverride) setReturnTime(returnTimeOverride);
 
     // Update proper preference state if overridden
     if (overridePreference) {
@@ -145,7 +155,10 @@ export default function App() {
     // We also check string equality, but trim() just in case.
     const isSameLocations = s.trim() === start.trim() && d.trim() === destination.trim();
 
-    if (tripData && tripData.variants && overridePreference && isSameLocations) {
+    // Note: If returnDate changed, we CANNOT use cache, must fetch new route
+    const isSameReturnDate = returnDateToUse === returnDate;
+
+    if (tripData && tripData.variants && overridePreference && isSameLocations && isSameReturnDate) {
       console.log("Instant switch using cached variant:", overridePreference);
       // Logic:
       // We need to know WHICH leg to update if overridePreference is passed.
@@ -173,7 +186,7 @@ export default function App() {
       const outboundVariant = tripData.variants ? tripData.variants[newOutboundPref] : undefined;
       const returnVariant = tripData.variants ? tripData.variants[newReturnPref] : undefined;
 
-      if (outboundVariant && (!rtToUse || returnVariant)) {
+      if (outboundVariant && (!rtToUse || (returnVariant && returnVariant.return))) {
         const cachedResponse = {
           ...tripData,
           isRoundTrip: !!rtToUse,
@@ -215,17 +228,22 @@ export default function App() {
 
     setLoading(true);
     try {
-      console.log('[App] handleRouteSubmit params:', { s, d, dateToUse, timeToUse, rtToUse, returnDate, returnTime });
+      console.log('[App] handleRouteSubmit params:', { s, d, dateToUse, timeToUse, rtToUse, returnDateToUse, returnTimeToUse });
 
       // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
       // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDate, returnTime);
+      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse);
       if (response) {
         setTripData(response);
 
         // Check if it's strictly a round trip response or fallback
         const isRTResponse = response.isRoundTrip;
-        const initialData = isRTResponse ? response.outbound : response;
+
+        // FIX: Respect current active leg when reloading data
+        // If we are currently on 'return' leg and we have return data, show that.
+        // Otherwise default to outbound.
+        const useReturnData = activeLeg === 'return' && isRTResponse && response.return;
+        const initialData = useReturnData ? response.return : response.outbound;
 
         // If Round Trip, extract return Data too
         if (isRTResponse && response.return) {
@@ -250,10 +268,15 @@ export default function App() {
           setRecommendations(initialData.recommendations || []);
 
           // Only reset to outbound if we are changing locations or switching to One-Way
-          // This preserves the 'return' view when just toggling preferences on a Round Trip
+          // This preserves the 'return' view when just toggling preferences/dates on a Round Trip
           if (!isRTResponse || s !== start || d !== destination) {
             setActiveLeg('outbound');
           }
+          // If we decided to use return data above, ensure active leg is set to return (it should already be, but safe to enforce)
+          if (useReturnData) {
+            setActiveLeg('return');
+          }
+
           setViewMode('trip');
         } else {
           console.error("Route API returned success but no route data found.");
@@ -537,15 +560,28 @@ export default function App() {
       unit={unit}
       onUnitChange={setUnit}
       onBack={handleBackToPlanning}
-      onSearch={async (newStart, newEnd, newStartCoords, newEndCoords, newRT, newPref) => {
+      onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
         // Update state first ONLY if values are provided
         if (newStart) setStart(newStart);
         if (newEnd) setDestination(newEnd);
         if (newStartCoords) setStartCoords(newStartCoords);
         if (newEndCoords) setDestCoords(newEndCoords);
+        if (newDepDate) setDepartureDate(newDepDate);
+        if (newDepTime) setDepartureTime(newDepTime);
 
         // Trigger route calc with new values directly to ensure latest data is used
-        await handleRouteSubmit(newStart, newEnd, undefined, undefined, newStartCoords, newEndCoords, newRT, newPref);
+        await handleRouteSubmit(
+          newStart,
+          newEnd,
+          newDepDate,
+          newDepTime,
+          newStartCoords,
+          newEndCoords,
+          newRT,
+          newPref,
+          newReturnDate,
+          newReturnTime
+        );
       }}
       onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
 

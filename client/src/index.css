@@ -136,3 +136,13 @@ input[type="time"] {
     position: relative;
     appearance: none;
 }
+
+@keyframes flowing-dash {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+.animate-dash-flow {
+    animation: flowing-dash 1s linear infinite;
+}

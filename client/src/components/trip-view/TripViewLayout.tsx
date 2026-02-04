@@ -28,7 +28,18 @@ interface TripViewLayoutProps {
     // Callbacks
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
-    onSearch: (start?: string, end?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic') => void;
+    onSearch: (
+        start?: string,
+        end?: string,
+        depDate?: string,
+        depTime?: string,
+        startCoords?: any,
+        endCoords?: any,
+        roundTrip?: boolean,
+        preference?: 'fastest' | 'scenic',
+        returnDate?: string,
+        returnTime?: string
+    ) => void;
     onSegmentSelect: (lat: number, lng: number) => void;
 
     // Round Trip Props
@@ -88,6 +99,8 @@ export function TripViewLayout({
                 isRoundTrip={hasReturn}
                 routePreference={routePreference}
                 returnDate={returnDate}
+                activeLeg={activeLeg}
+                onLegChange={onLegChange}
             />
 
 

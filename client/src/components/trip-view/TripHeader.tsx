@@ -1,3 +1,4 @@
+import { CombinedDateTimePicker } from '../../components/CustomDateTimePicker';
 import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
@@ -21,28 +22,49 @@ interface TripHeaderProps {
     onUnitChange: (unit: 'C' | 'F') => void;
     onBack: () => void;
     onSearch: (
-        start?: string, // Made optional
-        end?: string,   // Made optional
+        start?: string,
+        end?: string,
         depDate?: string,
         depTime?: string,
         startCoords?: any,
         endCoords?: any,
         roundTrip?: boolean,
-        preference?: 'fastest' | 'scenic'
+        preference?: 'fastest' | 'scenic',
+        returnDate?: string,
+        returnTime?: string
     ) => void;
 
     // New Props for Toggles
     isRoundTrip?: boolean;
     routePreference?: 'fastest' | 'scenic';
     returnDate?: string; // New prop for return date display
+    activeLeg?: 'outbound' | 'return';
+    onLegChange?: (leg: 'outbound' | 'return') => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, returnDate }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
     const [editStartCoords, setEditStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
     const [editDestCoords, setEditDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+
+    // Date/Time Editing State
+    // Initialize with something specific if known, or defaults
+    const [editReturnDate, setEditReturnDate] = useState<string>(
+        // Try to parse returnDate prop if it looks like YYYY-MM-DD, otherwise default to tomorrow
+        // actually returnDate prop is formatted string "Mon, Feb 5" from App.tsx. 
+        // We need a YYYY-MM-DD for the picker. 
+        // Since we don't get the raw YYYY-MM-DD here easily (unless we pass it), 
+        // let's try to pass the raw returnDate from App or just default to tomorrow/today.
+        // For now, let's init to tomorrow. Ideally we pass rawReturnDate.
+        (() => {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })()
+    );
+    const [editReturnTime, setEditReturnTime] = useState('10:00');
 
     // Local state for toggles when editing, but also fast switching
     const [localRoundTrip, setLocalRoundTrip] = useState(isRoundTrip || false);
@@ -81,8 +103,20 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
         const rt = overrideRoundTrip !== undefined ? overrideRoundTrip : localRoundTrip;
         const pref = overridePref || localPreference;
 
-        // Pass 8 args: start, end, date, time, sCoords, dCoords, rt, pref
-        onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, rt, pref);
+        // Pass 10 args: start, end, depDate, depTime, sCoords, dCoords, rt, pref, returnDate, returnTime
+        // Note: we're not editing departure date/time here yet, passing undefined to keep existing
+        onSearch(
+            editStart,
+            editDest,
+            undefined,
+            undefined,
+            editStartCoords,
+            editDestCoords,
+            rt,
+            pref,
+            editReturnDate,
+            editReturnTime
+        );
         setIsEditing(false);
     };
 
@@ -90,16 +124,28 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
         const newVal = !localRoundTrip;
         setLocalRoundTrip(newVal);
         // Trigger immediate search with current locations but new toggle
-        // We use props start/dest to avoid accidental location changes if edit state is stale
-        // But logic usually uses edit state? Let's use edit state to be consistent with handleSearch
-        onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, newVal, localPreference);
+        onSearch(
+            editStart,
+            editDest,
+            undefined,
+            undefined,
+            editStartCoords,
+            editDestCoords,
+            newVal,
+            localPreference,
+            editReturnDate, // Pass current return date edit state
+            editReturnTime
+        );
     };
 
     const togglePreference = (pref: 'fastest' | 'scenic') => {
         if (pref === localPreference) return;
         setLocalPreference(pref);
         // Pass undefined for start/dest to signal "use current trip context" for instant switching
-        onSearch(undefined, undefined, undefined, undefined, localRoundTrip, pref);
+        onSearch(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+        // Actually, logic for instant switch in App.tsx relies on preference override.
+        // We can pass just the override preference.
+        onSearch(undefined, undefined, undefined, undefined, undefined, undefined, localRoundTrip, pref);
     };
 
     return (
@@ -192,6 +238,21 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                     />
                                 </div>
 
+                                {/* Return Date Picker (Conditional) */}
+                                {localRoundTrip && (
+                                    <div className="pt-2 border-t border-border/50">
+                                        <CombinedDateTimePicker
+                                            label="Return Date"
+                                            dateValue={editReturnDate}
+                                            onDateChange={setEditReturnDate}
+                                            timeValue={editReturnTime}
+                                            onTimeChange={setEditReturnTime}
+                                            minDate={new Date().toISOString().split('T')[0]} // Ideally min date is departure date
+                                            maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                        />
+                                    </div>
+                                )}
+
                                 <Button className="w-full font-bold" onClick={() => handleSearch()}>
                                     Update Route
                                 </Button>
@@ -214,11 +275,23 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         <span>{localRoundTrip ? 'Round Trip' : 'One Way'}</span>
                     </button>
 
-                    {/* Return Date Display (only if Round Trip) */}
-                    {localRoundTrip && returnDate && (
-                        <div className="h-8 px-3 rounded-lg text-xs font-medium border border-border/50 flex items-center gap-1.5 bg-secondary/20 text-muted-foreground">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>Return: {returnDate}</span>
+                    {localRoundTrip && (
+                        <div className="h-8 flex items-center">
+                            <CombinedDateTimePicker
+                                dateValue={editReturnDate}
+                                onDateChange={(d) => {
+                                    setEditReturnDate(d);
+                                    onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, localPreference, d, editReturnTime);
+                                }}
+                                timeValue={editReturnTime}
+                                onTimeChange={(t) => {
+                                    setEditReturnTime(t);
+                                    onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, localPreference, editReturnDate, t);
+                                }}
+                                minDate={new Date().toISOString().split('T')[0]}
+                                maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                                className="scale-90 origin-left"
+                            />
                         </div>
                     )}
 
@@ -240,6 +313,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     </div>
                 </div>
             </div>
+
+
 
             {/* Right: Metrics Chips & Actions */}
             <div className="flex-1 flex items-center justify-end min-w-0">
@@ -310,6 +385,25 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     </button>
                 </div>
             </div>
+
+            {/* Center: Leg Toggles (Start / Return) - Only for Round Trip */}
+            {/* Moved to end of DOM to ensure stacking on top of siblings */}
+            {isRoundTrip && onLegChange && (
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex bg-secondary/30 rounded-lg p-1 border border-border/50 z-[200] pointer-events-auto shadow-lg">
+                    <button
+                        onClick={() => onLegChange('outbound')}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeLeg === 'outbound' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        Start Trip
+                    </button>
+                    <button
+                        onClick={() => onLegChange('return')}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeLeg === 'return' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                        Return Trip
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

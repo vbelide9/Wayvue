@@ -236,6 +236,187 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         </div>
     );
 
+    // --- CAR ANIMATION HELPERS ---
+
+    // Calculate bearing between two points
+    const getBearing = (startLat: number, startLng: number, destLat: number, destLng: number) => {
+        const startLatRad = (startLat * Math.PI) / 180;
+        const startLngRad = (startLng * Math.PI) / 180;
+        const destLatRad = (destLat * Math.PI) / 180;
+        const destLngRad = (destLng * Math.PI) / 180;
+
+        const y = Math.sin(destLngRad - startLngRad) * Math.cos(destLatRad);
+        const x = Math.cos(startLatRad) * Math.sin(destLatRad) -
+            Math.sin(startLatRad) * Math.cos(destLatRad) * Math.cos(destLngRad - startLngRad);
+        const brng = (Math.atan2(y, x) * 180) / Math.PI;
+        return (brng + 360) % 360;
+    };
+
+    // Calculate distance between two points (Haversine)
+    const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+    };
+
+    // Interpolate angle correctly handling 360 wrap-around
+    const lerpAngle = (start: number, end: number, t: number) => {
+        let diff = (end - start) % 360;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        const result = (start + diff * t) % 360;
+        return result < 0 ? result + 360 : result;
+    };
+
+    // Moving Car Component
+    const MovingCarMarker = ({ routePositions, duration = 25000 }: { routePositions: LatLngExpression[], duration?: number }) => {
+        const [currentPosition, setCurrentPosition] = React.useState<LatLngExpression | null>(null);
+
+        // Visual bearing state for smooth rotation
+        const [visualBearing, setVisualBearing] = React.useState(0);
+        const targetBearingRef = React.useRef(0);
+
+        // Fix TS errors: Initialize refs with null
+        const requestRef = React.useRef<number | null>(null);
+        const startTimeRef = React.useRef<number | null>(null);
+
+        // Pre-calculate cumulative distances for smooth interpolation
+        const cumulativeDistances = React.useMemo(() => {
+            if (!routePositions || routePositions.length < 2) return [];
+            const dists = [0];
+            for (let i = 1; i < routePositions.length; i++) {
+                const prev = routePositions[i - 1] as [number, number];
+                const curr = routePositions[i] as [number, number];
+                const d = getDistance(prev[0], prev[1], curr[0], curr[1]);
+                dists.push(dists[i - 1] + d);
+            }
+            return dists;
+        }, [routePositions]);
+
+        React.useEffect(() => {
+            if (!routePositions || routePositions.length < 2 || cumulativeDistances.length === 0) return;
+
+            const totalDistance = cumulativeDistances[cumulativeDistances.length - 1];
+
+            const animate = (time: number) => {
+                if (startTimeRef.current === null) startTimeRef.current = time;
+                const elapsed = time - startTimeRef.current;
+                const progress = (elapsed % duration) / duration;
+
+                // Calculate target distance along the path
+                const targetDist = progress * totalDistance;
+
+                // Find the segment containing this distance
+                let index = 0;
+                while (index < cumulativeDistances.length - 1 && cumulativeDistances[index + 1] < targetDist) {
+                    index++;
+                }
+
+                // We are between index and index + 1
+                const startDist = cumulativeDistances[index];
+                const endDist = cumulativeDistances[index + 1];
+                const segmentLen = endDist - startDist;
+
+                // Avoid division by zero
+                const segmentProgress = segmentLen > 0 ? (targetDist - startDist) / segmentLen : 0;
+
+                const start = routePositions[index] as [number, number];
+                const end = routePositions[index + 1] as [number, number];
+
+                if (start && end) {
+                    const lat = start[0] + (end[0] - start[0]) * segmentProgress;
+                    const lng = start[1] + (end[1] - start[1]) * segmentProgress;
+                    setCurrentPosition([lat, lng]);
+
+                    // Calculate bearing
+                    if (Math.abs(end[0] - start[0]) > 0.0001 || Math.abs(end[1] - start[1]) > 0.0001) {
+                        const newBearing = getBearing(start[0], start[1], end[0], end[1]);
+                        targetBearingRef.current = newBearing;
+                    }
+                }
+
+                // Smoothly interpolate visual bearing towards target
+                setVisualBearing(prev => lerpAngle(prev, targetBearingRef.current, 0.05));
+
+                requestRef.current = requestAnimationFrame(animate);
+            };
+
+            requestRef.current = requestAnimationFrame(animate);
+            return () => {
+                if (requestRef.current !== null) cancelAnimationFrame(requestRef.current);
+            };
+        }, [routePositions, duration, cumulativeDistances]);
+
+        if (!currentPosition) return null;
+
+        return (
+            <Marker
+                position={currentPosition}
+                zIndexOffset={1000}
+                icon={L.divIcon({
+                    className: 'car-marker-icon',
+                    html: `<div style="transform: rotate(${visualBearing}deg); transition: transform 0.05s linear; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.4));">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Shadow -->
+                            <rect x="14" y="4" width="20" height="40" rx="4" fill="black" fill-opacity="0.2" transform="translate(2, 2)"/>
+                            
+                            <!-- Main Body (Orange #E67E22) -->
+                            <path d="M14 8C14 5.79086 15.7909 4 18 4H30C32.2091 4 34 5.79086 34 8V40C34 42.2091 32.2091 44 30 44H18C15.7909 44 14 42.2091 14 40V8Z" fill="#E67E22" stroke="#D35400" stroke-width="1"/>
+                            
+                            <!-- Hood Details (Clamshell lines) -->
+                            <path d="M16 6L16 14" stroke="#D35400" stroke-width="1" stroke-opacity="0.5"/>
+                            <path d="M32 6L32 14" stroke="#D35400" stroke-width="1" stroke-opacity="0.5"/>
+                            <path d="M18 5H30" stroke="#D35400" stroke-width="1" stroke-opacity="0.5"/>
+
+                            <!-- Windshield -->
+                            <path d="M15 14H33L32 18H16L15 14Z" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+
+                            <!-- Panoramic Glass Roof -->
+                            <rect x="16" y="20" width="16" height="14" rx="1" fill="#111827"/>
+                            <rect x="16" y="20" width="16" height="14" rx="1" stroke="#374151" stroke-width="1"/>
+                            
+                            <!-- Roof Rails (Prominent) -->
+                            <path d="M15 12V38" stroke="#1F2937" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M33 12V38" stroke="#1F2937" stroke-width="1.5" stroke-linecap="round"/>
+                            
+                            <!-- High-Gloss Roof Reflections -->
+                            <path d="M17 21L24 33" stroke="white" stroke-opacity="0.1" stroke-width="2"/>
+
+                            <!-- Rear Spoiler / Tailgate -->
+                            <path d="M15 40H33" stroke="#9A3412" stroke-width="2"/>
+                            
+                            <!-- Rear Window -->
+                            <path d="M16 36H32" stroke="#1F2937" stroke-width="3" stroke-linecap="round"/>
+
+                            <!-- Side Mirrors -->
+                            <rect x="11" y="13" width="3" height="5" rx="1" fill="#E67E22" stroke="#D35400" stroke-width="0.5"/>
+                            <rect x="34" y="13" width="3" height="5" rx="1" fill="#E67E22" stroke="#D35400" stroke-width="0.5"/>
+
+                            <!-- Headlights (LED styling) -->
+                            <rect x="14" y="4" width="4" height="2" rx="0.5" fill="#FEF3C7"/>
+                            <rect x="30" y="4" width="4" height="2" rx="0.5" fill="#FEF3C7"/>
+
+                            <!-- Taillights (Vertical Stack hint) -->
+                            <rect x="14" y="42" width="3" height="2" rx="0.5" fill="#DC2626"/>
+                            <rect x="31" y="42" width="3" height="2" rx="0.5" fill="#DC2626"/>
+                        </svg>
+                    </div>`,
+                    iconSize: [48, 48],
+                    iconAnchor: [24, 24] // Center
+                })}
+            />
+        );
+    };
+
     return (
         <div className="h-full w-full relative z-0">
             {/* Layer Control Overlay */}
@@ -287,8 +468,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                             positions={routePositions}
                             color="#3b82f6"
                             weight={3}
-                            opacity={1}
-                            dashArray={layers.traffic ? undefined : '1, 10'}
+                            opacity={0.8}
+                            dashArray="10, 10"
+                            className="animate-dash-flow"
                         />
                     </>
                 )}
@@ -310,14 +492,20 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                             positions={returnRoutePositions}
                             color="#f97316"
                             weight={3}
-                            opacity={1}
-                            dashArray={layers.traffic ? undefined : '1, 10'}
+                            opacity={0.8}
+                            dashArray="10, 10"
+                            className="animate-dash-flow"
                         />
                     </>
                 )}
 
                 {/* Auto Recenter on ACTIVE LEG only */}
                 <RecenterAutomatically latLngs={activeLeg === 'outbound' ? (routePositions || []) : (returnRoutePositions || [])} />
+
+                {/* Moving Car Animation */}
+                {activeLeg === 'outbound' && routePositions && <MovingCarMarker routePositions={routePositions} />}
+                {activeLeg === 'return' && returnRoutePositions && <MovingCarMarker routePositions={returnRoutePositions} />}
+
 
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
