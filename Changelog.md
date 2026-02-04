@@ -9,7 +9,17 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
+## [v1.2.11] - 2026-02-04
+### Changed
+- **Instant Route Switching**: Switching between "Fastest" and "Scenic" routes is now instant and no longer triggers a loading screen when the location hasn't changed.
+- **Route Icons**: Updated the route preference icons to a **Camera** (Scenic) and **Zap** (Fastest), matching the Trip View design, and added tooltips.
+- **Favicon**: Updated the browser tab icon to a custom SVG with a dark background for better visibility, replacing the standard transparent icon.
 
+### Added
+- **Route Update Feedback**: Added a contextual "Updating your journey" loading screen with animation for legitimate route changes (e.g., changing date or destination).
+
+### Fixed
+- **Toggle Button Layout**: Fixed CSS styling issues that caused misalignment and invalid spacing in the route preference toggle buttons.
 ## [v1.2.10] - 2026-02-03
 ### Fixed
 - **Input Icon Overlap**: Added right padding to the start location input to prevent long text (e.g., "New York, NY") from overlapping with the "Current Location" icon.
