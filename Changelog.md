@@ -8,7 +8,17 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
+## [v1.2.13] - 2026-02-04
+### Fixed
+- **Trip Header Layout**: Refactored the Trip Header using a CSS Grid system to prevent "Scenic/Fast" toggles from overlapping with "Start/Return" trip buttons on desktop.
+- **Round Trip UI**: Fixed a logic issue where "Start and Return" buttons wouldn't appear if internal return data was partially structured. Added a fallback to the `isRoundTrip` state flag.
+
 ## [v1.2.12] - 2026-02-04
+### Added
+- **Range Rover Discovery Icon**: Upgraded the moving car marker to a high-fidelity SVG resembling a Range Rover Discovery with panoramic roof, roof rails, and detailed lighting.
+- **Physics-Based Animation**: Implemented advanced interpolation logic for the car animation.
+
+
 ### Added
 - **Physics-Based Animation**: Implemented advanced interpolation logic for the car animation.
     - **Smoothing**: Dampened rotation to eliminate "tumbling" and added a "lookahead" feature (50m) to smooth out micro-jitters in the route data.
