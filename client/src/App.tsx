@@ -586,7 +586,7 @@ export default function App() {
       onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
 
       activeLeg={activeLeg}
-      hasReturn={!!(tripData && tripData.return)}
+      hasReturn={!!(tripData && (tripData.return || tripData.isRoundTrip))}
       routePreference={routePreference}
       onLegChange={switchLeg}
       returnDate={

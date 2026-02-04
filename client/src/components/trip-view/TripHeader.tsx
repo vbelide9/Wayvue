@@ -149,10 +149,10 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     };
 
     return (
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative gap-3 md:gap-0" ref={containerRef}>
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative gap-3 md:gap-4" ref={containerRef}>
 
             {/* Left: Back & Route */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0 justify-start">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -167,15 +167,15 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         onClick={() => setIsEditing(!isEditing)}
                         className="flex items-center gap-2 text-sm font-bold text-secondary-foreground bg-secondary hover:bg-secondary/90 px-4 py-2 rounded-full transition-all shadow-sm"
                     >
-                        <span className="truncate max-w-[120px] sm:max-w-none">{start}</span>
+                        <span className="truncate max-w-[100px] sm:max-w-none">{start}</span>
                         <span className="text-secondary-foreground/70">to</span>
-                        <span className="truncate max-w-[120px] sm:max-w-none">{destination}</span>
+                        <span className="truncate max-w-[100px] sm:max-w-none">{destination}</span>
                         <Search className="w-4 h-4 text-secondary-foreground ml-2" />
                     </button>
 
                     {/* Search Overlay Popover */}
                     {isEditing && (
-                        <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[400px] bg-card border border-border shadow-2xl rounded-xl p-4 z-[100] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="absolute top-full left-0 mt-2 w-[320px] sm:w-[400px] bg-card border border-border shadow-2xl rounded-xl p-4 z-[100] animate-in fade-in zoom-in-95 duration-200 text-left">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Edit Route</h3>
                                 <button onClick={() => setIsEditing(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-secondary">
@@ -314,12 +314,31 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                 </div>
             </div>
 
-
+            {/* Center: Leg Toggles (Start / Return) - Only for Round Trip */}
+            {/* Positioned in the middle Grid Cell on Desktop */}
+            <div className="hidden md:flex justify-center items-center">
+                {isRoundTrip && onLegChange && (
+                    <div className="flex bg-secondary/30 rounded-lg p-1 border border-border/50 shadow-sm">
+                        <button
+                            onClick={() => onLegChange('outbound')}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer whitespace-nowrap ${activeLeg === 'outbound' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Start Trip
+                        </button>
+                        <button
+                            onClick={() => onLegChange('return')}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer whitespace-nowrap ${activeLeg === 'return' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Return Trip
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {/* Right: Metrics Chips & Actions */}
-            <div className="flex-1 flex items-center justify-end min-w-0">
+            <div className="flex items-center justify-end min-w-0">
                 {/* Scrollable Container with Fade Mask */}
-                <div className="relative flex-1 flex justify-end min-w-0 mask-linear-fade">
+                <div className="relative flex justify-end min-w-0 mask-linear-fade">
                     <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 pl-4 pr-1">
 
                         {/* Metric: Time, Distance, Fuel, EV */}
@@ -367,7 +386,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     </div>
                 </div>
 
-                <div className="h-6 w-px bg-border/50 mx-1 shrink-0" />
+                <div className="hidden lg:block h-6 w-px bg-border/50 mx-2 shrink-0" />
 
                 {/* Unit Toggle - Larger Touch Targets */}
                 <div className="flex items-center bg-secondary/30 rounded-lg p-1 border border-border/50 shrink-0">
@@ -385,25 +404,6 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     </button>
                 </div>
             </div>
-
-            {/* Center: Leg Toggles (Start / Return) - Only for Round Trip */}
-            {/* Moved to end of DOM to ensure stacking on top of siblings */}
-            {isRoundTrip && onLegChange && (
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex bg-secondary/30 rounded-lg p-1 border border-border/50 z-[200] pointer-events-auto shadow-lg">
-                    <button
-                        onClick={() => onLegChange('outbound')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeLeg === 'outbound' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                        Start Trip
-                    </button>
-                    <button
-                        onClick={() => onLegChange('return')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all cursor-pointer ${activeLeg === 'return' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                        Return Trip
-                    </button>
-                </div>
-            )}
         </div>
     );
 }
