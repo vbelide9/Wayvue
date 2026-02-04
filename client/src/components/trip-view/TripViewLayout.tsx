@@ -3,7 +3,10 @@ import { TripHeader } from './TripHeader';
 import { TripSidebar } from './TripSidebar';
 import { type RoadCondition } from '@/components/RoadConditionCard';
 
+import { LoadingScreen } from '@/components/LoadingScreen';
+
 interface TripViewLayoutProps {
+    isLoading?: boolean; // New prop
     start: string;
     destination: string;
     metrics: {
@@ -25,7 +28,7 @@ interface TripViewLayoutProps {
     // Callbacks
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
-    onSearch: (start: string, end: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic') => void;
+    onSearch: (start?: string, end?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic') => void;
     onSegmentSelect: (lat: number, lng: number) => void;
 
     // Round Trip Props
@@ -40,6 +43,7 @@ interface TripViewLayoutProps {
 }
 
 export function TripViewLayout({
+    isLoading,
     start,
     destination,
     metrics,
@@ -66,7 +70,9 @@ export function TripViewLayout({
     const alertCount = roadConditions.filter(c => c.status !== 'good').length;
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans">
+        <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans relative">
+            {/* Loading Overlay */}
+            {isLoading && <LoadingScreen title="Updating your journey" />}
 
             {/* 1. Header (Compact) */}
             <TripHeader
@@ -87,7 +93,7 @@ export function TripViewLayout({
 
 
             {/* 2. Main Content Area */}
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative z-0">
+            <div className={`flex-1 flex flex-col lg:flex-row overflow-hidden relative z-0 ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
 
                 {/* Map Area (Grow on Desktop, 45% height on Mobile) */}
                 <div className="relative z-0 min-w-0 bg-background/5 h-[45%] lg:h-auto lg:flex-1 w-full lg:w-auto order-1 lg:order-1">

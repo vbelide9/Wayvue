@@ -2,7 +2,11 @@
 import { useEffect, useState } from 'react';
 import { Car, Tent, Mountain, Snowflake, Anchor, Compass } from 'lucide-react';
 
-export function LoadingScreen() {
+interface LoadingScreenProps {
+    title?: string;
+}
+
+export function LoadingScreen({ title = "Planning your trip" }: LoadingScreenProps) {
     const icons = [
         { icon: Car, label: "Packing the car..." },
         { icon: Tent, label: "Finding campsites..." },
@@ -38,7 +42,7 @@ export function LoadingScreen() {
                 {/* Text Content */}
                 <div className="text-center space-y-2">
                     <h3 className="text-xl font-bold tracking-tight text-foreground">
-                        Planning your trip
+                        {title}
                     </h3>
                     <div className="h-6 overflow-hidden relative">
                         <p className="text-sm font-medium text-muted-foreground animate-fade-in-up key={currentIndex}">

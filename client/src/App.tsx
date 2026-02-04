@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, Navigation, ArrowRight } from 'lucide-react';
+import { RefreshCw, Navigation, ArrowRight, Camera, Zap } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CombinedDateTimePicker } from './components/CustomDateTimePicker';
@@ -33,7 +33,7 @@ export default function App() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [departureDate, setDepartureDate] = useState(() => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} -${String(d.getDate()).padStart(2, '0')} `;
   });
   const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
 
@@ -41,7 +41,7 @@ export default function App() {
   const [returnDate, setReturnDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1); // Default return next day
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} -${String(d.getDate()).padStart(2, '0')} `;
   });
   const [returnTime, setReturnTime] = useState('10:00');
 
@@ -140,7 +140,12 @@ export default function App() {
       d, destination, matchDest: d === destination
     });
 
-    if (tripData && tripData.variants && overridePreference && s === start && d === destination) {
+    // Check if we can instant switch
+    // We strictly check if variants exist and we are toggling preference.
+    // We also check string equality, but trim() just in case.
+    const isSameLocations = s.trim() === start.trim() && d.trim() === destination.trim();
+
+    if (tripData && tripData.variants && overridePreference && isSameLocations) {
       console.log("Instant switch using cached variant:", overridePreference);
       // Logic:
       // We need to know WHICH leg to update if overridePreference is passed.
@@ -263,7 +268,7 @@ export default function App() {
       if (error.response && error.response.status === 422) {
         setError("Could not find one of those locations. Please check for typos.");
       } else {
-        setError(`Failed to calculate route: ${error.message || 'Unknown error'}`);
+        setError(`Failed to calculate route: ${error.message || 'Unknown error'} `);
       }
     } finally {
       setLoading(false);
@@ -372,7 +377,7 @@ export default function App() {
 
                     {/* Return Date/Time (Always Visible) */}
                     <div
-                      className={`transition-all duration-300 relative ${!isRoundTrip ? 'opacity-60 grayscale hover:opacity-80' : 'opacity-100'}`}
+                      className={`transition-all duration-300 relative ${!isRoundTrip ? 'opacity-60 grayscale hover:opacity-80' : 'opacity-100'} `}
                       onClick={() => {
                         if (!isRoundTrip) setIsRoundTrip(true);
                       }}
@@ -429,14 +434,14 @@ export default function App() {
                         title="Fastest Route"
                         className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'fastest' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                        <Zap className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => { setOutboundPref('scenic'); setReturnPref('scenic'); }}
                         title="Scenic Route"
                         className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19c0-1.7-1.3-3-3-3s-3 1.3-3 3-1.3 3-3 3-3-1.3-3-3c0-3.3 2.7-6 6-6 1.7 0 3.3.7 4.5 1.9L19 12v7h-1.5z" /><path d="M13 5c0 1.7-1.3 3-3 3s-3-1.3-3-3 1.3-3 3-3 3 1.3 3 3z" /></svg>
+                        <Camera className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
@@ -519,6 +524,7 @@ export default function App() {
 
   return viewMode === 'planning' ? renderPlanningView() : (
     <TripViewLayout
+      isLoading={loading}
       start={start}
       destination={destination}
       metrics={metrics}
@@ -532,9 +538,9 @@ export default function App() {
       onUnitChange={setUnit}
       onBack={handleBackToPlanning}
       onSearch={async (newStart, newEnd, newStartCoords, newEndCoords, newRT, newPref) => {
-        // Update state first
-        setStart(newStart);
-        setDestination(newEnd);
+        // Update state first ONLY if values are provided
+        if (newStart) setStart(newStart);
+        if (newEnd) setDestination(newEnd);
         if (newStartCoords) setStartCoords(newStartCoords);
         if (newEndCoords) setDestCoords(newEndCoords);
 

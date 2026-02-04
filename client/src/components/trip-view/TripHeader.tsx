@@ -21,8 +21,8 @@ interface TripHeaderProps {
     onUnitChange: (unit: 'C' | 'F') => void;
     onBack: () => void;
     onSearch: (
-        start: string,
-        end: string,
+        start?: string, // Made optional
+        end?: string,   // Made optional
         depDate?: string,
         depTime?: string,
         startCoords?: any,
@@ -98,7 +98,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     const togglePreference = (pref: 'fastest' | 'scenic') => {
         if (pref === localPreference) return;
         setLocalPreference(pref);
-        onSearch(start, destination, undefined, undefined, localRoundTrip, pref);
+        // Pass undefined for start/dest to signal "use current trip context" for instant switching
+        onSearch(undefined, undefined, undefined, undefined, localRoundTrip, pref);
     };
 
     return (
