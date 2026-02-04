@@ -6,7 +6,7 @@ const axios = require('axios');
 const fetchWithRetry = async (url, retries = 3, delay = 500) => {
     for (let i = 0; i < retries; i++) {
         try {
-            return await axios.get(url, { timeout: 10000 }); // INCREASED TIMEOUT to 10s
+            return await axios.get(url, { timeout: 5000 });
         } catch (error) {
             if (i === retries - 1) throw error;
             await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));

@@ -25,8 +25,15 @@ interface TripViewLayoutProps {
     // Callbacks
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
-    onSearch: (start: string, end: string, startCoords?: any, endCoords?: any) => void;
+    onSearch: (start: string, end: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic') => void;
     onSegmentSelect: (lat: number, lng: number) => void;
+
+    // Round Trip Props
+    activeLeg?: 'outbound' | 'return';
+    hasReturn?: boolean;
+    routePreference?: 'fastest' | 'scenic';
+    returnDate?: string; // New prop
+    onLegChange?: (leg: 'outbound' | 'return') => void;
 
     // Slots
     map: ReactNode;
@@ -46,8 +53,15 @@ export function TripViewLayout({
     onBack,
     onSearch,
     onSegmentSelect,
-    map
+    map,
+    activeLeg,
+    hasReturn,
+    routePreference,
+    onLegChange,
+    returnDate
 }: TripViewLayoutProps) {
+
+    console.log('[TripViewLayout] Render. hasReturn:', hasReturn, 'activeLeg:', activeLeg);
 
     const alertCount = roadConditions.filter(c => c.status !== 'good').length;
 
@@ -65,7 +79,12 @@ export function TripViewLayout({
                 onUnitChange={onUnitChange}
                 onBack={onBack}
                 onSearch={onSearch}
+                isRoundTrip={hasReturn}
+                routePreference={routePreference}
+                returnDate={returnDate}
             />
+
+
 
             {/* 2. Main Content Area */}
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative z-0">
@@ -84,7 +103,7 @@ export function TripViewLayout({
                     <div className="lg:hidden absolute top-0 left-0 right-0 h-6 flex items-center justify-center pointer-events-none z-30 bg-card/50 backdrop-blur-sm">
                         <div className="w-12 h-1.5 bg-muted rounded-full opacity-50" />
                     </div>
-
+                    {/* Sidebar (Tabs) - Fixed Width on Desktop, Bottom Sheet on Mobile */}
                     <TripSidebar
                         aiAnalysis={aiAnalysis}
                         recommendations={recommendations}
@@ -92,6 +111,9 @@ export function TripViewLayout({
                         weatherData={weatherData}
                         unit={unit}
                         onSegmentSelect={onSegmentSelect}
+                        activeLeg={activeLeg}
+                        hasReturn={hasReturn}
+                        onLegChange={onLegChange}
                     />
                 </div>
 

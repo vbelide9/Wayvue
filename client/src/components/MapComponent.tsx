@@ -1,10 +1,10 @@
 import React from 'react';
-import { Thermometer, Sun, Cloud, CloudRain, Snowflake, Zap, Wind, Umbrella, AlertTriangle, CheckCircle } from 'lucide-react';
-import { MapContainer, TileLayer, Polyline, ZoomControl, Marker, Popup, useMap } from 'react-leaflet';
+import { Thermometer, Sun, Cloud, CloudRain, Snowflake, Wind, Umbrella, AlertTriangle, CheckCircle, Fuel } from 'lucide-react';
+import { MapContainer, TileLayer, Polyline, ZoomControl, Marker, Popup, useMap, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
-import type { FeatureCollection, LineString, Geometry } from 'geojson';
+import type { FeatureCollection, Geometry } from 'geojson';
 
 // Fix for default Leaflet markers in Vite/Webpack
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -19,8 +19,6 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// ... existing code ...
-
 interface WeatherPoint {
     lat: number;
     lng: number;
@@ -30,10 +28,8 @@ interface WeatherPoint {
     humidity?: number;
     windSpeed?: number;
     precipitationProbability?: number;
+    gasPrice?: string;
 }
-
-// ... existing code ...
-
 
 // Map WMO codes to text
 const getWeatherDescription = (code: number) => {
@@ -51,37 +47,40 @@ const getWeatherDescription = (code: number) => {
 
 interface MapComponentProps {
     routeGeoJSON?: FeatureCollection | Geometry | null;
+    returnRouteGeoJSON?: FeatureCollection | Geometry | null; // New prop for return route
     weatherData?: WeatherPoint[];
+    returnWeatherData?: WeatherPoint[]; // New prop
     unit: 'C' | 'F';
     selectedLocation?: { lat: number; lng: number } | null;
+    activeLeg?: 'outbound' | 'return'; // New prop
+    alternativeRouteGeoJSON?: FeatureCollection | Geometry | null; // New prop for alternative route display
+    routeColor?: string; // (Deprecating single routeColor in favor of fixed Blue/Orange, but keeping for now)
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, unit, selectedLocation }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON }) => {
     // Default: San Francisco
     const defaultCenter: LatLngExpression = [37.7749, -122.4194];
 
-    // Extract coordinates from GeoJSON if available for polyline
-    const routePositions: LatLngExpression[] | null = React.useMemo(() => {
-        if (!routeGeoJSON) return null;
-
-        // Handle GeoJSON Geometry direct (e.g. LineString from OSRM/Backend)
-        if (routeGeoJSON.type === 'LineString' && (routeGeoJSON as LineString).coordinates) {
-            const coords = (routeGeoJSON as LineString).coordinates;
-            // GeoJSON is [lng, lat], Leaflet needs [lat, lng]
-            return coords.map((coord: any) => [coord[1], coord[0]] as LatLngExpression);
+    // Helper to extract coords
+    const extractCoords = (geoJSON: any): LatLngExpression[] | null => {
+        if (!geoJSON) return null;
+        if (geoJSON.type === 'LineString' && geoJSON.coordinates) {
+            return geoJSON.coordinates.map((coord: any) => [coord[1], coord[0]] as LatLngExpression);
         }
-
-        // Handle FeatureCollection (Standard GeoJSON)
-        if (routeGeoJSON.type === 'FeatureCollection' && (routeGeoJSON as FeatureCollection).features) {
-            const features = (routeGeoJSON as FeatureCollection).features;
-            if (features.length > 0 && features[0].geometry.type === 'LineString') {
-                const coords = (features[0].geometry as LineString).coordinates;
+        if (geoJSON.type === 'FeatureCollection' && geoJSON.features) {
+            if (geoJSON.features.length > 0 && geoJSON.features[0].geometry.type === 'LineString') {
+                const coords = geoJSON.features[0].geometry.coordinates;
                 return coords.map((coord: any) => [coord[1], coord[0]] as LatLngExpression);
             }
         }
-
         return null;
-    }, [routeGeoJSON]);
+    };
+
+    const routePositions = React.useMemo(() => extractCoords(routeGeoJSON), [routeGeoJSON]);
+    const returnRoutePositions = React.useMemo(() => extractCoords(returnRouteGeoJSON), [returnRouteGeoJSON]);
+
+    // Use passed color or default blue
+    // const primaryColor = routeColor || "#3b82f6"; // Deprecated, using strict colors now
 
     // Helper component to auto-zoom to route
     const RecenterAutomatically = ({ latLngs }: { latLngs: LatLngExpression[] }) => {
@@ -155,7 +154,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
         // Default
         return 'Dry';
     };
-
 
     // Legend Component
     const MapLegend = () => (
@@ -255,128 +253,265 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, weatherData, 
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {routePositions && (
+                {/* Route Layers */}
+                {/* Alternative Route (Gray/Background) */}
+                {alternativeRouteGeoJSON && (
+                    <GeoJSON
+                        key={`alt-${JSON.stringify(alternativeRouteGeoJSON)}`} // Force re-render on change
+                        data={alternativeRouteGeoJSON as any}
+                        style={{
+                            color: '#64748b', // Slate-500 (Grayish)
+                            weight: 4,
+                            opacity: 0.5,
+                            dashArray: '10, 10', // Dashed line to indicate alternative
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }}
+                    />
+                )}
+
+                {/* Outbound Route (Blue) - Only if activeLeg is outbound */}
+                {activeLeg === 'outbound' && routePositions && (
                     <>
-                        {/* Base Route Line */}
                         <Polyline
+                            key={`main-route-outbound-${routePositions.length}-${routePositions[0]}`}
                             positions={routePositions}
-                            color="#3b82f6" // Default Blue
+                            color="#3b82f6"
                             weight={6}
-                            opacity={0.4}
+                            opacity={0.6}
                             lineCap="round"
                             lineJoin="round"
                         />
-                        {/* Highlight Route Line (Simulating data coloring) */}
                         <Polyline
+                            key={`main-route-outbound-dash-${routePositions.length}`}
                             positions={routePositions}
-                            color="#60a5fa" // Lighter Blue Overlay
+                            color="#3b82f6"
                             weight={3}
-                            opacity={0.8}
-                            dashArray={layers.traffic ? undefined : '1, 10'} // Dash it if traffic off (visual style)
+                            opacity={1}
+                            dashArray={layers.traffic ? undefined : '1, 10'}
                         />
-                        <RecenterAutomatically latLngs={routePositions} />
                     </>
                 )}
 
+                {/* Return Route (Orange) - Only if activeLeg is return */}
+                {activeLeg === 'return' && returnRoutePositions && (
+                    <>
+                        <Polyline
+                            key={`main-route-return-${returnRoutePositions.length}-${returnRoutePositions[0]}`}
+                            positions={returnRoutePositions}
+                            color="#f97316"
+                            weight={6}
+                            opacity={0.6}
+                            lineCap="round"
+                            lineJoin="round"
+                        />
+                        <Polyline
+                            key={`main-route-return-dash-${returnRoutePositions.length}`}
+                            positions={returnRoutePositions}
+                            color="#f97316"
+                            weight={3}
+                            opacity={1}
+                            dashArray={layers.traffic ? undefined : '1, 10'}
+                        />
+                    </>
+                )}
+
+                {/* Auto Recenter on ACTIVE LEG only */}
+                <RecenterAutomatically latLngs={activeLeg === 'outbound' ? (routePositions || []) : (returnRoutePositions || [])} />
+
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
-                {/* Weather Markers (Controlled by Layer) */}
-                {layers.weather && weatherData && weatherData.filter((_, idx) => {
-                    // Always show first and last
-                    if (idx === 0 || idx === weatherData.length - 1) return true;
-                    // Calculate dynamic stride to keep total under 15
-                    const stride = Math.ceil(weatherData.length / 15);
-                    return idx % stride === 0;
-                }).map((point, idx) => {
-                    const tempC = point.temperature;
-                    const hasTemp = tempC !== undefined && tempC !== null;
+                {/* Weather Markers (Outbound) - Only if activeLeg is outbound */}
+                {
+                    layers.weather && activeLeg === 'outbound' && weatherData && weatherData.filter((_, idx) => {
+                        // Always show first and last
+                        if (idx === 0 || idx === weatherData.length - 1) return true;
+                        // Calculate dynamic stride to keep total under 15
+                        const stride = Math.ceil(weatherData.length / 15);
+                        return idx % stride === 0;
+                    }).map((point, idx) => {
+                        const tempC = point.temperature;
+                        const hasTemp = tempC !== undefined && tempC !== null;
 
-                    // Earthy Palette Mapping
-                    const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
-                    const weatherDesc = getWeatherDescription(point.weathercode || 0);
-                    const roadCond = getRoadCondition(point.weathercode || 0);
+                        // Earthy Palette Mapping
+                        const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
+                        const weatherDesc = getWeatherDescription(point.weathercode || 0);
+                        const roadCond = getRoadCondition(point.weathercode || 0);
 
-                    return point ? (
-                        <Marker
-                            key={`weather-${idx}`}
-                            position={[point.lat, point.lng]}
-                            icon={createWeatherIcon(tempC as any)}
-                        >
-                            <Popup className="custom-popup-overrides">
-                                <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">
-                                    {/* Glass Header */}
-                                    <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5">
-                                        <div className="flex items-center gap-1.5">
-                                            {/* Dynamic Icon based on code */}
-                                            {point.weathercode <= 2 ? <Sun className="w-3.5 h-3.5 text-amber-400" /> :
-                                                point.weathercode <= 48 ? <Cloud className="w-3.5 h-3.5 text-gray-400" /> :
-                                                    point.weathercode <= 67 ? <CloudRain className="w-3.5 h-3.5 text-blue-400" /> :
-                                                        point.weathercode <= 77 ? <Snowflake className="w-3.5 h-3.5 text-cyan-200" /> :
-                                                            point.weathercode <= 99 ? <Zap className="w-3.5 h-3.5 text-yellow-400" /> :
+                        return point ? (
+                            <Marker
+                                key={`weather-${idx}`}
+                                position={[point.lat, point.lng]}
+                                icon={createWeatherIcon(tempC as any)}
+                            >
+                                <Popup className="custom-popup-overrides">
+                                    <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">
+                                        {/* Glass Header */}
+                                        <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5">
+                                            <div className="flex items-center gap-1.5">
+                                                {/* Dynamic Icon based on code */}
+                                                {point.weathercode <= 2 ? <Sun className="w-3.5 h-3.5 text-amber-400" /> :
+                                                    point.weathercode <= 48 ? <Cloud className="w-3.5 h-3.5 text-gray-400" /> :
+                                                        point.weathercode <= 67 ? <CloudRain className="w-3.5 h-3.5 text-blue-400" /> :
+                                                            point.weathercode <= 77 ? <Snowflake className="w-3.5 h-3.5 text-cyan-200" /> :
                                                                 <Cloud className="w-3.5 h-3.5 text-gray-400" />}
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 leading-none mt-0.5">
-                                                {weatherDesc}
-                                            </span>
-                                        </div>
-                                        {/* Status Dot */}
-                                        <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
-                                            (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
-                                                'bg-[#628141] text-[#628141]'
-                                            }`} />
-                                    </div>
-
-                                    {/* Content Body */}
-                                    <div className="p-3 flex flex-col gap-3">
-                                        {/* Temperature Display */}
-                                        <div className="flex items-center justify-center gap-0.5 mt-1">
-                                            <span className="font-thin text-[3.5rem] tracking-tighter text-white leading-none">
-                                                {hasTemp ? tempDisplay : '--'}
-                                            </span>
-                                            <span className="text-lg font-light text-white/60 mb-4 self-end">
-                                                °{unit}
-                                            </span>
-                                        </div>
-
-                                        {/* Wind & Rain Grid */}
-                                        <div className="grid grid-cols-2 gap-2 w-full">
-                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
-                                                <div className="flex items-center gap-1 text-white/60 mb-0.5">
-                                                    <Wind className="w-2.5 h-2.5" />
-                                                    <span className="text-[9px] uppercase font-bold tracking-wider">Wind</span>
-                                                </div>
-                                                <span className="text-xs font-semibold text-white">
-                                                    {Math.round(point.windSpeed || 0)} <span className="text-[9px] font-normal opacity-70">km/h</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 leading-none mt-0.5">
+                                                    {weatherDesc}
                                                 </span>
                                             </div>
-                                            <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
-                                                <div className="flex items-center gap-1 text-white/60 mb-0.5">
-                                                    <Umbrella className="w-2.5 h-2.5" />
-                                                    <span className="text-[9px] uppercase font-bold tracking-wider">Rain</span>
-                                                </div>
-                                                <span className="text-xs font-semibold text-white">
-                                                    {point.precipitationProbability || 0}<span className="text-[9px] font-normal opacity-70">%</span>
-                                                </span>
-                                            </div>
+                                            {/* Status Dot */}
+                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
+                                                (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
+                                                    'bg-[#628141] text-[#628141]'
+                                                }`} />
                                         </div>
 
-                                        {/* Road Condition Tag */}
-                                        <div className="flex justify-center">
-                                            <div className={`
+                                        {/* Content Body */}
+                                        <div className="p-3 flex flex-col gap-3">
+                                            {/* Temperature Display */}
+                                            <div className="flex items-center justify-center gap-0.5 mt-1">
+                                                <span className="font-thin text-[3.5rem] tracking-tighter text-white leading-none">
+                                                    {hasTemp ? tempDisplay : '--'}
+                                                </span>
+                                                <span className="text-lg font-light text-white/60 mb-4 self-end">
+                                                    °{unit}
+                                                </span>
+                                            </div>
+
+                                            {/* Wind & Rain Grid */}
+                                            <div className="grid grid-cols-2 gap-2 w-full">
+                                                <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                    <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                        <Wind className="w-2.5 h-2.5" />
+                                                        <span className="text-[9px] uppercase font-bold tracking-wider">Wind</span>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-white">
+                                                        {Math.round(point.windSpeed || 0)} <span className="text-[9px] font-normal opacity-70">km/h</span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                    <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                        <Umbrella className="w-2.5 h-2.5" />
+                                                        <span className="text-[9px] uppercase font-bold tracking-wider">Rain</span>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-white">
+                                                        {point.precipitationProbability || 0}<span className="text-[9px] font-normal opacity-70">%</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Prices Grid (Gas Only) */}
+                                            <div className="w-full mt-2 pt-2 border-t border-white/5 flex justify-center">
+                                                <div className="flex items-center gap-1.5 p-1 px-3 rounded-lg bg-white/5 border border-white/5">
+                                                    <Fuel className="w-3 h-3 text-orange-400" />
+                                                    <span className="text-[10px] font-bold text-white/90">${point.gasPrice || '--'}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Road Condition Tag */}
+                                            <div className="flex justify-center">
+                                                <div className={`
                                                 flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest shadow-lg
                                                 ${roadCond === 'Dry' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 shadow-emerald-900/20' :
-                                                    roadCond === 'Icy / Snowy' ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200 shadow-cyan-900/20' :
-                                                        'bg-amber-500/20 border-amber-500/30 text-amber-200 shadow-amber-900/20'}
+                                                        roadCond === 'Icy / Snowy' ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200 shadow-cyan-900/20' :
+                                                            'bg-amber-500/20 border-amber-500/30 text-amber-200 shadow-amber-900/20'}
                                             `}>
-                                                {roadCond === 'Dry' ? <CheckCircle className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                                                {roadCond}
+                                                    {roadCond === 'Dry' ? <CheckCircle className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                                                    {roadCond}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </Popup>
-                        </Marker>
-                    ) : null;
-                })}
+                                </Popup>
+                            </Marker>
+                        ) : null;
+                    })
+                }
+
+                {/* Return Weather Markers (Only if activeLeg is return) */}
+                {
+                    layers.weather && activeLeg === 'return' && returnWeatherData && returnWeatherData.filter((_, idx) => {
+                        if (idx === 0 || idx === returnWeatherData.length - 1) return true;
+                        const stride = Math.ceil(returnWeatherData.length / 15);
+                        return idx % stride === 0;
+                    }).map((point, idx) => {
+                        const tempC = point.temperature;
+                        const hasTemp = tempC !== undefined && tempC !== null;
+                        const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
+                        const weatherDesc = getWeatherDescription(point.weathercode || 0);
+                        const roadCond = getRoadCondition(point.weathercode || 0);
+
+                        return point ? (
+                            <Marker
+                                key={`return-weather-${idx}`}
+                                position={[point.lat, point.lng]}
+                                icon={createWeatherIcon(tempC as any)}
+                            >
+                                <Popup className="custom-popup-overrides">
+                                    <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">
+                                        <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-white/5">
+                                            <div className="flex items-center gap-1.5">
+                                                {point.weathercode <= 2 ? <Sun className="w-3.5 h-3.5 text-amber-400" /> :
+                                                    point.weathercode <= 48 ? <Cloud className="w-3.5 h-3.5 text-gray-400" /> :
+                                                        point.weathercode <= 67 ? <CloudRain className="w-3.5 h-3.5 text-blue-400" /> :
+                                                            point.weathercode <= 77 ? <Snowflake className="w-3.5 h-3.5 text-cyan-200" /> :
+                                                                <Cloud className="w-3.5 h-3.5 text-gray-400" />}
+                                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/90 leading-none mt-0.5">
+                                                    {weatherDesc}
+                                                </span>
+                                            </div>
+                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
+                                                (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
+                                                    'bg-[#628141] text-[#628141]'
+                                                }`} />
+                                        </div>
+                                        <div className="p-3 flex flex-col gap-3">
+                                            <div className="flex items-center justify-center gap-0.5 mt-1">
+                                                <span className="font-thin text-[3.5rem] tracking-tighter text-white leading-none">
+                                                    {hasTemp ? tempDisplay : '--'}
+                                                </span>
+                                                <span className="text-lg font-light text-white/60 mb-4 self-end">
+                                                    °{unit}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 w-full">
+                                                <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                    <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                        <Wind className="w-2.5 h-2.5" />
+                                                        <span className="text-[9px] uppercase font-bold tracking-wider">Wind</span>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-white">
+                                                        {Math.round(point.windSpeed || 0)} <span className="text-[9px] font-normal opacity-70">km/h</span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-center p-1.5 rounded-lg bg-white/5 border border-white/5">
+                                                    <div className="flex items-center gap-1 text-white/60 mb-0.5">
+                                                        <Umbrella className="w-2.5 h-2.5" />
+                                                        <span className="text-[9px] uppercase font-bold tracking-wider">Rain</span>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-white">
+                                                        {point.precipitationProbability || 0}<span className="text-[9px] font-normal opacity-70">%</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <div className={`
+                                                flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest shadow-lg
+                                                ${roadCond === 'Dry' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200 shadow-emerald-900/20' :
+                                                        roadCond === 'Icy / Snowy' ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-200 shadow-cyan-900/20' :
+                                                            'bg-amber-500/20 border-amber-500/30 text-amber-200 shadow-amber-900/20'}
+                                            `}>
+                                                    {roadCond === 'Dry' ? <CheckCircle className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                                                    {roadCond}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        ) : null;
+                    })
+                }
             </MapContainer>
 
             {/* Add Legend Overlay */}

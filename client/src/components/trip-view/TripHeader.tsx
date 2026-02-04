@@ -1,4 +1,4 @@
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -20,15 +20,40 @@ interface TripHeaderProps {
     unit: 'C' | 'F';
     onUnitChange: (unit: 'C' | 'F') => void;
     onBack: () => void;
-    onSearch: (start: string, end: string, startCoords?: any, endCoords?: any) => void;
+    onSearch: (
+        start: string,
+        end: string,
+        depDate?: string,
+        depTime?: string,
+        startCoords?: any,
+        endCoords?: any,
+        roundTrip?: boolean,
+        preference?: 'fastest' | 'scenic'
+    ) => void;
+
+    // New Props for Toggles
+    isRoundTrip?: boolean;
+    routePreference?: 'fastest' | 'scenic';
+    returnDate?: string; // New prop for return date display
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, returnDate }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
     const [editStartCoords, setEditStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
     const [editDestCoords, setEditDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+
+    // Local state for toggles when editing, but also fast switching
+    const [localRoundTrip, setLocalRoundTrip] = useState(isRoundTrip || false);
+    const [localPreference, setLocalPreference] = useState(routePreference || 'fastest');
+
+    // Sync props
+    useEffect(() => {
+        setLocalRoundTrip(!!isRoundTrip);
+        setLocalPreference(routePreference || 'fastest');
+    }, [isRoundTrip, routePreference]);
+
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Sync props to state when not editing
@@ -39,9 +64,41 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
         }
     }, [start, destination, isEditing]);
 
-    const handleSearch = () => {
-        onSearch(editStart, editDest, editStartCoords, editDestCoords);
+    useEffect(() => {
+        if (isRoundTrip !== undefined) {
+            setLocalRoundTrip(isRoundTrip);
+        }
+    }, [isRoundTrip]);
+
+    useEffect(() => {
+        if (routePreference) {
+            setLocalPreference(routePreference);
+        }
+    }, [routePreference]);
+
+    const handleSearch = (overrideRoundTrip?: boolean, overridePref?: 'fastest' | 'scenic') => {
+        // Use overrides if provided, otherwise current local state
+        const rt = overrideRoundTrip !== undefined ? overrideRoundTrip : localRoundTrip;
+        const pref = overridePref || localPreference;
+
+        // Pass 8 args: start, end, date, time, sCoords, dCoords, rt, pref
+        onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, rt, pref);
         setIsEditing(false);
+    };
+
+    const toggleRoundTrip = () => {
+        const newVal = !localRoundTrip;
+        setLocalRoundTrip(newVal);
+        // Trigger immediate search with current locations but new toggle
+        // We use props start/dest to avoid accidental location changes if edit state is stale
+        // But logic usually uses edit state? Let's use edit state to be consistent with handleSearch
+        onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, newVal, localPreference);
+    };
+
+    const togglePreference = (pref: 'fastest' | 'scenic') => {
+        if (pref === localPreference) return;
+        setLocalPreference(pref);
+        onSearch(start, destination, undefined, undefined, localRoundTrip, pref);
     };
 
     return (
@@ -79,6 +136,34 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                 </button>
                             </div>
 
+                            {/* Quick Toggles in Edit Menu too */}
+                            <div className="flex gap-2 mb-4">
+                                <button
+                                    onClick={() => setLocalRoundTrip(!localRoundTrip)}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${localRoundTrip ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600' : 'bg-secondary/30 border-transparent text-muted-foreground'}`}
+                                >
+                                    {localRoundTrip ? 'Round Trip' : 'One Way'}
+                                </button>
+                                <div className="flex bg-secondary/30 rounded-lg p-1 border border-transparent">
+                                    <button
+                                        onClick={() => {
+                                            setLocalPreference('fastest');
+                                            // Trigger search immediately for preference toggle
+                                            onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, 'fastest');
+                                        }}
+                                        className={`px-3 rounded-md text-xs font-bold transition-all ${localPreference === 'fastest' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                                    >Fast</button>
+                                    <button
+                                        onClick={() => {
+                                            setLocalPreference('scenic');
+                                            // Trigger search immediately for preference toggle
+                                            onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, 'scenic');
+                                        }}
+                                        className={`px-3 rounded-md text-xs font-bold transition-all ${localPreference === 'scenic' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                                    >Scenic</button>
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
                                 <div className="space-y-3">
                                     <LocationInput
@@ -106,12 +191,52 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                     />
                                 </div>
 
-                                <Button className="w-full font-bold" onClick={handleSearch}>
+                                <Button className="w-full font-bold" onClick={() => handleSearch()}>
                                     Update Route
                                 </Button>
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Result View Quick Toggles (Desktop) */}
+                <div className="hidden lg:flex items-center gap-2 ml-4">
+                    <button
+                        onClick={toggleRoundTrip}
+                        title="Toggle Round Trip"
+                        className={`h-8 px-3 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${localRoundTrip
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
+                            : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
+                            }`}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>{localRoundTrip ? 'Round Trip' : 'One Way'}</span>
+                    </button>
+
+                    {/* Return Date Display (only if Round Trip) */}
+                    {localRoundTrip && returnDate && (
+                        <div className="h-8 px-3 rounded-lg text-xs font-medium border border-border/50 flex items-center gap-1.5 bg-secondary/20 text-muted-foreground">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Return: {returnDate}</span>
+                        </div>
+                    )}
+
+                    <div className="flex items-center bg-secondary/30 rounded-lg p-0.5 border border-transparent h-8">
+                        <button
+                            onClick={() => togglePreference('fastest')}
+                            title="Fastest Route"
+                            className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'fastest' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <Zap className="w-3 h-3" />
+                        </button>
+                        <button
+                            onClick={() => togglePreference('scenic')}
+                            title="Scenic Route"
+                            className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <Camera className="w-3 h-3" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

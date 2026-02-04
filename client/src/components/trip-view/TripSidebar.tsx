@@ -13,6 +13,9 @@ interface TripSidebarProps {
     weatherData: any[];
     unit: 'C' | 'F';
     onSegmentSelect: (lat: number, lng: number) => void;
+    activeLeg?: 'outbound' | 'return';
+    hasReturn?: boolean;
+    onLegChange?: (leg: 'outbound' | 'return') => void;
 }
 
 export function TripSidebar({
@@ -21,7 +24,10 @@ export function TripSidebar({
     roadConditions,
     weatherData,
     unit,
-    onSegmentSelect
+    onSegmentSelect,
+    activeLeg,
+    hasReturn,
+    onLegChange
 }: TripSidebarProps) {
     const [activeTab, setActiveTab] = useState<TabId>('overview');
 
@@ -69,8 +75,36 @@ export function TripSidebar({
         <div className="flex flex-col h-full bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-20 overflow-hidden w-full lg:max-w-md">
 
             {/* Tabs Header */}
-            <div className="p-3 border-b border-border bg-card/50">
-                <TripTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <div className="flex flex-col border-b border-border bg-card/50">
+                {/* Leg Switcher - Only if Round Trip */}
+                {hasReturn && onLegChange && (
+                    <div className="px-3 pt-3 pb-1">
+                        <div className="flex items-center p-1 bg-background/40 rounded-lg border border-white/5">
+                            <button
+                                onClick={() => onLegChange('outbound')}
+                                className={`flex-1 flex items-center justify-center py-1.5 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200 ${activeLeg === 'outbound'
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                                    }`}
+                            >
+                                Start Trip
+                            </button>
+                            <button
+                                onClick={() => onLegChange('return')}
+                                className={`flex-1 flex items-center justify-center py-1.5 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200 ${activeLeg === 'return'
+                                    ? 'bg-[#E67E22] text-white shadow-sm' // Orange for Return leg distinctiveness
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                                    }`}
+                            >
+                                Destination Trip
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-3 pt-2">
+                    <TripTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
             </div>
 
             {/* Tab Content Area */}

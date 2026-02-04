@@ -139,10 +139,9 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                             </div>
                             <span className="text-[10px] font-semibold text-foreground/80">{Math.round(weather.windSpeed)}</span>
                         </div>
-                        {/* Gas Price */}
-                        <div className="flex items-center gap-1 justify-end" title="Est. Gas Price">
-                            <Fuel className="w-4 h-4 text-orange-400" />
-                            <span className="text-[10px] font-semibold text-foreground/80">${weather.gasPrice || '--'}</span>
+                        <div className="flex items-center gap-1 justify-end pl-2" title="Est. Gas Price">
+                            <Fuel className="w-3 h-3 text-orange-400" />
+                            <span className="text-[9px] font-semibold text-foreground/80">${weather.gasPrice || '--'}</span>
                         </div>
                     </div>
                 </div>
@@ -226,6 +225,16 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     <span>{weather.humidity || 0}%</span>
                 </div>
             </div>
+
+            {/* Prices Grid (Gas Only) */}
+            {weather.gasPrice && (
+                <div className="border-t border-border/50 pt-2 mt-0">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Est. Gas Price">
+                        <Fuel className="w-3.5 h-3.5 text-orange-400" />
+                        <span>${weather.gasPrice}</span>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

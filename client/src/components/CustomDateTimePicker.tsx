@@ -88,7 +88,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
             </div>
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 p-4 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-[1000] w-64 animate-in fade-in zoom-in-95 duration-200">
+                <div style={{ backgroundColor: '#324422', opacity: 1, minHeight: 'fit-content', display: 'block', zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-4 border border-border rounded-xl shadow-2xl w-64">
                     <div className="flex items-center justify-between mb-4">
                         <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-secondary/50 rounded-md transition-colors">
                             <ChevronLeft size={16} />
@@ -186,7 +186,7 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
             </div>
 
             {isOpen && (
-                <div className="absolute top-full right-0 mt-2 p-2 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-[1000] w-64 animate-in fade-in zoom-in-95 duration-200">
+                <div style={{ backgroundColor: '#324422', opacity: 1, minHeight: 'fit-content', display: 'block', zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 border border-border rounded-xl shadow-2xl w-64">
                     <div className="flex gap-4 p-2 h-48">
                         <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1">
                             <div className="text-[10px] font-bold text-muted-foreground mb-2 px-2 uppercase tracking-tight">Hour</div>
@@ -225,6 +225,58 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+interface CombinedDateTimePickerProps {
+    dateValue: string;
+    onDateChange: (value: string) => void;
+    timeValue: string;
+    onTimeChange: (value: string) => void;
+    minDate?: string;
+    maxDate?: string;
+    label?: string;
+    className?: string;
+}
+
+export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
+    dateValue,
+    onDateChange,
+    timeValue,
+    onTimeChange,
+    minDate,
+    maxDate,
+    label,
+    className = ""
+}) => {
+    return (
+        <div className={`relative group ${className}`}>
+            {label && (
+                <div className="absolute -top-2.5 left-2 px-1 bg-[#40513B] text-[9px] font-bold uppercase tracking-widest text-emerald-400/80 z-10 pointer-events-none">
+                    {label}
+                </div>
+            )}
+            <div className="flex items-center bg-[#33402F] border border-[#628141] rounded-lg p-0.5 shadow-sm hover:border-[#E67E22]/50 transition-all h-9">
+                {/* Date Section */}
+                <CustomDatePicker
+                    value={dateValue}
+                    onChange={onDateChange}
+                    min={minDate}
+                    max={maxDate}
+                    className="flex-1 min-w-[100px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
+                />
+
+                {/* Divider */}
+                <div className="w-px h-4 bg-[#628141]/50 mx-0.5" />
+
+                {/* Time Section */}
+                <CustomTimePicker
+                    value={timeValue}
+                    onChange={onTimeChange}
+                    className="flex-1 min-w-[70px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
+                />
+            </div>
         </div>
     );
 };
