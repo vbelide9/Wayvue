@@ -8,6 +8,14 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
+## [v1.2.14] - 2026-02-05
+### Fixed
+- **Instant Route Switching**: Resolved a bug where switching between "Fastest" and "Scenic" routes caused a full page reload. It now correctly uses cached route variants for instant switching on both One-Way and Round Trip journeys.
+- **Round Trip Support**: Fixed logic in `App.tsx` where round-trip variant caching was being ignored, causing unnecessary re-fetches.
+- **Place Names**: Updated the backend to use robust reverse geocoding for all route points (Weather and Road Conditions), effectively replacing generic "Mile X" / "Segment X" placeholders with real City and State names.
+- **Trip Header Buttons**: Fixed an issue where the "Start Trip" and "Return Trip" toggle buttons were unclickable due to z-index layering issues.
+- **UI Styling**: Refined the styling of "Round Trip" and "Update Path" buttons in the header to prevent text wrapping and improve visual consistency.
+
 ## [v1.2.13] - 2026-02-04
 ### Fixed
 - **Trip Header Layout**: Refactored the Trip Header using a CSS Grid system to prevent "Scenic/Fast" toggles from overlapping with "Start/Return" trip buttons on desktop.
@@ -17,14 +25,9 @@ All notable changes to the **Wayvue** project will be documented in this file.
 ### Added
 - **Range Rover Discovery Icon**: Upgraded the moving car marker to a high-fidelity SVG resembling a Range Rover Discovery with panoramic roof, roof rails, and detailed lighting.
 - **Physics-Based Animation**: Implemented advanced interpolation logic for the car animation.
-
-
-### Added
-- **Physics-Based Animation**: Implemented advanced interpolation logic for the car animation.
     - **Smoothing**: Dampened rotation to eliminate "tumbling" and added a "lookahead" feature (50m) to smooth out micro-jitters in the route data.
     - **Pacing**: Slowed down the animation loop (25s) for a more realistic "cruising" feel.
     - **Lookahead**: Implemented a 50m lookahead for bearing calculations, ensuring the car steers towards the road ahead rather than reacting to immediate zig-zags.
-
 
 ## [v1.2.11] - 2026-02-04
 ### Changed

@@ -1,5 +1,5 @@
 import { CombinedDateTimePicker } from '../../components/CustomDateTimePicker';
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -37,79 +37,99 @@ interface TripHeaderProps {
     // New Props for Toggles
     isRoundTrip?: boolean;
     routePreference?: 'fastest' | 'scenic';
-    returnDate?: string; // New prop for return date display
+    returnDate?: string; // Display for Return Date
+    depDate?: string;    // Dep Date ISO
+    depTime?: string;    // Dep Time
+    rawReturnDate?: string; // Return Date ISO
+    rawReturnTime?: string;
     activeLeg?: 'outbound' | 'return';
     onLegChange?: (leg: 'outbound' | 'return') => void;
+    onSetRoundTrip?: (isRoundTrip: boolean) => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
+
+    // Ref for the header container
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Coordinates
     const [editStartCoords, setEditStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
     const [editDestCoords, setEditDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
 
-    // Date/Time Editing State
-    // Initialize with something specific if known, or defaults
-    const [editReturnDate, setEditReturnDate] = useState<string>(
-        // Try to parse returnDate prop if it looks like YYYY-MM-DD, otherwise default to tomorrow
-        // actually returnDate prop is formatted string "Mon, Feb 5" from App.tsx. 
-        // We need a YYYY-MM-DD for the picker. 
-        // Since we don't get the raw YYYY-MM-DD here easily (unless we pass it), 
-        // let's try to pass the raw returnDate from App or just default to tomorrow/today.
-        // For now, let's init to tomorrow. Ideally we pass rawReturnDate.
-        (() => {
-            const d = new Date();
-            d.setDate(d.getDate() + 1);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        })()
-    );
-    const [editReturnTime, setEditReturnTime] = useState('10:00');
+    // --- Date/Time Editing State (Context Aware) ---
+    // We need separate state for Departure and Return editing to preserve inputs when switching tabs
 
-    // Local state for toggles when editing, but also fast switching
+    // Departure Editing State
+    const [editDepDate, setEditDepDate] = useState(depDate || new Date().toISOString().split('T')[0]);
+    const [editDepTime, setEditDepTime] = useState(depTime || '09:00');
+
+    // Return Editing State
+    const [editReturnDate, setEditReturnDate] = useState<string>(rawReturnDate || (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })());
+    const [editReturnTime, setEditReturnTime] = useState(rawReturnTime || '10:00');
+
+    // Effect: Sync props to state when props change (e.g. initial load or external update)
+    useEffect(() => {
+        if (depDate) setEditDepDate(depDate);
+        if (depTime) setEditDepTime(depTime);
+    }, [depDate, depTime]);
+
+    useEffect(() => {
+        if (rawReturnDate) setEditReturnDate(rawReturnDate);
+        if (rawReturnTime) setEditReturnTime(rawReturnTime);
+    }, [rawReturnDate, rawReturnTime]);
+
+    // Local state for toggles when editing
     const [localRoundTrip, setLocalRoundTrip] = useState(isRoundTrip || false);
     const [localPreference, setLocalPreference] = useState(routePreference || 'fastest');
+    const [showTripTypeMenu, setShowTripTypeMenu] = useState(false);
 
-    // Sync props
-    useEffect(() => {
-        setLocalRoundTrip(!!isRoundTrip);
-        setLocalPreference(routePreference || 'fastest');
-    }, [isRoundTrip, routePreference]);
 
-    const containerRef = useRef<HTMLDivElement>(null);
+    // Determine which date set is currently "Active" for the DatePicker
+    // If activeLeg is 'return', we edit Return Date.
+    // If activeLeg is 'outbound' (or undefined), we edit Departure Date.
+    const isReturnContext = activeLeg === 'return';
 
-    // Sync props to state when not editing
-    useEffect(() => {
-        if (!isEditing) {
-            setEditStart(start);
-            setEditDest(destination);
+    const activeDate = isReturnContext ? editReturnDate : editDepDate;
+    const activeTime = isReturnContext ? editReturnTime : editDepTime;
+
+    const handleDateChange = (newDate: string) => {
+        if (isReturnContext) {
+            setEditReturnDate(newDate);
+            // Don't auto-search for return date. Wait for manual update or time.
+            // Actually, wait for manual update to be safe as per user request.
+        } else {
+            setEditDepDate(newDate);
+            onSearch(editStart, editDest, newDate, editDepTime, editStartCoords, editDestCoords, localRoundTrip, localPreference, editReturnDate, editReturnTime);
         }
-    }, [start, destination, isEditing]);
+    };
 
-    useEffect(() => {
-        if (isRoundTrip !== undefined) {
-            setLocalRoundTrip(isRoundTrip);
+    const handleTimeChange = (newTime: string) => {
+        if (isReturnContext) {
+            setEditReturnTime(newTime);
+            // Don't auto-search for return time either.
+        } else {
+            setEditDepTime(newTime);
+            onSearch(editStart, editDest, editDepDate, newTime, editStartCoords, editDestCoords, localRoundTrip, localPreference, editReturnDate, editReturnTime);
         }
-    }, [isRoundTrip]);
-
-    useEffect(() => {
-        if (routePreference) {
-            setLocalPreference(routePreference);
-        }
-    }, [routePreference]);
+    };
 
     const handleSearch = (overrideRoundTrip?: boolean, overridePref?: 'fastest' | 'scenic') => {
         // Use overrides if provided, otherwise current local state
         const rt = overrideRoundTrip !== undefined ? overrideRoundTrip : localRoundTrip;
         const pref = overridePref || localPreference;
 
-        // Pass 10 args: start, end, depDate, depTime, sCoords, dCoords, rt, pref, returnDate, returnTime
-        // Note: we're not editing departure date/time here yet, passing undefined to keep existing
         onSearch(
             editStart,
             editDest,
-            undefined,
-            undefined,
+            editDepDate,
+            editDepTime,
             editStartCoords,
             editDestCoords,
             rt,
@@ -120,23 +140,6 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
         setIsEditing(false);
     };
 
-    const toggleRoundTrip = () => {
-        const newVal = !localRoundTrip;
-        setLocalRoundTrip(newVal);
-        // Trigger immediate search with current locations but new toggle
-        onSearch(
-            editStart,
-            editDest,
-            undefined,
-            undefined,
-            editStartCoords,
-            editDestCoords,
-            newVal,
-            localPreference,
-            editReturnDate, // Pass current return date edit state
-            editReturnTime
-        );
-    };
 
     const togglePreference = (pref: 'fastest' | 'scenic') => {
         if (pref === localPreference) return;
@@ -263,37 +266,79 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
 
                 {/* Result View Quick Toggles (Desktop) */}
                 <div className="hidden lg:flex items-center gap-2 ml-4">
-                    <button
-                        onClick={toggleRoundTrip}
-                        title="Toggle Round Trip"
-                        className={`h-8 px-3 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${localRoundTrip
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
-                            : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
-                            }`}
-                    >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>{localRoundTrip ? 'Round Trip' : 'One Way'}</span>
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowTripTypeMenu(!showTripTypeMenu)}
+                            title="Select Trip Type"
+                            className={`h-8 px-3 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap min-w-fit ${localRoundTrip
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
+                                : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
+                                }`}
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>{localRoundTrip ? 'Round Trip' : 'One Way'}</span>
+                            <ChevronDown className={`w-3 h-3 transition-transform ${showTripTypeMenu ? 'rotate-180' : ''}`} />
+                        </button>
 
-                    {localRoundTrip && (
-                        <div className="h-8 flex items-center">
-                            <CombinedDateTimePicker
-                                dateValue={editReturnDate}
-                                onDateChange={(d) => {
-                                    setEditReturnDate(d);
-                                    onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, localPreference, d, editReturnTime);
-                                }}
-                                timeValue={editReturnTime}
-                                onTimeChange={(t) => {
-                                    setEditReturnTime(t);
-                                    onSearch(editStart, editDest, undefined, undefined, editStartCoords, editDestCoords, localRoundTrip, localPreference, editReturnDate, t);
-                                }}
-                                minDate={new Date().toISOString().split('T')[0]}
-                                maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                                className="scale-90 origin-left"
-                            />
-                        </div>
-                    )}
+                        {/* Dropdown Menu */}
+                        {showTripTypeMenu && (
+                            <div className="absolute top-full left-0 mt-2 w-40 bg-card border border-border shadow-xl rounded-xl p-1 z-[60] animate-in fade-in zoom-in-95 duration-200">
+                                <button
+                                    onClick={() => {
+                                        setLocalRoundTrip(false);
+                                        setShowTripTypeMenu(false);
+                                        // Trigger search for One Way
+                                        onSearch(editStart, editDest, editDepDate, editDepTime, editStartCoords, editDestCoords, false, localPreference, editReturnDate, editReturnTime);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between mb-1 transition-colors ${!localRoundTrip ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50'}`}
+                                >
+                                    <span>One Way</span>
+                                    {!localRoundTrip && <Check className="w-3 h-3 text-primary" />}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setLocalRoundTrip(true);
+                                        setShowTripTypeMenu(false);
+                                        // Defer Search: Use onSetRoundTrip if available
+                                        if (onSetRoundTrip) {
+                                            onSetRoundTrip(true);
+                                        } else {
+                                            onSearch(editStart, editDest, editDepDate, editDepTime, editStartCoords, editDestCoords, true, localPreference, editReturnDate, editReturnTime);
+                                        }
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${localRoundTrip ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50'}`}
+                                >
+                                    <span>Round Trip</span>
+                                    {localRoundTrip && <Check className="w-3 h-3 text-emerald-500" />}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Date/Time Picker - Always visible, context aware */}
+                    <div className="h-8 flex items-center gap-2">
+                        <CombinedDateTimePicker
+                            label={isReturnContext ? "Return" : "Leave"}
+                            dateValue={activeDate}
+                            onDateChange={handleDateChange}
+                            timeValue={activeTime}
+                            onTimeChange={handleTimeChange}
+                            minDate={new Date().toISOString().split('T')[0]}
+                            maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                            className="scale-90 origin-left"
+                        />
+                        {/* Manual Update Button for Return Leg Changes */}
+                        {isReturnContext && (editReturnDate !== rawReturnDate || editReturnTime !== rawReturnTime || /* Initial State Check: If rawReturnDate is undefined (one-way), but we are in return context, we need to show update */ (!rawReturnDate && isRoundTrip)) && (
+                            <Button
+                                size="sm"
+                                className="h-8 px-3 ml-0 animate-in fade-in zoom-in slide-in-from-left-2 duration-300 bg-amber-500 hover:bg-amber-600 text-white shadow-sm whitespace-nowrap font-bold text-xs"
+                                onClick={() => handleSearch()}
+                            >
+                                <RefreshCw className="w-3 h-3 mr-1.5" />
+                                Update Path
+                            </Button>
+                        )}
+                    </div>
 
                     <div className="flex items-center bg-secondary/30 rounded-lg p-0.5 border border-transparent h-8">
                         <button
@@ -316,7 +361,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
 
             {/* Center: Leg Toggles (Start / Return) - Only for Round Trip */}
             {/* Positioned in the middle Grid Cell on Desktop */}
-            <div className="hidden md:flex justify-center items-center">
+            <div className="hidden md:flex justify-center items-center relative z-10 pointer-events-auto">
                 {isRoundTrip && onLegChange && (
                     <div className="flex bg-secondary/30 rounded-lg p-1 border border-border/50 shadow-sm">
                         <button

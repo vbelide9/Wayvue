@@ -4,6 +4,7 @@ import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CombinedDateTimePicker } from './components/CustomDateTimePicker';
 import { LoadingScreen } from './components/LoadingScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // UI Components
 import { Button } from '@/components/ui/button';
@@ -156,9 +157,24 @@ export default function App() {
     const isSameLocations = s.trim() === start.trim() && d.trim() === destination.trim();
 
     // Note: If returnDate changed, we CANNOT use cache, must fetch new route
-    const isSameReturnDate = returnDateToUse === returnDate;
+    const isSameReturnDate = (returnDateToUse || '') === (returnDate || '');
 
-    if (tripData && tripData.variants && overridePreference && isSameLocations && isSameReturnDate) {
+    const hasTripData = !!tripData;
+    const hasVariants = !!(tripData && tripData.variants);
+    const canSwitch = hasTripData && hasVariants && overridePreference && isSameLocations && isSameReturnDate;
+
+    console.log('[DEBUG-SWITCH] Cache Check:', {
+      canSwitch,
+      hasTripData,
+      hasVariants,
+      overridePreference,
+      isSameLocations,
+      isSameReturnDate,
+      s, start, d, destination,
+      returnDateToUse, currentReturnDate: returnDate
+    });
+
+    if (canSwitch) {
       console.log("Instant switch using cached variant:", overridePreference);
       // Logic:
       // We need to know WHICH leg to update if overridePreference is passed.
@@ -184,14 +200,24 @@ export default function App() {
       // Outbound comes from variants[newOutboundPref]
       // Return comes from variants[newReturnPref]
       const outboundVariant = tripData.variants ? tripData.variants[newOutboundPref] : undefined;
+      // FIX: Return variant logic was flawed. 
+      // variants.fastest.return contains the return leg for fastest preference.
       const returnVariant = tripData.variants ? tripData.variants[newReturnPref] : undefined;
 
-      if (outboundVariant && (!rtToUse || (returnVariant && returnVariant.return))) {
+      const hasReturnVariant = returnVariant && returnVariant.return;
+      const isRT = !!rtToUse;
+
+      // Check if we have necessary data
+      // For Round Trip: Need outbound AND return variant
+      // For One Way: Need outbound
+      if (outboundVariant && (!isRT || hasReturnVariant)) {
+        console.log('[DEBUG-SWITCH] Constructing cached response', { isRT, newOutboundPref, newReturnPref });
+
         const cachedResponse = {
           ...tripData,
-          isRoundTrip: !!rtToUse,
+          isRoundTrip: isRT,
           outbound: outboundVariant.outbound,
-          return: returnVariant ? returnVariant.return : null
+          return: hasReturnVariant ? returnVariant.return : null
         };
         // ... proceed to setTripData(cachedResponse)
         setTripData(cachedResponse);
@@ -546,83 +572,98 @@ export default function App() {
   );
 
   return viewMode === 'planning' ? renderPlanningView() : (
-    <TripViewLayout
-      isLoading={loading}
-      start={start}
-      destination={destination}
-      metrics={metrics}
-      tripScore={aiAnalysis?.tripScore}
-      roadConditions={roadConditions}
-      weatherData={weatherData}
+    <ErrorBoundary>
+      <TripViewLayout
+        isLoading={loading}
+        start={start}
+        destination={destination}
+        metrics={metrics}
+        tripScore={aiAnalysis?.tripScore}
+        roadConditions={roadConditions}
+        weatherData={weatherData}
 
-      aiAnalysis={aiAnalysis}
-      recommendations={recommendations}
-      unit={unit}
-      onUnitChange={setUnit}
-      onBack={handleBackToPlanning}
-      onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
-        // Update state first ONLY if values are provided
-        if (newStart) setStart(newStart);
-        if (newEnd) setDestination(newEnd);
-        if (newStartCoords) setStartCoords(newStartCoords);
-        if (newEndCoords) setDestCoords(newEndCoords);
-        if (newDepDate) setDepartureDate(newDepDate);
-        if (newDepTime) setDepartureTime(newDepTime);
+        aiAnalysis={aiAnalysis}
+        recommendations={recommendations}
+        unit={unit}
+        onUnitChange={setUnit}
+        onBack={handleBackToPlanning}
+        onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
+          // Update state first ONLY if values are provided
+          if (newStart) setStart(newStart);
+          if (newEnd) setDestination(newEnd);
+          if (newStartCoords) setStartCoords(newStartCoords);
+          if (newEndCoords) setDestCoords(newEndCoords);
+          if (newDepDate) setDepartureDate(newDepDate);
+          if (newDepTime) setDepartureTime(newDepTime);
 
-        // Trigger route calc with new values directly to ensure latest data is used
-        await handleRouteSubmit(
-          newStart,
-          newEnd,
-          newDepDate,
-          newDepTime,
-          newStartCoords,
-          newEndCoords,
-          newRT,
-          newPref,
-          newReturnDate,
-          newReturnTime
-        );
-      }}
-      onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
+          // Trigger route calc with new values directly to ensure latest data is used
+          await handleRouteSubmit(
+            newStart,
+            newEnd,
+            newDepDate,
+            newDepTime,
+            newStartCoords,
+            newEndCoords,
+            newRT,
+            newPref,
+            newReturnDate,
+            newReturnTime
+          );
+        }}
+        onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
 
-      activeLeg={activeLeg}
-      hasReturn={!!(tripData && (tripData.return || tripData.isRoundTrip))}
-      routePreference={routePreference}
-      onLegChange={switchLeg}
-      returnDate={
-        (() => {
-          if (!tripData?.isRoundTrip || !returnDate) return undefined;
-          const ret = new Date(returnDate);
-          // Adjust for timezone offset to prevent date shifting if string is UTC-like
-          const userTimezoneOffset = ret.getTimezoneOffset() * 60000;
-          const adjustedDate = new Date(ret.getTime() + userTimezoneOffset);
-          return adjustedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        })()
-      }
+        activeLeg={activeLeg}
+        hasReturn={!!(tripData && (tripData.return || tripData.isRoundTrip))}
+        isRoundTrip={isRoundTrip}
+        onSetRoundTrip={(isRT) => {
+          setIsRoundTrip(isRT);
+          if (isRT) {
+            setActiveLeg('return');
+          }
+        }}
+        routePreference={routePreference}
+        onLegChange={switchLeg}
+        // Pass Departure Context
+        depDate={departureDate}
+        depTime={departureTime}
+        returnDate={
+          (() => {
+            if (!tripData?.isRoundTrip || !returnDate) return undefined;
+            const ret = new Date(returnDate);
+            // Adjust for timezone offset to prevent date shifting if string is UTC-like
+            const userTimezoneOffset = ret.getTimezoneOffset() * 60000;
+            const adjustedDate = new Date(ret.getTime() + userTimezoneOffset);
+            return adjustedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          })()
+        }
+        // Pass raw return date string for editing
+        rawReturnDate={returnDate}
+        rawReturnTime={returnTime}
 
-      map={
-        <MapComponent
-          routeGeoJSON={tripData?.outbound?.route || route}
-          returnRouteGeoJSON={tripData?.return?.route} // Pass return route
-          weatherData={weatherData}
-          returnWeatherData={returnWeatherData} // Pass return weather
-          unit={unit}
-          selectedLocation={selectedLocation}
-          activeLeg={activeLeg}
-          alternativeRouteGeoJSON={(() => {
-            // Calculate alternative route for display (Gray line)
-            if (tripData?.variants) {
-              const currentPref = activeLeg === 'return' ? returnPref : outboundPref;
-              const altPref = currentPref === 'fastest' ? 'scenic' : 'fastest';
-              const altVariant = tripData.variants[altPref];
-              const isReturn = activeLeg === 'return';
-              // If return leg, get return route, else outbound
-              return isReturn ? altVariant?.return?.route : altVariant?.outbound?.route;
-            }
-            return null;
-          })()}
-        />
-      }
-    />
+        map={
+          <MapComponent
+            routeGeoJSON={tripData?.outbound?.route || route}
+            returnRouteGeoJSON={tripData?.return?.route} // Pass return route
+            weatherData={weatherData}
+            returnWeatherData={returnWeatherData} // Pass return weather
+            unit={unit}
+            selectedLocation={selectedLocation}
+            activeLeg={activeLeg}
+            alternativeRouteGeoJSON={(() => {
+              // Calculate alternative route for display (Gray line)
+              if (tripData?.variants) {
+                const currentPref = activeLeg === 'return' ? returnPref : outboundPref;
+                const altPref = currentPref === 'fastest' ? 'scenic' : 'fastest';
+                const altVariant = tripData.variants[altPref];
+                const isReturn = activeLeg === 'return';
+                // If return leg, get return route, else outbound
+                return isReturn ? altVariant?.return?.route : altVariant?.outbound?.route;
+              }
+              return null;
+            })()}
+          />
+        }
+      />
+    </ErrorBoundary>
   );
 }

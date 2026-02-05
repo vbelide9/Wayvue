@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import { CombinedDateTimePicker } from './CustomDateTimePicker';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
     });
     const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
     const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
+    const [showTripTypeMenu, setShowTripTypeMenu] = useState(false);
     const [returnDate, setReturnDate] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() + 1); // Default return next day
@@ -125,13 +126,47 @@ const Sidebar: React.FC<SidebarProps> = ({ onRouteSubmit }) => {
                         {/* Trip Type Toggle */}
                         <div className="flex-1">
                             <label className="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2 ml-1 text-white opacity-0">Type</label>
-                            <button
-                                type="button"
-                                onClick={() => setTripType(prev => prev === 'one-way' ? 'round-trip' : 'one-way')}
-                                className="w-full bg-[#33402F] border border-[#628141] hover:bg-[#3d4c38] text-white font-bold py-3 px-2 rounded-xl transition-all shadow-inner h-[50px] flex items-center justify-center text-xs uppercase tracking-wider"
-                            >
-                                {tripType === 'one-way' ? 'One Way' : 'Round Trip'}
-                            </button>
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTripTypeMenu(!showTripTypeMenu)}
+                                    className="w-full bg-[#33402F] border border-[#628141] hover:bg-[#3d4c38] text-white font-bold py-3 px-2 rounded-xl transition-all shadow-inner h-[50px] flex items-center justify-between px-4 text-xs uppercase tracking-wider"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <RefreshCw size={14} className={tripType === 'round-trip' ? 'text-emerald-400' : 'text-gray-400'} />
+                                        {tripType === 'one-way' ? 'One Way' : 'Round Trip'}
+                                    </span>
+                                    <ChevronDown size={14} className={`transition-transform ${showTripTypeMenu ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {showTripTypeMenu && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#33402F] border border-[#628141] rounded-xl shadow-2xl p-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setTripType('one-way');
+                                                setShowTripTypeMenu(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-between mb-1 transition-colors ${tripType === 'one-way' ? 'bg-[#628141]/30 text-white' : 'text-gray-400 hover:bg-[#628141]/10 hover:text-white'}`}
+                                        >
+                                            <span>One Way</span>
+                                            {tripType === 'one-way' && <Check size={14} className="text-[#E67E22]" />}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setTripType('round-trip');
+                                                setShowTripTypeMenu(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-between transition-colors ${tripType === 'round-trip' ? 'bg-[#628141]/30 text-white' : 'text-gray-400 hover:bg-[#628141]/10 hover:text-white'}`}
+                                        >
+                                            <span>Round Trip</span>
+                                            {tripType === 'round-trip' && <Check size={14} className="text-[#E67E22]" />}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Search Button */}

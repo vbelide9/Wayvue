@@ -42,12 +42,21 @@ interface TripViewLayoutProps {
     ) => void;
     onSegmentSelect: (lat: number, lng: number) => void;
 
+    // Departure Props
+    depDate?: string;
+    depTime?: string;
+
+    // Round Trip Props
     // Round Trip Props
     activeLeg?: 'outbound' | 'return';
     hasReturn?: boolean;
     routePreference?: 'fastest' | 'scenic';
-    returnDate?: string; // New prop
+    returnDate?: string; // Display string
+    rawReturnDate?: string; // ISO string for editing
+    rawReturnTime?: string;
     onLegChange?: (leg: 'outbound' | 'return') => void;
+    onSetRoundTrip?: (isRoundTrip: boolean) => void;
+    isRoundTrip?: boolean;
 
     // Slots
     map: ReactNode;
@@ -73,7 +82,13 @@ export function TripViewLayout({
     hasReturn,
     routePreference,
     onLegChange,
-    returnDate
+    returnDate,
+    depDate,
+    depTime,
+    rawReturnDate,
+    rawReturnTime,
+    onSetRoundTrip,
+    isRoundTrip
 }: TripViewLayoutProps) {
 
     console.log('[TripViewLayout] Render. hasReturn:', hasReturn, 'activeLeg:', activeLeg);
@@ -96,11 +111,15 @@ export function TripViewLayout({
                 onUnitChange={onUnitChange}
                 onBack={onBack}
                 onSearch={onSearch}
-                isRoundTrip={hasReturn}
+                isRoundTrip={isRoundTrip}
                 routePreference={routePreference}
-                returnDate={returnDate}
+                returnDate={returnDate} // Display string
                 activeLeg={activeLeg}
                 onLegChange={onLegChange}
+                depDate={depDate}
+                depTime={depTime}
+                rawReturnTime={rawReturnTime}
+                onSetRoundTrip={onSetRoundTrip}
             />
 
 

@@ -27,6 +27,7 @@ app.post('/api/route', async (req, res) => {
     const { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime } = req.body;
 
     logDebug(`[REQUEST] Route: ${start}->${end}, RT: ${roundTrip} (${typeof roundTrip}), Pref: ${preference}`);
+    console.log(`[TRACE] Received request: ${start} -> ${end}`);
 
     if (!start || !end) {
       return res.status(400).json({ error: 'Start and End locations are required' });
@@ -38,17 +39,22 @@ app.post('/api/route', async (req, res) => {
     if (startCoords && startCoords.lat && startCoords.lng) {
       sCoords = { lat: startCoords.lat, lon: startCoords.lng, display_name: start };
     } else {
+      console.log(`[TRACE] Geocoding start: ${start}`);
       sCoords = await geocode(start);
+      console.log(`[TRACE] Geocoding start result:`, sCoords);
     }
 
     if (endCoords && endCoords.lat && endCoords.lng) {
       dCoords = { lat: endCoords.lat, lon: endCoords.lng, display_name: end };
     } else {
+      console.log(`[TRACE] Geocoding end: ${end}`);
       dCoords = await geocode(end);
+      console.log(`[TRACE] Geocoding end result:`, dCoords);
     }
 
     if (!sCoords || !dCoords) {
       logDebug(`[ERROR] Geocoding failed`);
+      console.log(`[TRACE] Geocoding failed. Returning 422.`);
       return res.status(422).json({ error: 'Could not resolve locations.' });
     }
 
@@ -114,7 +120,7 @@ app.post('/api/route', async (req, res) => {
     };
 
     if (roundTrip && primaryReturn) {
-      logDebug(`[RESPONSE] Returning Round Trip with Variants`);
+      logDebug(`[RESPONSE] Returning Round Trip with Variants: ${Object.keys(response.variants).join(', ')}`);
       res.json(response);
     } else {
       res.json({
