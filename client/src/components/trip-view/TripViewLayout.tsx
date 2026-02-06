@@ -85,7 +85,6 @@ export function TripViewLayout({
     returnDate,
     depDate,
     depTime,
-    rawReturnDate,
     rawReturnTime,
     onSetRoundTrip,
     isRoundTrip

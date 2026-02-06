@@ -34,13 +34,15 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     );
 
     // 3. Sample
+    // 3. Sample
     const fullCoordinates = routeData.geometry.coordinates;
     const totalDistanceMiles = routeData.distance * 0.000621371;
 
-    // Dynamic Sampling
-    const TARGET_POINTS = 25;
+    // Dynamic Sampling - Optimized for Speed
+    // Reduce target points to minimize API calls (Weather + Geocode)
+    const TARGET_POINTS = 12; // Reduced from 25
     let intervalMiles = totalDistanceMiles / TARGET_POINTS;
-    if (intervalMiles < 5) intervalMiles = 5;
+    if (intervalMiles < 10) intervalMiles = 10; // Increased min interval from 5 to 10 miles
 
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
 
@@ -68,6 +70,8 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 };
             });
 
+            // Parallelize weather fetching more aggressively if provider allows, 
+            // OR use the existing batched approach but with fewer points (already done via TARGET_POINTS)
             const rawWeatherResults = await getWeatherForPoints(pointsForWeather, departureDate);
 
             // Gap Filling (Simple Neighbor approach)
@@ -83,8 +87,13 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 return { ...item, weather: replacement.weather };
             });
 
-            return Promise.all(weatherResults.map(async (w, i) => {
-                const { lat, lng } = pointsForWeather[i];
+            // Process in chunks - Optimized: Skip Reverse Geocoding for intermediate points to save time
+            // Only reverse geocode Start, End, and maybe 1-2 mid points if really needed.
+            // For now, we will use "Mile X" for speed.
+
+            // 2024-FIX: Actually fetch real names for major points
+            // We can do this in parallel since we have a cache
+            const finalResultsPromise = weatherResults.map(async (w, i) => {
                 const progress = i / Math.max(1, weatherResults.length - 1);
                 const distMiles = Math.round(progress * Number(totalDistanceMiles));
 
@@ -93,10 +102,18 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
                 let city = `Mile ${distMiles}`;
-                try {
-                    const name = await reverseGeocode(lat, lng);
-                    if (name) city = name;
-                } catch (e) { }
+                if (i === 0) city = startLoc.display_name.split(',')[0];
+                else if (i === weatherResults.length - 1) city = endLoc.display_name.split(',')[0];
+                else {
+                    // Try to get real name
+                    try {
+                        const realName = await reverseGeocode(w.lat, w.lng);
+                        if (realName) city = realName; // Keep full name (City, State)
+                    } catch (e) {
+                        console.warn(`Failed to geocode point ${i}: ${e.message}`);
+                    }
+                    console.log(`[DEBUG] Point ${i} (${w.lat}, ${w.lng}) -> ${city}`);
+                }
 
                 return {
                     ...w.weather,
@@ -107,7 +124,11 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                     eta: `ETA ${eta}`,
                     gasPrice: (2.90 + Math.random() * 0.7).toFixed(2)
                 };
-            }));
+            });
+
+            const finalResults = await Promise.all(finalResultsPromise);
+
+            return finalResults;
         })(),
 
         // B. Road Conditions
@@ -118,15 +139,19 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
             return Promise.all(uniqueIndices.map(async (idx, i) => {
                 const [lng, lat] = fullCoordinates[idx];
                 let locationName = i === 0 ? "Start Area" : i === uniqueIndices.length - 1 ? "Destination Area" : `Segment ${i + 1}`;
+
+                // FIX: Use real location names for road segments
                 try {
                     const realName = await reverseGeocode(lat, lng);
                     if (realName) locationName = realName;
-                } catch (e) { }
+                } catch (e) {
+                    console.warn(`Road segment geocode failed: ${e.message}`);
+                }
 
                 const progress = idx / Math.max(1, fullCoordinates.length - 1);
                 const timeOffsetSeconds = progress * (routeData.duration || 0);
                 const etaDate = new Date(baseDepTime + (timeOffsetSeconds * 1000));
-                const w = await getWeather(lat, lng, departureDate, etaDate.getHours());
+                const w = await getWeather(lat, lng, departureDate, etaDate.getHours()); // Ensure this is cached/fast 
                 const code = w?.weathercode || 0;
 
                 let status = "good", desc = "Clear roads, normal traffic flow";
