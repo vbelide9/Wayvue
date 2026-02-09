@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
 import type { FeatureCollection, Geometry } from 'geojson';
+import { AnalyticsService } from '../services/analytics';
 
 // Fix for default Leaflet markers in Vite/Webpack
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -107,6 +108,31 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         return null;
     };
 
+    // Tracker for Map Interactions (Heatmap)
+    const MapTracker = () => {
+        const map = useMap();
+        React.useEffect(() => {
+            const handleMoveEnd = () => {
+                const center = map.getCenter();
+                const zoom = map.getZoom();
+                // Simple debounce/throttle could be added here if needed, 
+                // but for now we'll just log unique moves
+                AnalyticsService.logEvent('map_interaction', {
+                    lat: center.lat,
+                    lng: center.lng,
+                    zoom: zoom,
+                    type: 'move_end'
+                });
+            };
+
+            map.on('moveend', handleMoveEnd);
+            return () => {
+                map.off('moveend', handleMoveEnd);
+            };
+        }, [map]);
+        return null;
+    };
+
     // Helper to create custom "Pill" icon
     const createWeatherIcon = (tempC: number) => {
         const hasTemp = tempC !== undefined && tempC !== null;
@@ -200,41 +226,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
     });
 
     const toggleLayer = (layer: 'weather' | 'traffic' | 'segments') => {
-        setLayers(prev => ({ ...prev, [layer]: !prev[layer] }));
+        setLayers(prev => {
+            const newState = !prev[layer];
+            AnalyticsService.trackClick(`toggle_layer_${layer}`, { state: newState ? 'on' : 'off' });
+            return { ...prev, [layer]: newState };
+        });
     };
 
     // Layer Control Component
-    const LayerControl = () => (
-        <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2 pointer-events-auto">
-            <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-2 rounded-xl shadow-2xl flex flex-col gap-1 w-[140px]">
-                <span className="text-[9px] uppercase tracking-widest font-bold text-white/50 px-2 py-1">Map Layers</span>
 
-                <button
-                    onClick={() => toggleLayer('weather')}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.weather ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
-                >
-                    <div className={`w-1.5 h-1.5 rounded-full ${layers.weather ? 'bg-amber-400 shadow-[0_0_6px_#fbbf24]' : 'bg-transparent border border-white/20'}`} />
-                    Weather
-                </button>
-
-                <button
-                    onClick={() => toggleLayer('segments')}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.segments ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
-                >
-                    <div className={`w-1.5 h-1.5 rounded-full ${layers.segments ? 'bg-blue-400 shadow-[0_0_6px_#60a5fa]' : 'bg-transparent border border-white/20'}`} />
-                    Segments
-                </button>
-
-                <button
-                    onClick={() => toggleLayer('traffic')}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${layers.traffic ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
-                >
-                    <div className={`w-1.5 h-1.5 rounded-full ${layers.traffic ? 'bg-red-400 shadow-[0_0_6px_#f87171]' : 'bg-transparent border border-white/20'}`} />
-                    Traffic
-                </button>
-            </div>
-        </div>
-    );
 
     // --- CAR ANIMATION HELPERS ---
 
@@ -378,7 +378,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
     return (
         <div className="h-full w-full relative z-0">
             {/* Layer Control Overlay */}
-            <LayerControl />
+
 
             <MapContainer
                 center={defaultCenter}
@@ -446,6 +446,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                 {/* Auto Recenter on ACTIVE LEG only */}
                 <RecenterAutomatically latLngs={activeLeg === 'outbound' ? (routePositions || []) : (returnRoutePositions || [])} />
 
+                <MapTracker />
 
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
@@ -471,6 +472,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                                 key={`weather-${idx}`}
                                 position={[point.lat, point.lng]}
                                 icon={createWeatherIcon(tempC as any)}
+                                eventHandlers={{
+                                    click: () => AnalyticsService.trackClick('weather_marker_click', {
+                                        location: point.location,
+                                        condition: weatherDesc,
+                                        temp: tempC,
+                                        leg: 'outbound'
+                                    })
+                                }}
                             >
                                 <Popup className="custom-popup-overrides">
                                     <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">
@@ -574,6 +583,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                                 key={`return-weather-${idx}`}
                                 position={[point.lat, point.lng]}
                                 icon={createWeatherIcon(tempC as any)}
+                                eventHandlers={{
+                                    click: () => AnalyticsService.trackClick('weather_marker_click', {
+                                        location: point.location,
+                                        condition: weatherDesc,
+                                        temp: tempC,
+                                        leg: 'return'
+                                    })
+                                }}
                             >
                                 <Popup className="custom-popup-overrides">
                                     <div className="flex flex-col min-w-[180px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-0 transition-all">

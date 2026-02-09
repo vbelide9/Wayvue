@@ -3,7 +3,21 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+
 const { geocode } = require('./services/geocodingService');
+
+const admin = require('firebase-admin');
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+const db = admin.firestore();
+
+if (process.env.FUNCTIONS_EMULATOR) {
+  db.settings({
+    host: "127.0.0.1:8080",
+    ssl: false
+  });
+}
 
 const app = express();
 // PORT is not needed for functions, but harmless
@@ -17,14 +31,14 @@ app.use((req, res, next) => {
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Wayvue API is running' });
 });
 
 // Replaced fileLogger with console.log for Cloud Functions
 const logDebug = (msg) => console.log(msg);
 
-app.post('/api/route', async (req, res) => {
+app.post('/route', async (req, res) => {
   try {
     const { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime } = req.body;
 
@@ -128,6 +142,109 @@ app.post('/api/route', async (req, res) => {
   } catch (error) {
     console.error('Route handler error:', error);
     res.status(500).json({ error: 'Failed to generate route data' });
+  }
+});
+
+// --- Analytics Endpoints ---
+
+// In-Memory Fallback for Analytics (when Firestore is unavailable/emulator issues)
+const memoryAnalytics = [];
+const USE_MEMORY_ONLY = true; // Force memory mode for local demo without Java
+
+// Middleware to check for Admin Password
+const checkAdmin = (req, res, next) => {
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'; // Default for dev if not set
+  const providedPassword = req.headers['x-admin-password'];
+
+  console.log(`[AUTH DEBUG] Received Password: '${providedPassword}', Expected: '${adminPassword}'`);
+
+  if (providedPassword === adminPassword) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Unauthorized: Invalid Admin Password' });
+  }
+};
+
+// Log Analytics Event (Public, but requires valid format)
+app.post('/analytics/event', async (req, res) => {
+  try {
+    const { userId, eventType, metadata, timestamp } = req.body;
+
+    if (!userId || !eventType) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (USE_MEMORY_ONLY) throw new Error('Using memory only'); // Force memory logic
+
+    await db.collection('analytics_events').add({
+      userId,
+      eventType,
+      metadata: metadata || {},
+      timestamp: timestamp || new Date().toISOString(),
+      serverTimestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Analytics Log Error:', error.message);
+    // Fallback: Store in memory if DB fails
+    const { userId, eventType, metadata, timestamp } = req.body;
+    memoryAnalytics.push({
+      userId,
+      eventType,
+      metadata: metadata || {},
+      timestamp: timestamp || new Date().toISOString(),
+      serverTimestamp: new Date().toISOString() // Mock
+    });
+    // Limit memory size
+    if (memoryAnalytics.length > 200) memoryAnalytics.shift();
+
+    console.log('[Analytics] Fallback: Logged to memory due to DB error');
+    res.json({ success: true, _fallback: true });
+  }
+});
+
+// Get Analytics Data (Admin Only)
+app.get('/analytics', checkAdmin, async (req, res) => {
+  try {
+    // Basic Aggregation (In a real app, use BigQuery or specialized tools for heavy data)
+    // For now, we'll fetch the last N events or perform simple counts
+
+    if (USE_MEMORY_ONLY) throw new Error('Using memory only'); // Force memory logic
+
+    // Example: detailed list of last 100 events
+    const snapshot = await db.collection('analytics_events')
+      .orderBy('serverTimestamp', 'desc')
+      .limit(100)
+      .get();
+
+    const events = [];
+    snapshot.forEach(doc => {
+      events.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Simple counts (This is expensive in Firestore if unrelated to the query above, 
+    // strictly we should use distributed counters or aggregation queries if available)
+    // For MVP, we'll just return the recent events and let the frontend calculate "Recent Activity"
+    const countSnapshot = await db.collection('analytics_events').count().get();
+    const totalEvents = countSnapshot.data().count;
+
+    res.json({
+      totalEvents,
+      recentEvents: events
+    });
+    res.json({
+      totalEvents,
+      recentEvents: events
+    });
+  } catch (error) {
+    console.error('Analytics Fetch Error:', error.message);
+    // Fallback: return from memory
+    console.log('[Analytics] Fallback: Fetching from memory due to DB error');
+    res.json({
+      totalEvents: memoryAnalytics.length,
+      recentEvents: [...memoryAnalytics].reverse() // Show newest first
+    });
   }
 });
 

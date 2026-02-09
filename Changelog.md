@@ -8,7 +8,22 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
-## [v1.2.14] - 2026-02-05
+## [v1.3.0] - 2026-02-09
+### Added
+- **Performance Metrics Dashboard**: Implemented a "System Performance" section in the Admin Dashboard featuring real-time charts for Frontend Page Load Time and Backend API Latency.
+- **Performance Averages**: Added support for Today, 7-Day, and Overall average metrics display for system performance monitoring.
+- **Data Sanity Guardrails**: Implemented algorithmic filtering to exclude outlier performance data (absurdly high values), ensuring accurate trend visualization.
+- **Engagement Monitoring**: Integrated average session duration and improved retention metrics in the Platform Overview.
+
+### Changed
+- **Unit Conversion**: Standardized performance metrics across the platform to display in **seconds (s)** instead of milliseconds, enhancing readability for non-technical users.
+- **Admin UI Polish**: Redesigned the "Exit" button with a high-visibility red-outline style and clarified labeling to "Exit Dashboard".
+
+### Fixed
+- **Metric Key Mismatch**: Resolved a critical tracking bug where the dashboard was filtering for `page_load` instead of the correctly logged `page_load_time`.
+- **Top Destinations**: Fixed a logic error that occasionally displayed "undefined" in the regional popularity list by improving coordinate-to-city resolution.
+- **Chart Interaction**: Fixed a bug where hover tooltips on Recharts components were partially obscured by card glass-morphism effects.
+
 ### Fixed
 - **Instant Route Switching**: Resolved a bug where switching between "Fastest" and "Scenic" routes caused a full page reload. It now correctly uses cached route variants for instant switching on both One-Way and Round Trip journeys.
 - **Round Trip Support**: Fixed logic in `App.tsx` where round-trip variant caching was being ignored, causing unnecessary re-fetches.

@@ -14,6 +14,8 @@ import { WeatherCard } from '@/components/WeatherCard';
 import { type RoadCondition } from '@/components/RoadConditionCard';
 import { EmptyState } from '@/components/EmptyState';
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
+import { AnalyticsService } from './services/analytics';
+import { useEffect } from 'react';
 
 export default function App() {
 
@@ -68,6 +70,62 @@ export default function App() {
 
   // View Mode State
   const [viewMode, setViewMode] = useState<'planning' | 'trip'>('planning');
+
+  // Track Page View, Performance, Location, and Session
+  useEffect(() => {
+    AnalyticsService.logEvent('page_view', { path: '/' });
+    AnalyticsService.trackUserLocation();
+    AnalyticsService.trackSessionStart();
+    AnalyticsService.trackDevice();
+    AnalyticsService.trackRetention();
+
+    // Measure Load Time
+    const handleLoad = () => {
+      // Small delay to ensure performance metrics are populated
+      setTimeout(() => {
+        const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        if (navEntry) {
+          AnalyticsService.trackPerformance('page_load_time', navEntry.loadEventEnd - navEntry.startTime);
+        } else {
+          // Fallback for older browsers
+          const perfData = window.performance.timing;
+          const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+          if (loadTime > 0) {
+            AnalyticsService.trackPerformance('page_load_time', loadTime);
+          }
+        }
+      }, 0);
+    };
+
+    const handleUnload = () => {
+      AnalyticsService.trackSessionEnd();
+    };
+
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad);
+    }
+
+    // Handle session end
+    window.addEventListener('beforeunload', handleUnload);
+    // Also handle visibility change for mobile/background tabs
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        AnalyticsService.trackSessionEnd();
+      } else {
+        // Optional: You might want to start a new session or just resume
+        // For simplicity, we'll just track end on hide. 
+        // A more complex app might handle resume vs new session logic.
+      }
+    });
+
+    return () => {
+      window.removeEventListener('load', handleLoad);
+      window.removeEventListener('beforeunload', handleUnload);
+      document.removeEventListener('visibilitychange', handleUnload); // Reuse handleUnload for cleanup
+    };
+  }, []);
 
   const switchLeg = (leg: 'outbound' | 'return') => {
     if (!tripData) return;
@@ -252,6 +310,14 @@ export default function App() {
       }
     }
 
+    // Log Search Event
+    AnalyticsService.logEvent('search_route', {
+      start: s,
+      end: d,
+      tripType: isRoundTrip ? 'round_trip' : 'one_way',
+      preference: isRoundTrip ? `out:${outboundPref}, ret:${returnPref}` : outboundPref
+    });
+
     setLoading(true);
     try {
       console.log('[App] handleRouteSubmit params:', { s, d, dateToUse, timeToUse, rtToUse, returnDateToUse, returnTimeToUse });
@@ -428,7 +494,10 @@ export default function App() {
                     <div
                       className={`transition-all duration-300 relative ${!isRoundTrip ? 'opacity-60 grayscale hover:opacity-80' : 'opacity-100'} `}
                       onClick={() => {
-                        if (!isRoundTrip) setIsRoundTrip(true);
+                        if (!isRoundTrip) {
+                          setIsRoundTrip(true);
+                          AnalyticsService.trackClick('add_return_date');
+                        }
                       }}
                     >
                       {!isRoundTrip && (
@@ -461,7 +530,11 @@ export default function App() {
 
                     {/* Trip Type Toggle (Compact) */}
                     <div
-                      onClick={() => setIsRoundTrip(!isRoundTrip)}
+                      onClick={() => {
+                        const newValue = !isRoundTrip;
+                        setIsRoundTrip(newValue);
+                        AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
+                      }}
                       className={`
                             cursor-pointer flex items-center justify-center h-9 px-3 rounded-lg border transition-all select-none
                             ${isRoundTrip
@@ -479,14 +552,22 @@ export default function App() {
                     {/* Route Preference (Icons) */}
                     <div className="flex bg-card border border-border rounded-lg p-0.5 h-9">
                       <button
-                        onClick={() => { setOutboundPref('fastest'); setReturnPref('fastest'); }}
+                        onClick={() => {
+                          setOutboundPref('fastest');
+                          setReturnPref('fastest');
+                          AnalyticsService.trackClick('pref_fastest');
+                        }}
                         title="Fastest Route"
                         className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'fastest' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                       >
                         <Zap className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => { setOutboundPref('scenic'); setReturnPref('scenic'); }}
+                        onClick={() => {
+                          setOutboundPref('scenic');
+                          setReturnPref('scenic');
+                          AnalyticsService.trackClick('pref_scenic');
+                        }}
                         title="Scenic Route"
                         className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                       >
