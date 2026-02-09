@@ -27,7 +27,8 @@ export const AnalyticsService = {
 
             // Use fetch with keepalive for reliability during page unload/navigation
             // Axios cancels requests on unload, but keepalive ensures they complete
-            await fetch('/api/analytics/event', {
+            console.log(`[ANALYTICS] Logging event: ${eventType}`, metadata);
+            const response = await fetch('/api/analytics/event', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -35,6 +36,8 @@ export const AnalyticsService = {
                 body: JSON.stringify(payload),
                 keepalive: true
             });
+            const result = await response.json();
+            console.log(`[ANALYTICS] Response for ${eventType}:`, result);
         } catch (error) {
             console.error('Failed to log analytics event', error);
             // Fail silently to not disrupt user experience
@@ -53,10 +56,12 @@ export const AnalyticsService = {
 
     // Track User Location
     trackUserLocation: async () => {
-        // Check if location is already cached in session to avoid spamming API
-        if (sessionStorage.getItem('user_location_logged')) return;
+        // Only skip if we already have a location in this session 
+        // AND we are confident it was logged. 
+        if (sessionStorage.getItem('user_location_logged') === 'true') return;
 
         try {
+            console.log('[ANALYTICS] Fetching user location...');
             const response = await fetch('https://ipapi.co/json/');
             const data = await response.json();
             if (data.error) return;
@@ -65,11 +70,13 @@ export const AnalyticsService = {
                 city: data.city,
                 region: data.region,
                 country: data.country_name,
-                ip: data.ip // Optional: be careful with PII regulations
+                ip: data.ip
             });
             sessionStorage.setItem('user_location_logged', 'true');
+            console.log('[ANALYTICS] User location tracked:', data.city);
         } catch (error) {
-            console.error('Failed to fetch user location:', error);
+            console.error('[ANALYTICS] Failed to fetch user location:', error);
+            // Don't set the flag so we can retry on next mount
         }
     },
 
@@ -90,11 +97,12 @@ export const AnalyticsService = {
 
     // Track Device Type
     trackDevice: () => {
-        // if (sessionStorage.getItem('device_logged')) return;
+        if (sessionStorage.getItem('device_logged') === 'true') return;
         const width = window.innerWidth;
         const deviceType = width < 768 ? 'Mobile' : 'Desktop';
         AnalyticsService.logEvent('device_info', { deviceType, screenWidth: width });
         sessionStorage.setItem('device_logged', 'true');
+        console.log('[ANALYTICS] Device info tracked:', deviceType);
     },
 
     // Track Retention

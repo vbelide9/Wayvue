@@ -81,20 +81,28 @@ export default function App() {
 
     // Measure Load Time
     const handleLoad = () => {
-      // Small delay to ensure performance metrics are populated
-      setTimeout(() => {
+      // Use a recursive check or a slightly longer timeout to ensure loadEventEnd is populated
+      let attempts = 0;
+      const checkPerf = () => {
         const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-        if (navEntry) {
-          AnalyticsService.trackPerformance('page_load_time', navEntry.loadEventEnd - navEntry.startTime);
-        } else {
-          // Fallback for older browsers
-          const perfData = window.performance.timing;
-          const loadTime = perfData.loadEventEnd - perfData.navigationStart;
-          if (loadTime > 0) {
-            AnalyticsService.trackPerformance('page_load_time', loadTime);
-          }
+        const perfData = window.performance.timing;
+
+        let loadTime = 0;
+        if (navEntry && navEntry.loadEventEnd > 0) {
+          loadTime = navEntry.loadEventEnd;
+        } else if (perfData && perfData.loadEventEnd > 0) {
+          loadTime = perfData.loadEventEnd - perfData.navigationStart;
         }
-      }, 0);
+
+        if (loadTime > 0) {
+          AnalyticsService.trackPerformance('page_load_time', loadTime);
+        } else if (attempts < 5) {
+          attempts++;
+          setTimeout(checkPerf, 500);
+        }
+      };
+
+      setTimeout(checkPerf, 500);
     };
 
     const handleUnload = () => {
@@ -311,11 +319,12 @@ export default function App() {
     }
 
     // Log Search Event
+    console.log('[DEBUG] Logging search_route event:', { start: s, end: d, preference: prefToUse });
     AnalyticsService.logEvent('search_route', {
-      start: s,
-      end: d,
-      tripType: isRoundTrip ? 'round_trip' : 'one_way',
-      preference: isRoundTrip ? `out:${outboundPref}, ret:${returnPref}` : outboundPref
+      start: String(s),
+      end: String(d),
+      tripType: rtToUse ? 'round_trip' : 'one_way',
+      preference: rtToUse ? `out:${outboundPref}, ret:${returnPref}` : outboundPref
     });
 
     setLoading(true);

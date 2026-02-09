@@ -20,25 +20,30 @@ if (process.env.FUNCTIONS_EMULATOR) {
 }
 
 const app = express();
-// PORT is not needed for functions, but harmless
-
-// Log ALL requests before any middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
+const router = express.Router();
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-app.get('/health', (req, res) => {
+// Log ALL requests before any middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} (Original: ${req.url})`);
+  next();
+});
+
+router.use((req, res, next) => {
+  console.log(`[ROUTER DEBUG] ${req.method} ${req.path} (Full: ${req.originalUrl})`);
+  next();
+});
+
+router.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Wayvue API is running' });
 });
 
 // Replaced fileLogger with console.log for Cloud Functions
 const logDebug = (msg) => console.log(msg);
 
-app.post('/route', async (req, res) => {
+router.post('/route', async (req, res) => {
   try {
     const { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime } = req.body;
 
@@ -132,11 +137,7 @@ app.post('/route', async (req, res) => {
       logDebug(`[RESPONSE] Returning Round Trip with Variants`);
       res.json(response);
     } else {
-      res.json({
-        ...response,
-        // Fallback for flat structure if frontend relies on root props for non-RT
-        // But prefer using the structured response above
-      });
+      res.json(response);
     }
 
   } catch (error) {
@@ -149,14 +150,12 @@ app.post('/route', async (req, res) => {
 
 // In-Memory Fallback for Analytics (when Firestore is unavailable/emulator issues)
 const memoryAnalytics = [];
-const USE_MEMORY_ONLY = true; // Force memory mode for local demo without Java
+const USE_MEMORY_ONLY = false; // Enabled persistent Firestore storage
 
 // Middleware to check for Admin Password
 const checkAdmin = (req, res, next) => {
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'; // Default for dev if not set
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
   const providedPassword = req.headers['x-admin-password'];
-
-  console.log(`[AUTH DEBUG] Received Password: '${providedPassword}', Expected: '${adminPassword}'`);
 
   if (providedPassword === adminPassword) {
     next();
@@ -165,8 +164,8 @@ const checkAdmin = (req, res, next) => {
   }
 };
 
-// Log Analytics Event (Public, but requires valid format)
-app.post('/analytics/event', async (req, res) => {
+// Log Analytics Event (Public)
+router.post('/analytics/event', async (req, res) => {
   try {
     const { userId, eventType, metadata, timestamp } = req.body;
 
@@ -174,7 +173,7 @@ app.post('/analytics/event', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (USE_MEMORY_ONLY) throw new Error('Using memory only'); // Force memory logic
+    console.log(`[ANALYTICS] Received event: ${eventType} from ${userId}`);
 
     await db.collection('analytics_events').add({
       userId,
@@ -194,28 +193,20 @@ app.post('/analytics/event', async (req, res) => {
       eventType,
       metadata: metadata || {},
       timestamp: timestamp || new Date().toISOString(),
-      serverTimestamp: new Date().toISOString() // Mock
+      serverTimestamp: new Date().toISOString()
     });
-    // Limit memory size
     if (memoryAnalytics.length > 200) memoryAnalytics.shift();
 
-    console.log('[Analytics] Fallback: Logged to memory due to DB error');
     res.json({ success: true, _fallback: true });
   }
 });
 
 // Get Analytics Data (Admin Only)
-app.get('/analytics', checkAdmin, async (req, res) => {
+router.get('/analytics', checkAdmin, async (req, res) => {
   try {
-    // Basic Aggregation (In a real app, use BigQuery or specialized tools for heavy data)
-    // For now, we'll fetch the last N events or perform simple counts
-
-    if (USE_MEMORY_ONLY) throw new Error('Using memory only'); // Force memory logic
-
-    // Example: detailed list of last 100 events
     const snapshot = await db.collection('analytics_events')
       .orderBy('serverTimestamp', 'desc')
-      .limit(100)
+      .limit(200)
       .get();
 
     const events = [];
@@ -223,9 +214,6 @@ app.get('/analytics', checkAdmin, async (req, res) => {
       events.push({ id: doc.id, ...doc.data() });
     });
 
-    // Simple counts (This is expensive in Firestore if unrelated to the query above, 
-    // strictly we should use distributed counters or aggregation queries if available)
-    // For MVP, we'll just return the recent events and let the frontend calculate "Recent Activity"
     const countSnapshot = await db.collection('analytics_events').count().get();
     const totalEvents = countSnapshot.data().count;
 
@@ -233,20 +221,18 @@ app.get('/analytics', checkAdmin, async (req, res) => {
       totalEvents,
       recentEvents: events
     });
-    res.json({
-      totalEvents,
-      recentEvents: events
-    });
   } catch (error) {
     console.error('Analytics Fetch Error:', error.message);
-    // Fallback: return from memory
-    console.log('[Analytics] Fallback: Fetching from memory due to DB error');
     res.json({
       totalEvents: memoryAnalytics.length,
-      recentEvents: [...memoryAnalytics].reverse() // Show newest first
+      recentEvents: [...memoryAnalytics].reverse()
     });
   }
 });
+
+// Mount the router at both root and /api to handle Firebase Hosting variants
+app.use('/api', router);
+app.use('/', router);
 
 // Expose Express App as a Cloud Function
 exports.api = functions.runWith({ maxInstances: 2 }).https.onRequest(app);
