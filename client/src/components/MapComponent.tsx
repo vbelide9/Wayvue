@@ -218,22 +218,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         </div>
     );
 
-    // Layer Visibility State
-    const [layers, setLayers] = React.useState({
+    // Layer Visibility State (Read-only for now, toggle function was unused)
+    const [layers] = React.useState({
         weather: true,
         traffic: true,
         segments: true
     });
-
-    const toggleLayer = (layer: 'weather' | 'traffic' | 'segments') => {
-        setLayers(prev => {
-            const newState = !prev[layer];
-            AnalyticsService.trackClick(`toggle_layer_${layer}`, { state: newState ? 'on' : 'off' });
-            return { ...prev, [layer]: newState };
-        });
-    };
-
-    // Layer Control Component
 
 
     // --- CAR ANIMATION HELPERS ---
