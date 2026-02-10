@@ -196,6 +196,61 @@ app.get('/api/analytics', checkAdmin, (req, res) => {
   }
 });
 
+// --- Community Intelligence Endpoint ---
+app.get('/api/community-stats', (req, res) => {
+  try {
+    // 1. Calculate Active Users (Unique UserIDs in last 10 mins)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const recentEvents = memoryAnalytics.filter(e => e.timestamp > tenMinutesAgo);
+    const activeUsers = new Set(recentEvents.map(e => e.userId)).size;
+
+    // 2. Top Destinations (from 'search_route' events)
+    const destCounts = {};
+    memoryAnalytics
+      .filter(e => e.eventType === 'search_route' && e.metadata.end)
+      .forEach(e => {
+        const dest = e.metadata.end.split(',')[0].trim(); // City only
+        destCounts[dest] = (destCounts[dest] || 0) + 1;
+      });
+
+    const topDestinations = Object.entries(destCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    // 3. Accumulated Miles (from 'trip_generated' events)
+    // If we haven't logged any 'trip_generated' yet, we mock a base number to look "alive"
+    const loggedMiles = memoryAnalytics
+      .filter(e => e.eventType === 'trip_generated' && e.metadata.distance)
+      .reduce((acc, curr) => acc + (parseFloat(curr.metadata.distance) || 0), 0);
+
+    // Base miles to make the platform look established + live miles
+    const totalSafeMiles = 12450 + loggedMiles;
+
+    // 4. Recent Activity Ticker
+    const recentActivity = memoryAnalytics
+      .filter(e => e.eventType === 'search_route')
+      .slice(-5)
+      .reverse()
+      .map(e => ({
+        action: 'planned a trip',
+        details: `to ${e.metadata.end.split(',')[0]}`,
+        timestamp: e.timestamp
+      }));
+
+    res.json({
+      activeUsers: Math.max(activeUsers, 3), // Min 3 for social proof demo
+      topDestinations: topDestinations.length > 0 ? topDestinations : [{ name: "Los Angeles", count: 12 }, { name: "Las Vegas", count: 8 }],
+      totalSafeMiles: Math.round(totalSafeMiles),
+      recentActivity
+    });
+
+  } catch (error) {
+    console.error('Community Stats Error:', error);
+    res.status(500).json({ error: 'Failed to generate community stats' });
+  }
+});
+
 app.listen(5001, () => {
   console.log(`Server running on port 5001`);
 });

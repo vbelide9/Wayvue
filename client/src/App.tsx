@@ -15,6 +15,7 @@ import { type RoadCondition } from '@/components/RoadConditionCard';
 import { EmptyState } from '@/components/EmptyState';
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
+import { CommunityIntel } from './components/CommunityIntel';
 import { useEffect } from 'react';
 
 export default function App() {
@@ -394,6 +395,20 @@ export default function App() {
             AnalyticsService.trackPerformance('time_to_first_insight', ttfi, { source: 'api', preference: prefToUse });
           }
 
+          // [NEW] Track Trip Generation for Community Stats
+          // We extract distance from the metrics (e.g. "450 mi") to log accumulated miles
+          const distStr = initialData.metrics?.distance || "0";
+          const distVal = parseFloat(distStr.replace(/,/g, '').split(' ')[0]);
+
+          if (!isNaN(distVal) && distVal > 0) {
+            AnalyticsService.logEvent('trip_generated', {
+              start: s,
+              end: d,
+              distance: distVal,
+              preference: prefToUse
+            });
+          }
+
           setViewMode('trip');
         } else {
           console.error("Route API returned success but no route data found.");
@@ -663,15 +678,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SIDEBAR (Original Placeholder) */}
+        {/* RIGHT COLUMN: SIDEBAR */}
         <div className="hidden lg:flex lg:basis-[35%] w-full max-w-md border-l border-border bg-card shadow-2xl z-[500] flex-col h-full overflow-hidden">
-          <div className="flex-1 overflow-hidden relative pt-2 min-h-0 flex flex-col items-center justify-center p-8 text-center text-muted-foreground opacity-50">
-            <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-24 h-24 flex items-center justify-center mb-6">
-              <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
-            </div>
-            <h2 className="text-xl font-bold mb-2">Wayvue</h2>
-            <p className="font-medium mb-8">Enter a route to view intelligence</p>
-          </div>
+          <CommunityIntel />
         </div>
       </div>
     </main>
