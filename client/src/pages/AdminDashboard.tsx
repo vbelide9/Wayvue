@@ -170,8 +170,8 @@ const AdminDashboard = () => {
                 }));
 
                 const avgFe = perfEvents
-                    .filter((e: any) => e.metadata?.metric === 'page_load' || e.metadata?.metric === 'time_to_first_insight') // using ttfi as proxy
-                    .reduce((acc: number, curr: any, _, arr: any[]) => acc + (curr.metadata?.value || 0) / arr.length, 0);
+                    .filter((e: any) => e.metadata?.metric === 'page_load' || e.metadata?.metric === 'time_to_first_insight')
+                    .reduce((acc: number, curr: any, _index: number, arr: any[]) => acc + (curr.metadata?.value || 0) / arr.length, 0);
 
                 setPerfStats({
                     frontendLoad: feTrend,
@@ -548,10 +548,6 @@ const AdminDashboard = () => {
 // ICONS THAT WERE MISSING OR CAUSING ISSUES
 const Clock = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-);
-
-const Users = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
 );
 
 // HELPER COMPONENTS
