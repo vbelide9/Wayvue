@@ -244,129 +244,26 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         return R * c;
     };
 
-    // --- DIRECTION FLOW ANIMATION ---
-
-    const FlowingDirectionLine = ({ routePositions, color = "#3b82f6", duration = 4000 }: { routePositions: LatLngExpression[], color?: string, duration?: number }) => {
-        const [segments, setSegments] = React.useState<LatLngExpression[][]>([]);
-        const requestRef = React.useRef<number | null>(null);
-        const startTimeRef = React.useRef<number | null>(null);
-
-        // Pre-calculate cumulative distances
-        const cumulativeDistances = React.useMemo(() => {
-            if (!routePositions || routePositions.length < 2) return [];
-            const dists = [0];
-            for (let i = 1; i < routePositions.length; i++) {
-                const prev = routePositions[i - 1] as [number, number];
-                const curr = routePositions[i] as [number, number];
-                const d = getDistance(prev[0], prev[1], curr[0], curr[1]);
-                dists.push(dists[i - 1] + d);
-            }
-            return dists;
-        }, [routePositions]);
-
-        const getPointAtDistance = (dist: number, totalDist: number) => {
-            const d = Math.max(0, Math.min(dist, totalDist));
-            let index = 0;
-            while (index < cumulativeDistances.length - 1 && cumulativeDistances[index + 1] < d) {
-                index++;
-            }
-            const startDist = cumulativeDistances[index];
-            const endDist = cumulativeDistances[index + 1];
-            const segmentLen = endDist - startDist;
-            const progress = segmentLen > 0 ? (d - startDist) / segmentLen : 0;
-            const start = routePositions[index] as [number, number];
-            const end = routePositions[index + 1] as [number, number];
-            return [
-                start[0] + (end[0] - start[0]) * progress,
-                start[1] + (end[1] - start[1]) * progress
-            ] as [number, number];
-        };
-
-        React.useEffect(() => {
-            if (!routePositions || routePositions.length < 2 || cumulativeDistances.length === 0) return;
-            const totalDistance = cumulativeDistances[cumulativeDistances.length - 1];
-            // Pulse length is 8% of route
-            const pulseLength = totalDistance * 0.08;
-            const numPulses = 3;
-            const pulseInterval = 0.15; // Gap between pulses in fraction of total distance
-
-            const animate = (time: number) => {
-                if (startTimeRef.current === null) startTimeRef.current = time;
-                const elapsed = time - startTimeRef.current;
-                const baseProgress = (elapsed % duration) / duration;
-
-                const newSegments: LatLngExpression[][] = [];
-
-                for (let i = 0; i < numPulses; i++) {
-                    const progress = (baseProgress - i * pulseInterval + 1) % 1;
-
-                    // Travel slightly beyond bounds to fade in/out
-                    const currentCenter = progress * (totalDistance + pulseLength) - (pulseLength / 2);
-
-                    const startD = Math.max(0, currentCenter - pulseLength / 2);
-                    const endD = Math.min(totalDistance, currentCenter + pulseLength / 2);
-
-                    if (endD > startD) {
-                        let startIndex = 0;
-                        while (startIndex < cumulativeDistances.length - 1 && cumulativeDistances[startIndex + 1] < startD) {
-                            startIndex++;
-                        }
-
-                        let endIndex = startIndex;
-                        while (endIndex < cumulativeDistances.length - 1 && cumulativeDistances[endIndex + 1] < endD) {
-                            endIndex++;
-                        }
-
-                        const pts: LatLngExpression[] = [];
-                        pts.push(getPointAtDistance(startD, totalDistance));
-                        for (let j = startIndex + 1; j <= endIndex; j++) {
-                            pts.push(routePositions[j]);
-                        }
-                        pts.push(getPointAtDistance(endD, totalDistance));
-                        newSegments.push(pts);
-                    }
-                }
-
-                setSegments(newSegments);
-                requestRef.current = requestAnimationFrame(animate);
-            };
-
-            requestRef.current = requestAnimationFrame(animate);
-            return () => {
-                if (requestRef.current !== null) cancelAnimationFrame(requestRef.current);
-            };
-        }, [routePositions, duration, cumulativeDistances]);
-
-        return (
-            <>
-                {segments.map((pts, idx) => (
-                    <React.Fragment key={idx}>
-                        {/* Glow polyline */}
-                        <Polyline
-                            positions={pts}
-                            color={color}
-                            weight={12}
-                            opacity={0.2 / (idx + 1)} // Fade consecutive pulses
-                            lineCap="round"
-                            lineJoin="round"
-                        />
-                        {/* Core polyline */}
-                        <Polyline
-                            positions={pts}
-                            color="#ffffff"
-                            weight={3}
-                            opacity={0.8 / (idx + 1)}
-                            lineCap="round"
-                            lineJoin="round"
-                        />
-                    </React.Fragment>
-                ))}
-            </>
-        );
-    };
+    // --- CSS ANIMATION STYLES ---
+    // Injected styles for the flowing dash animation
+    const animationStyles = `
+        @keyframes flow-animation {
+            0% { stroke-dashoffset: 200; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .flowing-dash-blue {
+            stroke-dasharray: 10 20;
+            animation: flow-animation 3s linear infinite;
+        }
+        .flowing-dash-orange {
+            stroke-dasharray: 10 20;
+            animation: flow-animation 3s linear infinite;
+        }
+    `;
 
     return (
         <div className="h-full w-full relative z-0">
+            <style>{animationStyles}</style>
             {/* Layer Control Overlay */}
 
 
@@ -411,8 +308,16 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                             lineCap="round"
                             lineJoin="round"
                         />
-                        {/* Directional Flow Animation */}
-                        <FlowingDirectionLine routePositions={routePositions} color="#3b82f6" />
+                        {/* Flowing Dash Overlay */}
+                        <Polyline
+                            positions={routePositions}
+                            color="#ffffff"
+                            weight={4}
+                            opacity={0.7}
+                            className="flowing-dash-blue"
+                            lineCap="round"
+                            lineJoin="round"
+                        />
                     </>
                 )}
 
@@ -428,8 +333,16 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                             lineCap="round"
                             lineJoin="round"
                         />
-                        {/* Directional Flow Animation */}
-                        <FlowingDirectionLine routePositions={returnRoutePositions} color="#f97316" />
+                        {/* Flowing Dash Overlay */}
+                        <Polyline
+                            positions={returnRoutePositions}
+                            color="#ffffff"
+                            weight={4}
+                            opacity={0.7}
+                            className="flowing-dash-orange"
+                            lineCap="round"
+                            lineJoin="round"
+                        />
                     </>
                 )}
 

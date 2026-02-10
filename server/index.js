@@ -251,6 +251,126 @@ app.get('/api/community-stats', (req, res) => {
   }
 });
 
+// --- Smart Vehicle Recommendation Endpoint ---
+app.get('/api/trip/rental-recommendations', (req, res) => {
+  try {
+    const { distance, weather_condition, origin, destination, passengers, luggage, terrain } = req.query;
+
+    let showRecommendation = true;
+    let reason = [];
+    let recommendedVehicle = "Standard Sedan";
+    let options = [];
+
+    // Parse inputs
+    const distVal = parseFloat((distance || "0").toString().replace(/,/g, '').split(' ')[0]);
+    const passengerCount = parseInt(passengers || "1");
+    const luggageCount = parseInt(luggage || "0");
+    const terrainType = (terrain || "highway").toLowerCase(); // 'city', 'highway', 'mountain'
+    const weather = (weather_condition || "").toLowerCase();
+
+    // --- RULES ENGINE ---
+
+    // 1. Determine Capacity Scale
+    let needsLargeCapacity = false;
+    let needsMediumCapacity = false;
+
+    if (passengerCount >= 5 || (passengerCount >= 4 && luggageCount >= 3)) {
+      needsLargeCapacity = true;
+    } else if (passengerCount === 4 || luggageCount >= 3) {
+      needsMediumCapacity = true;
+    }
+
+    // 2. Determine Environment Scale
+    let needsAWD = false;
+    if (weather.includes('snow') || weather.includes('ice') || weather.includes('blizzard') || terrainType === 'mountain') {
+      needsAWD = true;
+    }
+
+    // 3. Selection Matrix
+    if (needsLargeCapacity) {
+      if (needsAWD) {
+        recommendedVehicle = "Full-size SUV (4WD)";
+        reason.push("Large 4WD vehicle required for passengers/cargo and terrain.");
+      } else {
+        recommendedVehicle = "Minivan or Full-size SUV";
+        reason.push("High passenger/luggage capacity required.");
+      }
+    } else if (needsAWD) {
+      recommendedVehicle = "AWD SUV / Jeep";
+      reason.push("AWD/4WD strongly recommended for terrain/weather conditions.");
+    } else if (needsMediumCapacity) {
+      recommendedVehicle = "Mid-size SUV / Crossover";
+      reason.push("Extra space needed for passengers/cargo.");
+    } else if (terrainType === 'city' && passengerCount <= 2 && luggageCount <= 2 && distVal < 100) {
+      recommendedVehicle = "Economy / Compact";
+      reason.push("Compact size recommended for city navigation.");
+    } else if (distVal > 300) {
+      recommendedVehicle = "Full-size Sedan";
+      reason.push("Comfort recommended for long-distance travel.");
+    } else {
+      recommendedVehicle = "Intermediate / Standard Car";
+      reason.push("Best suited for your trip parameters.");
+    }
+
+    // Deduplicate and format reason
+    const finalReason = reason.length > 0 ? reason.join(" ") : "Best suited for your trip parameters.";
+
+    // --- MOCK DATA GENERATION ---
+    const getLink = (term) => `https://www.kayak.com/cars?q=${encodeURIComponent(term)}`;
+
+    if (recommendedVehicle.includes("Minivan") || (recommendedVehicle.includes("Full-size SUV") && !recommendedVehicle.includes("4WD"))) {
+      options = [
+        { name: "Chrysler Pacifica", features: "7 Seats • Spacious • Auto Sliding Doors", price: "$95/day", link: getLink("Minivan") },
+        { name: "Chevrolet Tahoe", features: "7 Seats • Large Cargo • V8 Power", price: "$110/day", link: getLink("Full-size SUV") },
+        { name: "Toyota Sienna", features: "8 Seats • Hybrid • Safety Sense", price: "$98/day", link: getLink("Minivan") }
+      ];
+    } else if (recommendedVehicle.includes("Full-size SUV (4WD)")) {
+      options = [
+        { name: "Chevrolet Tahoe 4WD", features: "7 Seats • 4WD • Heavy Duty", price: "$115/day", link: getLink("Chevrolet Tahoe 4WD") },
+        { name: "Ford Expedition 4WD", features: "8 Seats • 4WD • EcoBoost", price: "$112/day", link: getLink("Ford Expedition 4WD") },
+        { name: "GMC Yukon 4WD", features: "7 Seats • 4WD • Premium Interior", price: "$120/day", link: getLink("GMC Yukon 4WD") }
+      ];
+    } else if (recommendedVehicle.includes("AWD") || recommendedVehicle.includes("Jeep")) {
+      options = [
+        { name: "Jeep Grand Cherokee", features: "4WD • All-Terrain • High Clearance", price: "$98/day", link: getLink("Jeep Grand Cherokee") },
+        { name: "Subaru Outback", features: "AWD • Roof Rails • Heated Seats", price: "$82/day", link: getLink("Subaru Outback") },
+        { name: "Ford Explorer 4WD", features: "4WD • Terrain Management", price: "$95/day", link: getLink("Ford Explorer 4WD") }
+      ];
+    } else if (recommendedVehicle.includes("Mid-size SUV")) {
+      options = [
+        { name: "Toyota RAV4", features: "5 Seats • AWD Available • Fuel Efficient", price: "$75/day", link: getLink("Toyota RAV4") },
+        { name: "Honda CR-V", features: "5 Seats • Spacious Boot • Sensing Suite", price: "$78/day", link: getLink("Honda CR-V") },
+        { name: "Nissan Rogue", features: "5 Seats • ProPILOT Assist", price: "$72/day", link: getLink("Nissan Rogue") }
+      ];
+    } else if (recommendedVehicle.includes("Economy") || recommendedVehicle.includes("Compact")) {
+      options = [
+        { name: "Honda Civic", features: "High MPG • Compact • Apple CarPlay", price: "$45/day", link: getLink("Honda Civic") },
+        { name: "Toyota Corolla", features: "Fuel Priority • Easy Parking", price: "$42/day", link: getLink("Toyota Corolla") },
+        { name: "Hyundai Elantra", features: "Great Value • Smart Trunk", price: "$40/day", link: getLink("Hyundai Elantra") }
+      ];
+    } else {
+      // Standard / Default
+      options = [
+        { name: "Toyota Camry", features: "Comfort • Smooth Ride • Spacious", price: "$55/day", link: getLink("Toyota Camry") },
+        { name: "Nissan Altima", features: "Zero Gravity Seats • AWD Available", price: "$52/day", link: getLink("Nissan Altima") },
+        { name: "Chevrolet Malibu", features: "Smooth Drive • WiFi Hotspot", price: "$50/day", link: getLink("Chevrolet Malibu") }
+      ];
+    }
+
+    res.json({
+      showRecommendation,
+      reason: finalReason,
+      recommendedVehicle,
+      provider: "Kayak",
+      options
+    });
+
+  } catch (error) {
+    console.error('Rental Rec Error:', error);
+    res.status(500).json({ error: 'Failed to generate rental recommendations' });
+  }
+});
+
 app.listen(5001, () => {
   console.log(`Server running on port 5001`);
 });

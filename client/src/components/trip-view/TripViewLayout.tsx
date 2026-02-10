@@ -1,3 +1,4 @@
+
 import { type ReactNode } from 'react';
 import { TripHeader } from './TripHeader';
 import { TripSidebar } from './TripSidebar';
@@ -23,6 +24,7 @@ interface TripViewLayoutProps {
     weatherData: any[]; // Using any for weather data to match simplified types, can be strict later
     aiAnalysis: any;
     recommendations: any[];
+
     unit: 'C' | 'F';
 
     // Callbacks
@@ -87,7 +89,9 @@ export function TripViewLayout({
     depTime,
     rawReturnTime,
     onSetRoundTrip,
-    isRoundTrip
+    isRoundTrip,
+    rawReturnDate,
+
 }: TripViewLayoutProps) {
 
     console.log('[TripViewLayout] Render. hasReturn:', hasReturn, 'activeLeg:', activeLeg);
@@ -141,17 +145,31 @@ export function TripViewLayout({
                         <div className="w-12 h-1.5 bg-muted rounded-full opacity-50" />
                     </div>
                     {/* Sidebar (Tabs) - Fixed Width on Desktop, Bottom Sheet on Mobile */}
-                    <TripSidebar
-                        aiAnalysis={aiAnalysis}
-                        recommendations={recommendations}
-                        roadConditions={roadConditions}
-                        weatherData={weatherData}
-                        unit={unit}
-                        onSegmentSelect={onSegmentSelect}
-                        activeLeg={activeLeg}
-                        hasReturn={hasReturn}
-                        onLegChange={onLegChange}
-                    />
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        <TripSidebar
+                            aiAnalysis={aiAnalysis}
+                            recommendations={recommendations}
+                            roadConditions={roadConditions}
+                            weatherData={weatherData}
+                            unit={unit}
+                            onSegmentSelect={onSegmentSelect}
+                            activeLeg={activeLeg}
+                            hasReturn={hasReturn}
+                            onLegChange={onLegChange}
+                            metrics={metrics}
+                            // [NEW] Pass props for Deep Linking
+                            start={start}
+                            destination={destination}
+                            depDate={depDate}
+                            // Normalize return date for the link (using raw if available or calculated)
+                            // returnDate prop here is formatted string "Mon, Nov 20". We might need ISO "yyyy-mm-dd".
+                            // TripViewLayout receives `depDate` (ISO) and `returnDate` (Display). 
+                            // It also receives `rawReturnDate` (ISO) which is what we need!
+                            returnDate={rawReturnDate || returnDate}
+                            depTime={depTime}
+                            returnTime={rawReturnTime}
+                        />
+                    </div>
                 </div>
 
                 {/* Mobile Drawer Placeholder (if requested later) */}

@@ -1,8 +1,8 @@
-import { LayoutDashboard, CloudSun, MapPin, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, CloudSun, MapPin, AlertTriangle, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnalyticsService } from '@/services/analytics';
 
-export type TabId = 'overview' | 'forecast' | 'stops' | 'road';
+export type TabId = 'overview' | 'forecast' | 'stops' | 'road' | 'rental';
 
 interface TripTabsProps {
     activeTab: TabId;
@@ -20,6 +20,7 @@ export function TripTabs({ activeTab, onTabChange }: TripTabsProps) {
         { id: 'forecast', label: 'Forecast', icon: CloudSun },
         { id: 'stops', label: 'Stops', icon: MapPin },
         { id: 'road', label: 'Road', icon: AlertTriangle },
+        { id: 'rental', label: 'Vehicle', icon: Car },
     ] as const;
 
     return (

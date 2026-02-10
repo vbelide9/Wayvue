@@ -58,6 +58,8 @@ export default function App() {
   const [tripData, setTripData] = useState<any>(null);
   const [activeLeg, setActiveLeg] = useState<'outbound' | 'return'>('outbound');
 
+
+
   // Split preferences for independent selection
   const [outboundPref, setOutboundPref] = useState<'fastest' | 'scenic'>('fastest');
   const [returnPref, setReturnPref] = useState<'fastest' | 'scenic'>('fastest');
@@ -347,6 +349,8 @@ export default function App() {
       const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse);
       if (response) {
         setTripData(response);
+
+
 
         // Check if it's strictly a round trip response or fallback
         const isRTResponse = response.isRoundTrip;
@@ -699,6 +703,7 @@ export default function App() {
 
         aiAnalysis={aiAnalysis}
         recommendations={recommendations}
+
         unit={unit}
         onUnitChange={setUnit}
         onBack={handleBackToPlanning}

@@ -4,6 +4,7 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { ForecastTab } from './tabs/ForecastTab';
 import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
+import { RentalTab } from './tabs/RentalTab';
 import { type RoadCondition } from '@/components/RoadConditionCard';
 
 interface TripSidebarProps {
@@ -16,6 +17,14 @@ interface TripSidebarProps {
     activeLeg?: 'outbound' | 'return';
     hasReturn?: boolean;
     onLegChange?: (leg: 'outbound' | 'return') => void;
+    metrics: any;
+    // [NEW] Props for Deep Linking
+    start?: string;
+    destination?: string;
+    depDate?: string;
+    returnDate?: string;
+    depTime?: string;
+    returnTime?: string;
 }
 
 export function TripSidebar({
@@ -27,7 +36,15 @@ export function TripSidebar({
     onSegmentSelect,
     activeLeg,
     hasReturn,
-    onLegChange
+    onLegChange,
+    metrics,
+    // [NEW] Props for Deep Linking
+    start,
+    destination,
+    depDate,
+    returnDate,
+    depTime,
+    returnTime
 }: TripSidebarProps) {
     const [activeTab, setActiveTab] = useState<TabId>('overview');
 
@@ -65,6 +82,17 @@ export function TripSidebar({
                             onSegmentSelect(condition.location.lat, condition.location.lon);
                         }
                     }}
+                />;
+            case 'rental':
+                return <RentalTab
+                    metrics={metrics}
+                    weatherData={weatherData}
+                    start={start}
+                    destination={destination}
+                    depDate={depDate}
+                    returnDate={returnDate}
+                    depTime={depTime}
+                    returnTime={returnTime}
                 />;
             default:
                 return null;
