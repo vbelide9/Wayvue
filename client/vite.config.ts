@@ -13,9 +13,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5001/wayvue-app/us-central1/api',
+        target: 'http://localhost:5001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
         secure: false,
       },
     },

@@ -8,7 +8,16 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
-## [v1.3.0] - 2026-02-09
+## [v1.4.0] - 2026-02-10
+### Added
+- **Dashboard Restructuring**: Completely reorganized the Admin Dashboard into 4 strategic sections: Platform Overview, Geography & Devices, Engagement, and System Performance.
+- **New Metrics**:
+    - **Platform**: Total Events, Avg Session, Retention, Error Rate.
+    - **Geography**: Top Cities, Top Routes, Device Breakdown.
+    - **Engagement**: Conversion Rates, Route Preference (Scenic vs. Fastest).
+    - **System**: Frontend Page Load & Backend API Latency with historical comparisons.
+- **Visual Overhaul**: Improved UI with a tabbed layout, new icons, and refined metric cards.
+
 ### Added
 - **Performance Metrics Dashboard**: Implemented a "System Performance" section in the Admin Dashboard featuring real-time charts for Frontend Page Load Time and Backend API Latency.
 - **Performance Averages**: Added support for Today, 7-Day, and Overall average metrics display for system performance monitoring.

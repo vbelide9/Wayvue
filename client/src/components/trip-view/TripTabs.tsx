@@ -1,5 +1,6 @@
 import { LayoutDashboard, CloudSun, MapPin, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnalyticsService } from '@/services/analytics';
 
 export type TabId = 'overview' | 'forecast' | 'stops' | 'road';
 
@@ -9,6 +10,11 @@ interface TripTabsProps {
 }
 
 export function TripTabs({ activeTab, onTabChange }: TripTabsProps) {
+    const handleTabChange = (tabId: TabId) => {
+        AnalyticsService.trackInteraction('tab_switch', { from: activeTab, to: tabId });
+        onTabChange(tabId);
+    };
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
         { id: 'forecast', label: 'Forecast', icon: CloudSun },
@@ -27,7 +33,7 @@ export function TripTabs({ activeTab, onTabChange }: TripTabsProps) {
                         key={tab.id}
                         variant="ghost"
                         size="sm"
-                        onClick={() => onTabChange(tab.id)}
+                        onClick={() => handleTabChange(tab.id)}
                         className={`flex-1 min-w-fit h-9 px-3 text-xs font-medium transition-all ${isActive
                             ? "bg-background shadow-sm text-foreground hover:bg-background"
                             : "text-muted-foreground hover:text-foreground hover:bg-background/50"

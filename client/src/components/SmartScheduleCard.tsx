@@ -1,4 +1,5 @@
 import { Clock } from "lucide-react";
+import { AnalyticsService } from "@/services/analytics";
 
 interface SmartScheduleCardProps {
     insights: {
@@ -13,6 +14,16 @@ interface SmartScheduleCardProps {
 export function SmartScheduleCard({ insights }: SmartScheduleCardProps) {
     if (!insights || insights.length === 0) return null;
 
+    const handleAccept = (insight: any) => {
+        AnalyticsService.trackInteraction('departure_accepted', {
+            time: insight.time,
+            score: insight.score,
+            offset: insight.offsetHours
+        });
+        // In a real app, this might trigger a state change or search update
+        // For now, we just track the intent/trust signal.
+    };
+
     return (
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
             <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 uppercase tracking-wider">
@@ -25,8 +36,9 @@ export function SmartScheduleCard({ insights }: SmartScheduleCardProps) {
                 {insights.map((insight, i) => (
                     <div
                         key={i}
+                        onClick={() => handleAccept(insight)}
                         className={`
-                            flex-none snap-center
+                            flex-none snap-center cursor-pointer hover:scale-105 active:scale-95
                             w-[100px] py-1.5 px-1 rounded-lg border flex flex-col items-center justify-center text-center transition-all
                             ${insight.score >= 80 ? 'bg-green-500/10 border-green-500/20' :
                                 insight.score >= 60 ? 'bg-yellow-500/10 border-yellow-500/20' :

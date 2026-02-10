@@ -136,6 +136,66 @@ app.post('/api/route', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// --- Analytics Endpoints ---
+
+// In-Memory Fallback for Analytics
+const memoryAnalytics = [];
+
+// Middleware to check for Admin Password
+const checkAdmin = (req, res, next) => {
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const providedPassword = req.headers['x-admin-password'];
+
+  if (providedPassword === adminPassword) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Unauthorized: Invalid Admin Password' });
+  }
+};
+
+// Log Analytics Event (Public)
+app.post('/api/analytics/event', (req, res) => {
+  try {
+    const { userId, eventType, metadata, timestamp } = req.body;
+
+    if (!userId || !eventType) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    console.log(`[ANALYTICS] Received event: ${eventType} from ${userId}`);
+
+    const newEvent = {
+      userId,
+      eventType,
+      metadata: metadata || {},
+      timestamp: timestamp || new Date().toISOString(),
+      serverTimestamp: new Date().toISOString()
+    };
+
+    memoryAnalytics.push(newEvent);
+    // Keep last 200 events
+    if (memoryAnalytics.length > 200) memoryAnalytics.shift();
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Analytics Log Error:', error.message);
+    res.status(500).json({ error: 'Failed to log event' });
+  }
+});
+
+// Get Analytics Data (Admin Only)
+app.get('/api/analytics', checkAdmin, (req, res) => {
+  try {
+    res.json({
+      totalEvents: memoryAnalytics.length,
+      recentEvents: [...memoryAnalytics].reverse()
+    });
+  } catch (error) {
+    console.error('Analytics Fetch Error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+app.listen(5001, () => {
+  console.log(`Server running on port 5001`);
 });

@@ -140,6 +140,31 @@ router.post('/route', async (req, res) => {
       res.json(response);
     }
 
+    // Log Analytics Event (Fire and Forget)
+    try {
+      const tripScore = primaryOutbound?.tripScore?.score || 100;
+      const duration = primaryOutbound?.metrics?.time || "0";
+      const distance = primaryOutbound?.metrics?.distance || "0";
+
+      db.collection('analytics_events').add({
+        userId: req.body.userId || 'anonymous-server',
+        eventType: 'trip_processed',
+        metadata: {
+          tripScore,
+          duration,
+          distance,
+          isRoundTrip: !!roundTrip,
+          preference: preference || 'fastest',
+          start: start,
+          end: end
+        },
+        timestamp: new Date().toISOString(),
+        serverTimestamp: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(e => console.error('Failed to log trip_processed event:', e.message));
+    } catch (e) {
+      console.error('Error in trip_processed analytics:', e.message);
+    }
+
   } catch (error) {
     console.error('Route handler error:', error);
     res.status(500).json({ error: 'Failed to generate route data' });

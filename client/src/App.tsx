@@ -28,6 +28,7 @@ export default function App() {
 
   // Trip Data State
   const [route, setRoute] = useState<any>(null);
+  const [searchStartTime, setSearchStartTime] = useState<number | null>(null);
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [returnWeatherData, setReturnWeatherData] = useState<any[]>([]); // New state for return leg weather
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
@@ -155,6 +156,9 @@ export default function App() {
     };
     setAiAnalysis(fullAiAnalysis);
     setRecommendations(data.recommendations || []);
+
+    // Track Feature Toggle
+    AnalyticsService.trackInteraction('leg_switch', { leg });
   };
 
   const handleRouteSubmit = async (
@@ -170,6 +174,8 @@ export default function App() {
     returnTimeOverride?: string
   ) => {
     setError(null); // Clear previous errors
+    const searchStart = Date.now();
+    setSearchStartTime(searchStart);
 
     // Use overrides if provided, or fallback to current state
     const s = startLoc || start;
@@ -314,6 +320,10 @@ export default function App() {
           // Usually keeping active leg is better for UX when toggling
         }
         setLoading(false);
+
+        // Track TTFI for cached switch
+        const ttfi = Date.now() - searchStart;
+        AnalyticsService.trackPerformance('time_to_first_insight', ttfi, { source: 'cache', preference: overridePreference });
         return;
       }
     }
@@ -376,6 +386,12 @@ export default function App() {
           // If we decided to use return data above, ensure active leg is set to return (it should already be, but safe to enforce)
           if (useReturnData) {
             setActiveLeg('return');
+          }
+
+          // Track TTFI
+          if (searchStartTime) {
+            const ttfi = Date.now() - searchStartTime;
+            AnalyticsService.trackPerformance('time_to_first_insight', ttfi, { source: 'api', preference: prefToUse });
           }
 
           setViewMode('trip');

@@ -49,6 +49,11 @@ export const AnalyticsService = {
         AnalyticsService.logEvent('click', { elementId, ...metadata });
     },
 
+    // Log Interaction Event (Generic)
+    trackInteraction: (interactionType: string, metadata: any = {}) => {
+        AnalyticsService.logEvent('interaction', { type: interactionType, ...metadata });
+    },
+
     // Log Performance Metric
     trackPerformance: (metricName: string, value: number, metadata: any = {}) => {
         AnalyticsService.logEvent('performance', { metric: metricName, value, ...metadata });
