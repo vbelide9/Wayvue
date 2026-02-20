@@ -31,7 +31,7 @@ const processTime = (dateStr: string, timeStr?: string) => {
 
     // Is date today?
     const now = new Date();
-    const tripDate = new Date(dateStr + "T00:00:00"); // Local date roughly
+    // const tripDate = new Date(dateStr + "T00:00:00"); // Local date roughly
     // Simple check: if dateStr == today's YYYY-MM-DD
     const todayStr = now.toISOString().split('T')[0];
     const isToday = dateStr === todayStr;
@@ -39,7 +39,7 @@ const processTime = (dateStr: string, timeStr?: string) => {
     if (isToday) {
         // If today, ensure time is in future + buffer (e.g. 2 hours) to avoid "past" errors
         const currentH = now.getHours();
-        const currentM = now.getMinutes();
+        // const currentM = now.getMinutes();
 
         // If selected time is passed or close, bump it
         if (h < currentH + 2) {
@@ -105,7 +105,7 @@ export const getKayakLink = (params: DeepLinkParams): string => {
  * Generates a deep link for Expedia Car Rentals
  * Format: https://www.expedia.com/Car-Rental-Search?d1=<Date>&d2=<Date>&pickuplocation=<Location>
  */
-export const getExpediaLink = (params: DeepLinkParams): string => {
+export const getExpediaLink = (_params: DeepLinkParams): string => {
     // Expedia Deep Links are currently blocked/deprecated by their system (returning "Wrong Turn" errors).
     // Disabling for now to prevent broken UX.
     return "";

@@ -8,6 +8,13 @@ All notable changes to the **Wayvue** project will be documented in this file.
 
 
 
+## [v1.5.0] - 2026-02-20
+### Added
+- **Smart Vehicle Recommendations**: Added new backend endpoint `/trip/rental-recommendations` to provide intelligent rental car suggestions based on trip distance, weather conditions, passenger count, luggage, and terrain type.
+
+### Changed
+- **Code Cleanup**: Removed unused `getDistance` helper function from the map component, and resolved unused variable warnings in deep link processing.
+
 ## [v1.4.1] - 2026-02-10
 ### Fixed
 - **Deep Linking**: Fixed rental car deep links for partner sites.
