@@ -1,27 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, Navigation, ArrowRight, Camera, Zap } from 'lucide-react';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CombinedDateTimePicker } from './components/CustomDateTimePicker';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import Lenis from 'lenis';
 
 // UI Components
 import { Button } from '@/components/ui/button';
 import { LocationInput } from '@/components/LocationInput';
 import { WeatherCard } from '@/components/WeatherCard';
-// Only import Type for RoadCondition, component is unused in App.tsx
 import { type RoadCondition } from '@/components/RoadConditionCard';
 import { EmptyState } from '@/components/EmptyState';
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 import { CommunityIntel } from './components/CommunityIntel';
-import { useEffect } from 'react';
+import { CustomCursor } from './components/CustomCursor';
 
 export default function App() {
 
+  useEffect(() => {
+    // Lenis Smooth Scroll Initialization - Godly Feel
+    const lenis = new Lenis({
+      duration: 1.5,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
 
   // State
+
   const [start, setStart] = useState("New York, NY");
   const [destination, setDestination] = useState("Buffalo, NY");
   const [startCoords, setStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
@@ -446,7 +471,7 @@ export default function App() {
 
   // 1. Planning View (Home)
   const renderPlanningView = () => (
-    <main className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans relative">
+    <main className="flex flex-col min-h-screen bg-[#05050A] text-foreground font-sans relative selection:bg-primary/30 selection:text-white">
       {/* Background Map (or similar visual if needed, currently reusing logic but simpler) */}
       {/* For Planning Mode, we want the "Home Page" feel. The original code had Map + Sidebar + Bottom.
            The user said "The home page is finalized... do NOT change the home page."
@@ -690,100 +715,127 @@ export default function App() {
     </main>
   );
 
-  return viewMode === 'planning' ? renderPlanningView() : (
-    <ErrorBoundary>
-      <TripViewLayout
-        isLoading={loading}
-        start={start}
-        destination={destination}
-        metrics={metrics}
-        tripScore={aiAnalysis?.tripScore}
-        roadConditions={roadConditions}
-        weatherData={weatherData}
+  return (
+    <>
+      <CustomCursor />
+      <AnimatePresence mode="wait">
+        {viewMode === 'planning' ? (
+          <motion.div
+            key="planning-view"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            className="h-screen w-full relative"
+          >
+            {renderPlanningView()}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="trip-view"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            className="min-h-screen w-full relative bg-[#05050A]"
+          >
+            <ErrorBoundary>
+              <TripViewLayout
+                isLoading={loading}
+                start={start}
+                destination={destination}
+                metrics={metrics}
+                tripScore={aiAnalysis?.tripScore}
+                roadConditions={roadConditions}
+                weatherData={weatherData}
 
-        aiAnalysis={aiAnalysis}
-        recommendations={recommendations}
+                aiAnalysis={aiAnalysis}
+                recommendations={recommendations}
 
-        unit={unit}
-        onUnitChange={setUnit}
-        onBack={handleBackToPlanning}
-        onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
-          // Update state first ONLY if values are provided
-          if (newStart) setStart(newStart);
-          if (newEnd) setDestination(newEnd);
-          if (newStartCoords) setStartCoords(newStartCoords);
-          if (newEndCoords) setDestCoords(newEndCoords);
-          if (newDepDate) setDepartureDate(newDepDate);
-          if (newDepTime) setDepartureTime(newDepTime);
+                unit={unit}
+                onUnitChange={setUnit}
+                onBack={handleBackToPlanning}
+                onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
+                  // Update state first ONLY if values are provided
+                  if (newStart) setStart(newStart);
+                  if (newEnd) setDestination(newEnd);
+                  if (newStartCoords) setStartCoords(newStartCoords);
+                  if (newEndCoords) setDestCoords(newEndCoords);
+                  if (newDepDate) setDepartureDate(newDepDate);
+                  if (newDepTime) setDepartureTime(newDepTime);
 
-          // Trigger route calc with new values directly to ensure latest data is used
-          await handleRouteSubmit(
-            newStart,
-            newEnd,
-            newDepDate,
-            newDepTime,
-            newStartCoords,
-            newEndCoords,
-            newRT,
-            newPref,
-            newReturnDate,
-            newReturnTime
-          );
-        }}
-        onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
+                  // Trigger route calc with new values directly to ensure latest data is used
+                  await handleRouteSubmit(
+                    newStart,
+                    newEnd,
+                    newDepDate,
+                    newDepTime,
+                    newStartCoords,
+                    newEndCoords,
+                    newRT,
+                    newPref,
+                    newReturnDate,
+                    newReturnTime
+                  );
+                }}
+                onSegmentSelect={(lat, lng) => setSelectedLocation({ lat, lng })}
 
-        activeLeg={activeLeg}
-        hasReturn={!!(tripData && (tripData.return || tripData.isRoundTrip))}
-        isRoundTrip={isRoundTrip}
-        onSetRoundTrip={(isRT) => {
-          setIsRoundTrip(isRT);
-          if (isRT) {
-            setActiveLeg('return');
-          }
-        }}
-        routePreference={routePreference}
-        onLegChange={switchLeg}
-        // Pass Departure Context
-        depDate={departureDate}
-        depTime={departureTime}
-        returnDate={
-          (() => {
-            if (!tripData?.isRoundTrip || !returnDate) return undefined;
-            const ret = new Date(returnDate);
-            // Adjust for timezone offset to prevent date shifting if string is UTC-like
-            const userTimezoneOffset = ret.getTimezoneOffset() * 60000;
-            const adjustedDate = new Date(ret.getTime() + userTimezoneOffset);
-            return adjustedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-          })()
-        }
-        // Pass raw return date string for editing
-        rawReturnDate={returnDate}
-        rawReturnTime={returnTime}
+                activeLeg={activeLeg}
+                hasReturn={!!(tripData && (tripData.return || tripData.isRoundTrip))}
+                isRoundTrip={isRoundTrip}
+                onSetRoundTrip={(isRT) => {
+                  setIsRoundTrip(isRT);
+                  if (isRT) {
+                    setActiveLeg('return');
+                  }
+                }}
+                routePreference={routePreference}
+                onLegChange={switchLeg}
+                // Pass Departure Context
+                depDate={departureDate}
+                depTime={departureTime}
+                returnDate={
+                  (() => {
+                    if (!tripData?.isRoundTrip || !returnDate) return undefined;
+                    const ret = new Date(returnDate);
+                    // Adjust for timezone offset to prevent date shifting if string is UTC-like
+                    const userTimezoneOffset = ret.getTimezoneOffset() * 60000;
+                    const adjustedDate = new Date(ret.getTime() + userTimezoneOffset);
+                    return adjustedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  })()
+                }
+                // Pass raw return date string for editing
+                rawReturnDate={returnDate}
+                rawReturnTime={returnTime}
 
-        map={
-          <MapComponent
-            routeGeoJSON={tripData?.outbound?.route || route}
-            returnRouteGeoJSON={tripData?.return?.route} // Pass return route
-            weatherData={weatherData}
-            returnWeatherData={returnWeatherData} // Pass return weather
-            unit={unit}
-            selectedLocation={selectedLocation}
-            activeLeg={activeLeg}
-            alternativeRouteGeoJSON={(() => {
-              // Calculate alternative route for display (Gray line)
-              if (tripData?.variants) {
-                const currentPref = activeLeg === 'return' ? returnPref : outboundPref;
-                const altPref = currentPref === 'fastest' ? 'scenic' : 'fastest';
-                const altVariant = tripData.variants[altPref];
-                const isReturn = activeLeg === 'return';
-                // If return leg, get return route, else outbound
-                return isReturn ? altVariant?.return?.route : altVariant?.outbound?.route;
-              }
-              return null;
-            })()}
-          />
-        }
-      />
-    </ErrorBoundary>
+                map={
+                  <MapComponent
+                    routeGeoJSON={tripData?.outbound?.route || route}
+                    returnRouteGeoJSON={tripData?.return?.route} // Pass return route
+                    weatherData={weatherData}
+                    returnWeatherData={returnWeatherData} // Pass return weather
+                    unit={unit}
+                    selectedLocation={selectedLocation}
+                    activeLeg={activeLeg}
+                    alternativeRouteGeoJSON={(() => {
+                      // Calculate alternative route for display (Gray line)
+                      if (tripData?.variants) {
+                        const currentPref = activeLeg === 'return' ? returnPref : outboundPref;
+                        const altPref = currentPref === 'fastest' ? 'scenic' : 'fastest';
+                        const altVariant = tripData.variants[altPref];
+                        const isReturn = activeLeg === 'return';
+                        // If return leg, get return route, else outbound
+                        return isReturn ? altVariant?.return?.route : altVariant?.outbound?.route;
+                      }
+                      return null;
+                    })()}
+                  />
+                }
+              />
+            </ErrorBoundary>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

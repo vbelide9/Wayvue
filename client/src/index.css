@@ -35,40 +35,70 @@
 
 @layer base {
     :root {
-        --background: 92 33% 20%;
-        /* #324422 - Live Site Dark Green */
-        --foreground: 46 45% 82%;
-        /* #E5DAB8 - Live Site Cream */
+        /* Godly / Architectural Dark Palette */
+        --background: 0 0% 4%;
+        /* #0a0a0a */
+        --foreground: 40 20% 96%;
+        /* Bone white #F5F5F0 */
 
-        --card: 92 33% 20%;
-        --card-foreground: 46 45% 82%;
+        --card: 0 0% 6%;
+        --card-foreground: 40 20% 96%;
 
-        --popover: 92 33% 20%;
-        --popover-foreground: 46 45% 82%;
+        --popover: 0 0% 6%;
+        --popover-foreground: 40 20% 96%;
 
-        --primary: 28 79% 52%;
-        /* #E77E23 - Live Site Orange */
-        --primary-foreground: 46 45% 82%;
+        /* Muted Stone / Desaturated Accent instead of Neon */
+        --primary: 40 10% 80%;
+        --primary-foreground: 0 0% 4%;
 
-        --secondary: 91 33% 38%;
-        /* #628141 - Olive */
-        --secondary-foreground: 46 45% 82%;
+        /* Deep translucent secondary */
+        --secondary: 0 0% 12%;
+        --secondary-foreground: 40 20% 96%;
 
-        --muted: 92 33% 20%;
-        --muted-foreground: 46 45% 82%;
+        --muted: 0 0% 12%;
+        --muted-foreground: 0 0% 60%;
 
-        --accent: 91 33% 38%;
-        --accent-foreground: 46 45% 82%;
+        /* Subtle gold/amber accent */
+        --accent: 40 40% 60%;
+        --accent-foreground: 0 0% 100%;
 
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 46 45% 82%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
 
-        --border: 91 33% 38%;
-        --input: 91 33% 38%;
-        --ring: 28 79% 52%;
+        --border: 240 6% 15%;
+        --input: 240 6% 15%;
+        --ring: 217 91% 60%;
 
-        --radius: 0.5rem;
+        --radius: 0.75rem;
+
+        /* Selection Color */
+        --selection-bg: 217 91% 60%;
+        --selection-text: 0 0% 100%;
     }
+}
+
+::selection {
+    background-color: hsl(var(--selection-bg));
+    color: hsl(var(--selection-text));
+}
+
+/* Godly Tactile Noise Filter */
+body {
+    position: relative;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.04;
+    mix-blend-mode: overlay;
 }
 
 @layer base {

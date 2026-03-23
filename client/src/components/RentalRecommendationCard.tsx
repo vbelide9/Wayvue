@@ -1,6 +1,6 @@
 import { Car, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
+import { motion } from 'framer-motion';
 
 interface RentalOption {
     name: string;
@@ -17,7 +17,6 @@ interface RentalRecommendationProps {
         provider: string;
         options: RentalOption[];
     } | null;
-    // [NEW] Deep Links
     links?: {
         kayak: string;
         expedia: string;
@@ -28,93 +27,111 @@ export function RentalRecommendationCard({ data, links }: RentalRecommendationPr
     if (!data || !data.showRecommendation) return null;
 
     return (
-        <div className="bg-card border border-border rounded-xl p-5 shadow-sm mt-4 flex flex-col gap-4 animate-in slide-in-from-bottom-2 duration-500">
-            {/* Header */}
-            <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                        <Car className="w-5 h-5" />
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 1.0, ease: [0.76, 0, 0.24, 1] }}
+            className="group relative bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/[0.05] rounded-3xl p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.8)] mt-6 flex flex-col gap-6 overflow-hidden transition-all duration-500 hover:border-primary/30 hover:shadow-[0_8px_64px_rgba(59,130,246,0.15)]"
+        >
+            {/* Advanced Hover Glow Effect (CSS trick mostly, but we use a div) */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-[#FFFFFF]/5 rounded-2xl text-primary shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] border border-white/10 group-hover:scale-110 transition-transform duration-500 ease-out">
+                        <Car className="w-7 h-7 drop-shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-foreground text-base">Smart Vehicle Recommendation</h3>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                Safety Check
+                        <h3 className="font-bold text-foreground text-xl tracking-tight">Smart Vehicle Match</h3>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[10px] uppercase font-bold tracking-widest text-[#10b981] bg-[#10b981]/10 px-3 py-1 rounded-full border border-[#10b981]/20 flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                                Safety Verified
                             </span>
                         </div>
                     </div>
                 </div>
+
+                {/* Main Recommendation Highlight (Bento cell style) */}
+                <div className="bg-[#FFFFFF]/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col items-start gap-1 w-full sm:w-auto shadow-inner group-hover:bg-[#FFFFFF]/[0.04] transition-colors duration-300">
+                    <span className="text-[10px] font-bold text-primary/80 uppercase tracking-widest">
+                        Recommended Category
+                    </span>
+                    <span className="text-xl font-black text-white tracking-tighter drop-shadow-md">
+                        {data.recommendedVehicle}
+                    </span>
+                </div>
             </div>
 
-            {/* Reason */}
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            {/* AI Reasoning block */}
+            <div className="relative z-10 text-sm text-foreground/70 leading-relaxed bg-[#000000]/40 p-5 rounded-2xl border border-white/[0.03] shadow-inner font-light tracking-wide">
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-transparent rounded-l-2xl opacity-50" />
                 {data.reason}
-            </p>
-
-            {/* Main Recommendation */}
-            <div className="bg-secondary/30 rounded-lg p-3 border border-border/50 flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recommended:</span>
-                <span className="text-sm font-bold text-primary">
-                    {data.recommendedVehicle}
-                </span>
             </div>
 
-            {/* Options List */}
-            <div className="flex flex-col gap-3">
+            {/* Options List Grid (Bento style) */}
+            <div className="grid grid-cols-1 gap-4 mt-2 relative z-10">
                 {data.options.map((option, i) => (
-                    <div
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1, duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
                         key={i}
-                        className="group flex items-center justify-between p-3 bg-secondary/20 hover:bg-secondary/30 border border-border/50 hover:border-primary/50 transition-all rounded-lg cursor-pointer"
+                        className="group/item flex flex-col md:flex-row md:items-center justify-between p-5 bg-[#FFFFFF]/[0.02] hover:bg-[#FFFFFF]/[0.06] border border-white/[0.05] hover:border-primary/40 transition-all duration-300 rounded-2xl cursor-pointer"
                         onClick={() => window.open(option.link, '_blank')}
                     >
-                        <div className="flex flex-col gap-1 overflow-hidden mr-3">
-                            <h4 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                        <div className="flex flex-col gap-2 overflow-hidden md:mr-6 mb-4 md:mb-0">
+                            <h4 className="font-bold text-lg text-white group-hover/item:text-primary transition-colors tracking-tight">
                                 {option.name}
                             </h4>
-                            <p className="text-[11px] text-muted-foreground">
-                                {option.features}
+                            <p className="text-xs text-muted-foreground font-medium flex flex-wrap items-center gap-2">
+                                {option.features.split('•').map((feat, idx, arr) => (
+                                    <span key={idx} className="flex items-center gap-1.5 whitespace-nowrap">
+                                        {feat.trim()}
+                                        {idx < arr.length - 1 && <span className="w-1 h-1 rounded-full bg-border" />}
+                                    </span>
+                                ))}
                             </p>
                         </div>
 
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                            {/* <span className="text-sm font-black text-foreground">{option.price}</span> */}
-
-                            {/* Actions */}
-                            <div className="flex flex-col gap-1 items-end mt-1 w-full sm:w-auto">
+                        <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
+                            <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto">
                                 <Button
-                                    className="h-7 text-[10px] bg-[#FF690F] hover:bg-[#E65500] text-white font-bold w-full sm:w-auto"
+                                    className="h-10 text-sm bg-gradient-to-r from-[#FF690F] to-[#d9580b] hover:from-[#f97316] hover:to-[#ea580c] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(255,105,15,0.3)] hover:shadow-[0_6px_20px_rgba(255,105,15,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         window.open(links?.kayak || option.link, '_blank');
                                     }}
                                 >
-                                    Kayak <ArrowUpRight className="w-3 h-3 ml-1" />
+                                    Book Kayak <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
                                 </Button>
                                 {links?.expedia && (
                                     <Button
-                                        className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold w-full sm:w-auto"
+                                        className="h-10 text-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(37,99,235,0.3)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             window.open(links.expedia, '_blank');
                                         }}
                                     >
-                                        Expedia <ArrowUpRight className="w-3 h-3 ml-1" />
+                                        Expedia <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
                                     </Button>
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
             {/* Disclaimer */}
-            <div className="flex items-start gap-2 text-[10px] text-muted-foreground/80 mt-1 px-1">
-                <ShieldCheck className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
-                <p>
-                    Wayvue analyzes route geometry & weather to suggest safer vehicles.
-                    Bookings handled by our partners.
+            <div className="flex items-start gap-3 text-xs text-muted-foreground mt-4 pt-4 border-t border-white/5 relative z-10">
+                <ShieldCheck className="w-4 h-4 mt-0.5 text-[#10b981]/70 flex-shrink-0" />
+                <p className="leading-relaxed font-light">
+                    Wayvue AI analyzes route geometry, gradients, and historical weather data to suggest optimal, safer vehicle categories. Bookings fulfilled securely by verified partners.
                 </p>
             </div>
-        </div>
+        </motion.div>
     );
 }
