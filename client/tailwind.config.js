@@ -54,3 +54,18 @@ export default {
     },
     plugins: [],
 }
+'on-surface': '#dae2fd',
+    'on-surface-variant': '#c2c6d6',
+        outline: '#8c909f',
+            'outline-variant': '#424754',
+                }
+            },
+borderRadius: {
+    lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+            sm: 'calc(var(--radius) - 4px)'
+}
+        }
+    },
+plugins: [],
+}
