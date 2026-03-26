@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useScroll, useTransform, useSpring, motion, AnimatePresence } from "framer-motion";
 
-const FRAME_COUNT = 150;
+const FRAME_COUNT = 60;
 const BG_COLOR = "#050505";
 
 export default function RoadTripCanvas() {
@@ -24,70 +24,79 @@ export default function RoadTripCanvas() {
   });
 
   // Text Opacity/Position Mappings
-  const opacityA = useTransform(smoothProgress, [0, 0.05, 0.15, 0.2], [0, 1, 1, 0]);
-  const yA = useTransform(smoothProgress, [0, 0.05, 0.15, 0.2], [20, 0, 0, -20]);
+  const opacityA = useTransform(smoothProgress, [0, 0.05, 0.25, 0.35], [0, 1, 1, 0]);
+  const yA = useTransform(smoothProgress, [0, 0.35], [40, -40]);
 
-  const opacityB = useTransform(smoothProgress, [0.25, 0.3, 0.4, 0.45], [0, 1, 1, 0]);
-  const xB = useTransform(smoothProgress, [0.25, 0.3, 0.4, 0.45], [-30, 0, 0, -30]);
+  const opacityB = useTransform(smoothProgress, [0.4, 0.5, 0.7, 0.8], [0, 1, 1, 0]);
+  const xB = useTransform(smoothProgress, [0.4, 0.5, 0.7, 0.8], [-30, 0, 0, -30]);
 
-  const opacityC = useTransform(smoothProgress, [0.5, 0.55, 0.65, 0.7], [0, 1, 1, 0]);
-  const xC = useTransform(smoothProgress, [0.5, 0.55, 0.65, 0.7], [30, 0, 0, 30]);
-
-  const opacityD = useTransform(smoothProgress, [0.8, 0.85, 0.95, 1], [0, 1, 1, 0]);
+  const opacityC = useTransform(smoothProgress, [0.6, 0.7, 0.9, 1], [0, 1, 1, 0]);
+  const xC = useTransform(smoothProgress, [0.6, 0.7, 0.9, 1], [30, 0, 0, 30]);
 
   // Preload Images
   useEffect(() => {
-    const loadedImages: HTMLImageElement[] = [];
     let loadedCount = 0;
+    const loadedImages = new Array(FRAME_COUNT);
 
     for (let i = 0; i < FRAME_COUNT; i++) {
       const img = new Image();
-      img.src = `/sequence/frame_${i}.jpg`; // Scaled up to 150 frames in JPG format
+      // Load 60 frames circularly starting from frame 13 to prevent out-of-bounds 404s
+      const frameNumber = ((i + 12) % FRAME_COUNT) + 1;
+      img.src = `/sequence/${frameNumber.toString().padStart(4, '0')}.jpg`;
       img.onload = () => {
         loadedCount++;
         setLoadProgress(Math.floor((loadedCount / FRAME_COUNT) * 100));
+        loadedImages[i] = img;
+        
+        // Once all images are downloaded, mark as ready
         if (loadedCount === FRAME_COUNT) {
-          setImages(loadedImages);
-          setTimeout(() => setIsLoading(false), 500);
+          setImages([...loadedImages]);
+          setIsLoading(false);
         }
       };
       
-      // Error handling to prevent infinite loading if a frame is missing
       img.onerror = () => {
+        console.error(`Failed to load frame ${frameNumber}`);
         loadedCount++;
-        setLoadProgress(Math.floor((loadedCount / FRAME_COUNT) * 100));
         if (loadedCount === FRAME_COUNT) {
-          setImages(loadedImages);
-          setTimeout(() => setIsLoading(false), 500);
+          setImages([...loadedImages]);
+          setIsLoading(false);
         }
       };
-      
-      loadedImages[i] = img;
     }
   }, []);
 
-  // Draw Logic
+  // Draw Logic mapped precisely to scroll progress
   useEffect(() => {
     if (images.length < FRAME_COUNT || !canvasRef.current || images.includes(undefined as any)) return;
 
-    const context = canvasRef.current.getContext("2d");
-    if (!context) return;
-
     const render = (progress: number) => {
+      // Adjusted scroll window: give a little static hero setup time, then mapping 100% of frames over rest of scroll
+      const adjustedProgress = Math.max(0, (progress - 0.05) * (1 / 0.95));
       const frameIndex = Math.min(
         FRAME_COUNT - 1,
-        Math.floor(progress * FRAME_COUNT)
+        Math.floor(adjustedProgress * FRAME_COUNT)
       );
       
       const img = images[frameIndex];
-      if (!img || !img.complete || img.naturalWidth === 0) return;
-
-      const canvas = canvasRef.current!;
+      const canvas = canvasRef.current;
+      if (!canvas || !img || !img.complete || img.naturalWidth === 0) return;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      
       const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
-      const x = (canvas.width / 2) - (img.width / 2) * scale;
+      
+      // Since the car is uniquely anchored to the far right side of the new generated video,
+      // we must align the canvas to the right strictly, rather than center-cropping it.
+      const extraWidth = (img.width * scale) - canvas.width;
+      const x = -extraWidth; 
       const y = (canvas.height / 2) - (img.height / 2) * scale;
 
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      // Fill context with black to prevent transparent flashes
+      context.fillStyle = BG_COLOR;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw image
       context.drawImage(img, x, y, img.width * scale, img.height * scale);
     };
 
@@ -95,13 +104,13 @@ export default function RoadTripCanvas() {
       render(latest);
     });
 
-    // Initial frame
+    // Initial frame render
     render(0);
 
     return () => unsubscribe();
   }, [images, smoothProgress]);
 
-  // Handle Resize
+  // Handle Resize correctly to fill the screen
   useEffect(() => {
     const handleResize = () => {
       if (canvasRef.current) {
@@ -110,12 +119,15 @@ export default function RoadTripCanvas() {
       }
     };
     window.addEventListener("resize", handleResize);
-    handleResize();
+    handleResize(); // trigger once on mount
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
-    <div ref={containerRef} className="relative h-[500vh] bg-[#050505]">
+    // Height is exactly 200vh. 
+    // This allows EXACTLY 1 full screen of scrolling to complete the sequence, and beautifully seamlessly unlocks the "Trip Intelligence" search screen below it immediately.
+    <div ref={containerRef} className="relative h-[200vh] bg-[#050505]">
+      
       {/* Loading Overlay */}
       <AnimatePresence>
         {isLoading && (
@@ -130,21 +142,38 @@ export default function RoadTripCanvas() {
                 animate={{ width: `${loadProgress}%` }}
               />
             </div>
-            <span className="text-[10px] tracking-[0.3em] uppercase text-white/50">Initializing Drive</span>
+            <span className="text-[10px] tracking-[0.3em] uppercase text-white/50">Initializing Sequence</span>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="sticky top-0 h-screen w-full overflow-hidden">
+        {/* Heat Haze Filter Definitions */}
+        <svg style={{ display: "none" }}>
+          <filter id="heatHaze">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.05" numOctaves="2" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="B" />
+          </filter>
+        </svg>
+
         <canvas ref={canvasRef} className="block w-full h-full object-cover" />
+
+        {/* Heat Haze Overlay block covering bottom 30% of image */}
+        <div 
+          className="absolute bottom-0 w-full h-[30%] pointer-events-none"
+          style={{ backdropFilter: "url(#heatHaze)", opacity: 0.15 }} 
+        />
+
+        {/* Cinematic Scrim */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/60 via-transparent to-[#050505] opacity-80" />
 
         {/* Text Beats */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center px-10">
           
           {/* Beat A */}
-          <motion.div style={{ opacity: opacityA, y: yA }} className="text-center">
-            <h1 className="text-7xl md:text-9xl font-['Inter_Tight'] font-bold tracking-tighter text-white uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">Departure</h1>
-            <p className="text-white font-bold tracking-[0.5em] uppercase text-sm mt-4 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">The city fades in the rearview</p>
+          <motion.div style={{ opacity: opacityA, y: yA }} className="absolute bottom-40 md:bottom-48 left-8 md:left-16 max-w-3xl text-left">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-['Inter_Tight'] font-bold tracking-tighter text-white uppercase drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)] leading-[1.1]">Plan Smarter.<br/>Drive Better.</h1>
+            <p className="text-white font-bold tracking-[0.4em] uppercase text-xs md:text-sm mt-6 drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-white/80">Your road trip, powered by real-time intelligence.</p>
           </motion.div>
 
           {/* Beat B */}
@@ -159,10 +188,6 @@ export default function RoadTripCanvas() {
             <p className="text-white font-bold mt-4 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Syncing with the rhythm of the tide.</p>
           </motion.div>
 
-          {/* Beat D */}
-          <motion.div style={{ opacity: opacityD }} className="text-center">
-            <h2 className="text-4xl font-['Inter_Tight'] font-medium tracking-tighter italic text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">The destination is a myth.</h2>
-          </motion.div>
         </div>
 
         {/* Scroll Indicator */}
