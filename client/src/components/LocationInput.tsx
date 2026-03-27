@@ -90,7 +90,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
         <div className="relative group" ref={wrapperRef}>
             {variant !== "minimal" && <label className="text-sm font-medium text-foreground mb-2 block">{label}</label>}
             <div className="relative">
-                <div className="absolute left-3 top-3.5 text-muted-foreground transition-colors group-focus-within:text-primary z-10">
+                <div className="absolute left-3 top-3.5 transition-colors group-focus-within:text-[#E67E22] z-10 text-[#E5D9B6]/60">
                     {icon === "start" ? <Navigation className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                 </div>
                 <Input
@@ -109,7 +109,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                         }
                     }}
                     placeholder={placeholder}
-                    className="pl-10 pr-10 bg-card border-border h-11 text-base focus-visible:ring-primary/50"
+                    className="pl-10 pr-10 h-11 text-base rounded-xl transition-all bg-[#33402F]/60 backdrop-blur-md border border-[#628141]/50 text-[#E5D9B6] placeholder:text-[#E5D9B6]/50 hover:bg-[#33402F]/80 focus-visible:ring-[#E67E22]/50 focus-visible:border-[#E67E22] shadow-sm"
                 />
                 {/* Current Location Button (Only for Start input and when empty or explicitly requested, but standard pattern is always show on right) */}
                 {icon === "start" && !isLoading && (
@@ -149,7 +149,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                                 });
                             }
                         }}
-                        className="absolute right-3 top-3.5 text-muted-foreground hover:text-primary transition-colors z-20"
+                        className="absolute right-3 top-3.5 text-[#E5D9B6]/60 hover:text-[#E67E22] transition-colors z-20"
                         title="Use Current Location"
                     >
                         <Locate className="w-4 h-4" />
@@ -157,18 +157,18 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                 )}
 
                 {isLoading && (
-                    <div className="absolute right-3 top-3.5 text-muted-foreground animate-spin z-30">
+                    <div className="absolute right-3 top-3.5 text-[#E5D9B6]/60 animate-spin z-30">
                         <Loader2 className="w-4 h-4" />
                     </div>
                 )}
 
                 {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <ul className="absolute top-full left-0 right-0 z-50 mt-2 bg-[#2A3525]/90 backdrop-blur-xl border border-[#628141]/50 rounded-xl shadow-2xl max-h-60 overflow-y-auto no-scrollbar">
                         {suggestions.map((s) => (
                             <li
                                 key={s.place_id}
                                 onClick={() => handleSelect(s)}
-                                className="px-4 py-2 hover:bg-secondary/50 cursor-pointer text-sm text-foreground border-b border-border/50 last:border-0"
+                                className="px-4 py-3 hover:bg-[#40513B] cursor-pointer text-sm text-[#E5D9B6] border-b border-[#628141]/30 last:border-0 transition-colors"
                             >
                                 {s.display_name}
                             </li>

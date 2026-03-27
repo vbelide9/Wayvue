@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { RefreshCw, Navigation, ArrowRight, Camera, Zap, Users, Luggage, MapPin, Shield } from 'lucide-react';
+import { FlowHoverButton } from '@/components/ui/flow-hover-button';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
 import { CombinedDateTimePicker } from './components/CustomDateTimePicker';
@@ -17,7 +18,6 @@ import { EmptyState } from '@/components/EmptyState';
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 import { CommunityIntel } from './components/CommunityIntel';
-import { CustomCursor } from './components/CustomCursor';
 import RoadTripCanvas from './components/RoadTripCanvas';
 
 export default function App() {
@@ -104,7 +104,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // View Mode State
-  const [viewMode, setViewMode] = useState<'planning' | 'trip'>('planning');
+  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip'>('landing');
 
   // Track Page View, Performance, Location, and Session
   useEffect(() => {
@@ -475,238 +475,291 @@ export default function App() {
 
   // --- RENDER HELPERS ---
 
-  // 1. Planning View (Home)
-  const renderPlanningView = () => (
-    <main ref={containerRef} className="relative min-h-screen selection:bg-white selection:text-black bg-void text-white font-sans overflow-x-hidden">
-      
+  // 1. Landing View (Cinematic Intro)
+  const renderLandingView = () => (
+    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#050505] text-white selection:bg-white/20">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 mix-blend-difference text-white">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4">Wayvue</motion.div>
-        <div className="hidden md:flex gap-12 text-micro opacity-60">
-          {["Intelligence", "Fleet", "Concierge"].map(item => <a key={item} href={`#${item.toLowerCase()}`} className="hover:opacity-100 transition-opacity">{item}</a>)}
-        </div>
-        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-micro border border-white/20 px-6 py-2 rounded-full hover:bg-white hover:text-black transition-colors shrink-0">Start Planning</button>
+
+        <motion.div style={{ opacity: useTransform(scrollYProgress, [0, 0.03], [1, 0]), pointerEvents: useTransform(scrollYProgress, [0, 0.03], ["auto", "none"] as any) }}>
+          <FlowHoverButton onClick={() => setViewMode('planning')} className="rounded-full">Start Planning</FlowHoverButton>
+        </motion.div>
       </nav>
 
       {/* Scrollytelling Canvas Animation */}
       <RoadTripCanvas />
+    </main>
+  );
 
-      {/* Search/Trip Intelligence Section */}
-      <section id="search" className="relative min-h-screen flex flex-col items-center justify-center bg-[#050505] overflow-hidden py-16">
-        
-        {/* Loading Overlay */}
-        {loading && <div className="absolute inset-0 z-[600]"><LoadingScreen /></div>}
+  // 2. Planning View (Search Interface)
+  const renderPlanningView = () => (
+    <main className="flex flex-col min-h-screen bg-[#05050A] text-foreground font-sans relative selection:bg-primary/30 selection:text-white">
+      {/* Background Map (or similar visual if needed, currently reusing logic but simpler) */}
+      {/* For Planning Mode, we want the "Home Page" feel. The original code had Map + Sidebar + Bottom.
+           The user said "The home page is finalized... do NOT change the home page."
+           So I must preserve the EXACT structure for the 'planning' state.
+        */}
 
-        <div className="relative z-20 text-center px-4 w-full max-w-[1400px]">
-          <h1 className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-serif italic mb-6 leading-[0.9] tracking-tight text-shadow-xl drop-shadow-2xl">Trip Intelligence <br/><span className="text-white/40">for the Modern Explorer.</span></h1>
-          
-          <div className="mt-12 sm:mt-16 w-full max-w-4xl mx-auto backdrop-blur-2xl bg-black/40 border border-white/10 rounded-3xl p-6 shadow-2xl relative group">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-            
-            {/* Error Message Toast/Banner */}
-            {error && (
-              <div className="absolute top-0 left-0 right-0 z-[500] pointer-events-none">
-                <div className="bg-destructive/90 backdrop-blur text-white px-4 py-2 text-sm font-medium animate-in fade-in slide-in-from-top-2 text-center rounded-t-3xl border-b border-destructive/50">
-                  {error}
-                </div>
-              </div>
-            )}
+      {/* --- ORIGINAL LAYOUT STRUCTURE (Preserved) --- */}
+      <div className="flex-1 flex overflow-hidden relative z-0">
+        {/* LEFT COLUMN: MAP & OVERLAYS */}
+        <div className="flex-1 lg:basis-[65%] flex flex-col relative min-w-0">
 
-            {/* Integrating the Existing Search Logic Here */}
-            <div className="flex flex-col gap-4 relative z-10 text-left">
-              {/* Primary Row: Start -> End */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <LocationInput
-                    value={start}
-                    onChange={setStart}
-                    onSelect={setStartCoords}
-                    label="Departure"
-                    variant="minimal"
-                    placeholder="Where from?"
-                    icon="start"
-                  />
+          {/* Loading Screen Overlay */}
+          {loading && <LoadingScreen />}
+
+          {/* Top Summary Ribbon (This contains the Inputs) */}
+          <div className="absolute top-4 left-4 right-4 z-[400] flex flex-col gap-2 pointer-events-none">
+            {/* 1. Dashboard Controls Row */}
+            <div className="relative z-[410] grid grid-cols-2 md:flex md:items-center gap-2 pointer-events-auto w-full px-2 sm:px-0">
+              {/* Brand / Logo */}
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3 order-1 md:order-1 col-span-1 mr-auto md:mr-0">
+                <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center shrink-0">
+                  <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
                 </div>
-                <div className="hidden sm:flex items-center justify-center text-white/30 shrink-0">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <LocationInput
-                    value={destination}
-                    onChange={setDestination}
-                    onSelect={setDestCoords}
-                    label="Destination"
-                    variant="minimal"
-                    placeholder="Where to?"
-                    icon="destination"
-                  />
+                <div className="block pr-2">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-bold tracking-tight leading-none text-foreground hidden sm:block">Wayvue</h1>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-medium hidden sm:block">Trip Intelligence</p>
                 </div>
               </div>
 
-              {/* Secondary Row: Date/Time & Actions */}
-              <div className="flex flex-col lg:flex-row items-center gap-4 border-t border-white/10 pt-4 mt-2">
-                <div className="flex items-center gap-4 flex-1 w-full overflow-x-auto no-scrollbar pb-2 lg:pb-0">
-                  <CombinedDateTimePicker
-                    dateValue={departureDate}
-                    onDateChange={setDepartureDate}
-                    timeValue={departureTime}
-                    onTimeChange={setDepartureTime}
-                    minDate={new Date().toISOString().split('T')[0]}
-                    maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                  />
+              {/* Inputs Bar */}
+              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-2 shadow-lg flex flex-col items-stretch gap-3 h-auto transition-all duration-300 ease-in-out relative order-3 md:order-2 col-span-2 w-full md:flex-1 md:max-w-5xl md:mx-auto">
+                {/* Error Message Toast/Banner */}
+                {error && (
+                  <div className="absolute top-full left-0 right-0 mt-2 z-[500]">
+                    <div className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 text-center border border-destructive/50">
+                      {error}
+                    </div>
+                  </div>
+                )}
 
-                  <div
-                    className={`transition-all duration-300 relative shrink-0 ${!isRoundTrip ? 'opacity-40 hover:opacity-100 cursor-pointer' : 'opacity-100'}`}
-                    onClick={() => {
-                      if (!isRoundTrip) {
-                         setIsRoundTrip(true);
-                         AnalyticsService.trackClick('add_return_date');
-                      }
-                    }}
-                  >
-                    {!isRoundTrip && <div className="absolute inset-0 z-20" title="Click to Add Return" />}
-                    <CombinedDateTimePicker
-                      dateValue={returnDate}
-                      onDateChange={(val) => { setReturnDate(val); if (!isRoundTrip) setIsRoundTrip(true); }}
-                      timeValue={returnTime}
-                      onTimeChange={(val) => { setReturnTime(val); if (!isRoundTrip) setIsRoundTrip(true); }}
-                      minDate={departureDate}
-                      maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                      label={isRoundTrip ? "Return" : "Add Return"}
+                {/* Primary Row: Start -> End */}
+                <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+                  <div className="flex-1 min-w-0">
+                    <LocationInput
+                      value={start}
+                      onChange={setStart}
+                      onSelect={setStartCoords}
+                      label="Start Location"
+                      variant="minimal"
+                      placeholder="Start"
+                      icon="start"
+                    />
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 hidden sm:block self-center" />
+                  <div className="flex-1 min-w-0">
+                    <LocationInput
+                      value={destination}
+                      onChange={setDestination}
+                      onSelect={setDestCoords}
+                      label="Destination Location"
+                      variant="minimal"
+                      placeholder="End"
+                      icon="destination"
                     />
                   </div>
                 </div>
 
-                {/* Right Side Actions */}
-                <div className="flex items-center gap-3 w-full lg:w-auto mt-2 lg:mt-0 justify-between lg:justify-end shrink-0">
-                  {/* Trip Type Toggle */}
-                  <div
-                    onClick={() => {
-                      const newValue = !isRoundTrip;
-                      setIsRoundTrip(newValue);
-                      AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
-                    }}
-                    className={`cursor-pointer flex items-center justify-center h-12 px-4 rounded-xl border transition-all select-none
-                      ${isRoundTrip ? 'bg-white/10 border-white/30 text-white' : 'bg-black/20 border-white/10 text-white/50 hover:bg-white/5'}`}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 transition-transform ${isRoundTrip ? 'rotate-180' : ''}`} />
-                    <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap">
-                      {isRoundTrip ? 'Round Trip' : 'One Way'}
-                    </span>
+
+
+                {/* Secondary Row: Date/Time (Collapsible on Mobile could be nice, or just compact side-by-side) */}
+                {/* For now, keeping them visible but compact side-by-side on mobile to avoid extra clicks, but styled cleaner */}
+                {/* Secondary Row: Dates & Actions Consolidated */}
+                <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2 border-t border-border/50 pt-2 xl:pt-0">
+
+                  {/* Left: Date Pickers */}
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <CombinedDateTimePicker
+                      dateValue={departureDate}
+                      onDateChange={setDepartureDate}
+                      timeValue={departureTime}
+                      onTimeChange={setDepartureTime}
+                      minDate={new Date().toISOString().split('T')[0]}
+                      maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                    />
+
+                    {/* Return Date/Time (Always Visible) */}
+                    <div
+                      className={`transition-all duration-300 relative ${!isRoundTrip ? 'opacity-60 grayscale hover:opacity-80' : 'opacity-100'} `}
+                      onClick={() => {
+                        if (!isRoundTrip) {
+                          setIsRoundTrip(true);
+                          AnalyticsService.trackClick('add_return_date');
+                        }
+                      }}
+                    >
+                      {!isRoundTrip && (
+                        <div className="absolute inset-0 z-20 cursor-pointer" title="Click to Add Return" />
+                      )}
+
+                      <CombinedDateTimePicker
+                        dateValue={returnDate}
+                        onDateChange={(val) => {
+                          setReturnDate(val);
+                          if (!isRoundTrip) setIsRoundTrip(true);
+                        }}
+                        timeValue={returnTime}
+                        onTimeChange={(val) => {
+                          setReturnTime(val);
+                          if (!isRoundTrip) setIsRoundTrip(true);
+                        }}
+                        minDate={departureDate}
+                        maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                        label={isRoundTrip ? "Return" : "Add Return"}
+                      />
+                    </div>
                   </div>
 
-                  {/* Route Preference */}
-                  <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 h-12 shrink-0">
-                    <button
-                      onClick={() => { setOutboundPref('fastest'); setReturnPref('fastest'); }}
-                      className={`px-4 rounded-lg flex items-center justify-center transition-all ${outboundPref === 'fastest' ? 'bg-white text-black shadow-lg' : 'text-white/50 hover:text-white'}`}
-                      title="Fastest Route"
-                    >
-                      <Zap className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => { setOutboundPref('scenic'); setReturnPref('scenic'); }}
-                      className={`px-4 rounded-lg flex items-center justify-center transition-all ${outboundPref === 'scenic' ? 'bg-white text-black shadow-lg' : 'text-white/50 hover:text-white'}`}
-                      title="Scenic Route"
-                    >
-                      <Camera className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Divider (Desktop) */}
+                  <div className="w-px h-8 bg-border hidden xl:block mx-1" />
 
-                  {/* GO Button */}
-                  <button
-                    onClick={() => handleRouteSubmit()}
-                    disabled={loading}
-                    className="h-12 px-8 rounded-xl bg-white text-black hover:bg-white/90 font-bold uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] shrink-0"
-                  >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Begin Expedition'}
-                  </button>
+                  {/* Right: Actions (Trip Type, Prefs, Go) */}
+                  <div className="flex items-center gap-2 justify-end">
+
+                    {/* Trip Type Toggle (Compact) */}
+                    <div
+                      onClick={() => {
+                        const newValue = !isRoundTrip;
+                        setIsRoundTrip(newValue);
+                        AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
+                      }}
+                      className={`
+                            cursor-pointer flex items-center justify-center h-9 px-3 rounded-lg border transition-all select-none
+                            ${isRoundTrip
+                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500'
+                          : 'bg-card border-border text-muted-foreground hover:bg-secondary/50'}
+                        `}
+                      title="Toggle Round Trip"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 transition-transform ${isRoundTrip ? 'rotate-180' : ''}`} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider">
+                        {isRoundTrip ? 'Round Trip' : 'One Way'}
+                      </span>
+                    </div>
+
+                    {/* Route Preference (Icons) */}
+                    <div className="flex bg-card border border-border rounded-lg p-0.5 h-9">
+                      <button
+                        onClick={() => {
+                          setOutboundPref('fastest');
+                          setReturnPref('fastest');
+                          AnalyticsService.trackClick('pref_fastest');
+                        }}
+                        title="Fastest Route"
+                        className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'fastest' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOutboundPref('scenic');
+                          setReturnPref('scenic');
+                          AnalyticsService.trackClick('pref_scenic');
+                        }}
+                        title="Scenic Route"
+                        className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <Button
+                      onClick={() => handleRouteSubmit()}
+                      disabled={loading}
+                      className="h-9 px-6 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-bold tracking-wide transition-all hover:scale-105 active:scale-95"
+                    >
+                      {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-2" /> : <Navigation className="w-3.5 h-3.5 mr-2" />}
+                      <span>{loading ? 'Planning...' : 'Go'}</span>
+                    </Button>
+                  </div>
                 </div>
+
               </div>
+
+
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Values/Features Section */}
-      <section id="intelligence" className="py-24 sm:py-32 px-6 md:px-12 lg:px-24 bg-void relative z-20">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 lg:gap-24 max-w-[1400px] mx-auto">
-          <div className="xl:sticky xl:top-32 h-fit">
-            <span className="text-micro opacity-40 mb-6 block">01 — The Engine</span>
-            <h2 className="text-5xl sm:text-6xl md:text-7xl font-serif italic mb-8 leading-tight">Radically simplified <br/>concierge.</h2>
-            <div className="space-y-6 sm:space-y-8 opacity-60 text-base sm:text-lg font-light">
-              <div className="flex items-center gap-6"><Users className="w-6 h-6 shrink-0" /><p>Passenger Dynamics Optimization</p></div>
-              <div className="flex items-center gap-6"><Luggage className="w-6 h-6 shrink-0" /><p>Capacity Intelligence Mapping</p></div>
-              <div className="flex items-center gap-6"><MapPin className="w-6 h-6 shrink-0" /><p>Terrain-Aware Routing Logic</p></div>
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-8 md:gap-12">
-            <motion.div 
-               initial={{ opacity: 0, y: 50 }} 
-               whileInView={{ opacity: 1, y: 0 }} 
-               viewport={{ once: true, margin: "-100px" }}
-               transition={{ duration: 0.8, ease: "easeOut" }}
-               className="rounded-3xl overflow-hidden border border-white/10 bg-white/5 p-6 sm:p-8 shadow-2xl backdrop-blur-sm group cursor-default"
-            >
-               <div className="aspect-[16/9] sm:aspect-[4/3] w-full overflow-hidden rounded-2xl mb-8 relative">
-                 <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70" className="w-full h-full object-cover grayscale opacity-80 mix-blend-luminosity group-hover:grayscale-0 group-hover:mix-blend-normal transition-all duration-1000 ease-out group-hover:scale-105" alt="Obsidian SUV" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-               </div>
-               <div className="flex justify-between items-end">
-                 <div>
-                   <p className="text-micro opacity-50 mb-2">Recommended Fleet</p>
-                   <h3 className="text-2xl sm:text-3xl font-serif italic text-white/90">The Obsidian SUV</h3>
-                 </div>
-                 <div className="text-right">
-                   <p className="text-micro opacity-50 mb-2">Match Score</p>
-                   <span className="text-3xl sm:text-4xl font-mono font-light tracking-tighter text-white">98%</span>
-                 </div>
-               </div>
-            </motion.div>
+          {/* Map Component (Planning Mode - usually just start/end markers if set, or empty) */}
+          <div className="flex-1 relative z-0">
+            {/* Empty State Overlay */}
+            {!route && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-md">
+                <EmptyState />
+              </div>
+            )}
 
-            <motion.div 
-               initial={{ opacity: 0, y: 50 }} 
-               whileInView={{ opacity: 1, y: 0 }} 
-               viewport={{ once: true, margin: "-100px" }}
-               transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-               className="rounded-3xl overflow-hidden border border-white/10 bg-white/5 p-6 sm:p-8 shadow-2xl backdrop-blur-sm"
-            >
-               <div className="flex justify-between items-start mb-8 sm:mb-12">
-                 <Shield className="w-8 h-8 opacity-40 text-white" />
-                 <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
-                   <span className="text-xs font-mono">AWD</span>
-                 </div>
-               </div>
-               <h3 className="text-2xl font-serif mb-4 text-white/90">Mountain Pass Validated</h3>
-               <p className="opacity-50 font-light leading-relaxed text-sm sm:text-base">
-                 Our system recognizes your high-elevation waypoints and automatically filters the fleet for All-Wheel Drive vehicles with verified all-weather capabilities, ensuring your absolute safety.
-               </p>
-            </motion.div>
+            <MapComponent
+              routeGeoJSON={route}
+              weatherData={weatherData}
+              unit={unit}
+              selectedLocation={selectedLocation}
+            />
+
+            {/* Map Corner Overlays (Weather) - Stacked on Right */}
+            {weatherData.length > 0 && (
+              <div className="absolute top-36 right-4 z-[400] pointer-events-none flex flex-col gap-4">
+                <WeatherCard
+                  variant="overlay"
+                  unit={unit}
+                  weather={{
+                    location: start,
+                    condition: "clear", // TODO: Real data
+                    temperature: weatherData[0]?.temperature,
+                    humidity: weatherData[0]?.humidity,
+                    windSpeed: weatherData[0]?.windSpeed
+                  }}
+                />
+                <WeatherCard
+                  variant="overlay"
+                  unit={unit}
+                  weather={{
+                    location: destination,
+                    condition: "cloudy",
+                    temperature: weatherData[weatherData.length - 1]?.temperature,
+                    humidity: weatherData[weatherData.length - 1]?.humidity,
+                    windSpeed: weatherData[weatherData.length - 1]?.windSpeed
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="py-16 sm:py-24 px-8 border-t border-white/10 text-center relative z-20 bg-void overflow-hidden flex flex-col items-center">
-        <h2 className="text-[15vw] font-serif italic leading-[0.8] opacity-10 hover:opacity-100 transition-opacity duration-1000 select-none cursor-default mix-blend-plus-lighter">Wayvue</h2>
-        <p className="mt-8 text-micro opacity-40">© {new Date().getFullYear()} Wayvue Trip Intelligence. All rights reserved.</p>
-      </footer>
+        {/* RIGHT COLUMN: SIDEBAR */}
+        <div className="hidden lg:flex lg:basis-[35%] w-full max-w-md border-l border-border bg-card shadow-2xl z-[500] flex-col h-full overflow-hidden">
+          <CommunityIntel />
+        </div>
+      </div>
     </main>
   );
 
   return (
     <>
-      <CustomCursor />
       <AnimatePresence mode="wait">
-        {viewMode === 'planning' ? (
+        {viewMode === 'landing' ? (
+          <motion.div
+            key="landing-view"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            className="h-screen w-full relative"
+          >
+            {renderLandingView()}
+          </motion.div>
+        ) : viewMode === 'planning' ? (
           <motion.div
             key="planning-view"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
-            className="h-screen w-full relative"
+            className="min-h-screen w-full relative bg-[#050505]"
           >
             {renderPlanningView()}
           </motion.div>
