@@ -43,7 +43,29 @@ export default {
                 card: {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))'
-                }
+                },
+                'on-surface': '#dae2fd',
+                'on-surface-variant': '#c2c6d6',
+                outline: '#8c909f',
+                'outline-variant': '#424754',
+            },
+            backdropBlur: {
+                '2xl': '40px',
+                '3xl': '60px',
+            },
+            boxShadow: {
+                'orange-glow': '0 0 25px 5px rgba(249, 115, 22, 0.4)',
+                'amber-soft': '0 0 15px 2px rgba(251, 191, 36, 0.15)',
+                'inner-glass': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.4)',
+            },
+            animation: {
+                'glass-shimmer': 'shimmer 10s linear infinite',
+            },
+            keyframes: {
+                shimmer: {
+                    '0%': { transform: 'translateX(-5%) translateY(-5%)' },
+                    '100%': { transform: 'translateX(5%) translateY(5%)' },
+                },
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -53,19 +75,4 @@ export default {
         }
     },
     plugins: [],
-}
-'on-surface': '#dae2fd',
-    'on-surface-variant': '#c2c6d6',
-        outline: '#8c909f',
-            'outline-variant': '#424754',
-                }
-            },
-borderRadius: {
-    lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-            sm: 'calc(var(--radius) - 4px)'
-}
-        }
-    },
-plugins: [],
 }
