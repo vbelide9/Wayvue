@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Calendar, Search, Navigation, Sun, DollarSign, Zap, Camera, CloudRain, Fuel, Users, TrendingDown, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { LocationInput } from '@/components/LocationInput';
 import { CombinedDateTimePicker } from './CustomDateTimePicker';
 
@@ -33,57 +33,100 @@ interface PlannerCardProps {
   error: string | null;
 }
 
-// ── Intelligence Background (Topographic + Constellation Layers) ──
-const IntelligenceBackground = () => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-    <svg
-      width="100%" height="100%"
-      className="absolute inset-0 opacity-[0.12]"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* 1. TOPOGRAPHIC CONTOUR LINES */}
-      <pattern id="topo-lines" width="400" height="400" patternUnits="userSpaceOnUse">
-        <path d="M0 150 C 100 120, 200 180, 400 150" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-        <path d="M0 170 C 120 140, 220 200, 400 170" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-        <path d="M0 190 C 140 160, 240 220, 400 190" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-        <path d="M150 0 C 180 100, 120 200, 150 400" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-        <path d="M170 0 C 200 120, 140 220, 170 400" fill="none" stroke="#fbbf24" strokeWidth="0.5" />
-      </pattern>
+// ── Extracted paths for re-use ──
+const PatternPaths = ({ color, glow }: { color: string; glow?: boolean }) => (
+  <>
+    <g stroke={color} strokeWidth={glow ? "0.8" : "0.4"} fill="none">
+      <path d="M0 150 C 100 120, 200 180, 400 150" />
+      <path d="M0 170 C 120 140, 220 200, 400 170" />
+      <path d="M0 190 C 140 160, 240 220, 400 190" />
+      <path d="M150 0 C 180 100, 120 200, 150 400" />
+      <path d="M170 0 C 200 120, 140 220, 170 400" />
+    </g>
+    <g fill={color} stroke={color} strokeWidth={glow ? "0.4" : "0.3"} className={glow ? "filter drop-shadow-[0_0_2px_rgba(251,191,36,0.8)]" : ""}>
+      {/* Cluster A */}
+      <circle stroke="none" cx="50" cy="50" r={glow ? "2" : "1.5"} />
+      <circle stroke="none" cx="80" cy="30" r={glow ? "1.5" : "1"} />
+      <circle stroke="none" cx="110" cy="60" r={glow ? "1.8" : "1.2"} />
+      <circle stroke="none" cx="90" cy="90" r={glow ? "2" : "1.5"} />
+      <line x1="50" y1="50" x2="80" y2="30" />
+      <line x1="80" y1="30" x2="110" y2="60" />
+      <line x1="110" y1="60" x2="90" y2="90" />
+      <line x1="90" y1="90" x2="50" y2="50" />
 
-      {/* 2. CONSTELLATION CHARTS (Stars & Interconnects) */}
-      <pattern id="constellations" width="300" height="300" patternUnits="userSpaceOnUse">
-        {/* Cluster A */}
-        <g stroke="#fbbf24" strokeWidth="0.3" fill="#fbbf24">
-          <circle cx="50" cy="50" r="1.5" />
-          <circle cx="80" cy="30" r="1" />
-          <circle cx="110" cy="60" r="1.2" />
-          <circle cx="90" cy="90" r="1.5" />
-          <line x1="50" y1="50" x2="80" y2="30" />
-          <line x1="80" y1="30" x2="110" y2="60" />
-          <line x1="110" y1="60" x2="90" y2="90" />
-          <line x1="90" y1="90" x2="50" y2="50" />
-        </g>
-        {/* Cluster B */}
-        <g stroke="#fbbf24" strokeWidth="0.3" fill="#fbbf24" transform="translate(180, 150)">
-          <circle cx="20" cy="20" r="1" />
-          <circle cx="60" cy="10" r="1.5" />
-          <circle cx="40" cy="50" r="1" />
-          <line x1="20" y1="20" x2="60" y2="10" />
-          <line x1="60" y1="10" x2="40" y2="50" />
-        </g>
-        {/* Floating "Data" Points */}
-        <circle cx="250" cy="40" r="0.8" fill="#fbbf24" opacity="0.5" />
-        <circle cx="220" cy="280" r="0.8" fill="#fbbf24" opacity="0.5" />
-        <circle cx="20" cy="250" r="0.8" fill="#fbbf24" opacity="0.5" />
-      </pattern>
+      {/* Cluster B */}
+      <g transform="translate(180, 150)">
+        <circle stroke="none" cx="20" cy="20" r={glow ? "1.5" : "1"} />
+        <circle stroke="none" cx="60" cy="10" r={glow ? "2" : "1.5"} />
+        <circle stroke="none" cx="40" cy="50" r={glow ? "1.5" : "1"} />
+        <line x1="20" y1="20" x2="60" y2="10" />
+        <line x1="60" y1="10" x2="40" y2="50" />
+      </g>
 
-      <rect width="100%" height="100%" fill="url(#topo-lines)" />
-      <rect width="100%" height="100%" fill="url(#constellations)" />
-    </svg>
-    {/* Subtle radial gradient to fade edges */}
-    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
-  </div>
+      {/* Floating "Data" Points */}
+      <circle stroke="none" cx="250" cy="40" r={glow ? "1.2" : "0.8"} opacity={glow ? "0.8" : "0.5"} />
+      <circle stroke="none" cx="220" cy="280" r={glow ? "1.2" : "0.8"} opacity={glow ? "0.8" : "0.5"} />
+      <circle stroke="none" cx="20" cy="250" r={glow ? "1.2" : "0.8"} opacity={glow ? "0.8" : "0.5"} />
+    </g>
+  </>
 );
+
+// ── Intelligence Background (Topographic + Constellation Layers) ──
+const IntelligenceBackground = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Mouse tracking values
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Smoothing the movement
+  const smoothX = useSpring(mouseX, { damping: 20, stiffness: 150 });
+  const smoothY = useSpring(mouseY, { damping: 20, stiffness: 150 });
+
+  // Creating the CSS mask string
+  const maskImage = useTransform(
+    [smoothX, smoothY],
+    ([x, y]) => `radial-gradient(400px circle at ${x}px ${y}px, black 0%, transparent 100%)`
+  );
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const { left, top } = containerRef.current.getBoundingClientRect();
+    mouseX.set(e.clientX - left);
+    mouseY.set(e.clientY - top);
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      className="absolute inset-0 pointer-events-auto overflow-hidden group"
+    >
+      {/* LAYER 1: The Dim Base Pattern (Always visible) */}
+      <svg width="100%" height="100%" className="absolute inset-0 opacity-[0.05] transition-opacity duration-500 group-hover:opacity-[0.08]">
+        <pattern id="topo-dim" width="400" height="400" patternUnits="userSpaceOnUse">
+           <PatternPaths color="#fbbf24" />
+        </pattern>
+        <rect width="100%" height="100%" fill="url(#topo-dim)" />
+      </svg>
+
+      {/* LAYER 2: The Spotlight Pattern (Only visible near mouse) */}
+      <motion.div 
+        style={{ maskImage, WebkitMaskImage: maskImage }}
+        className="absolute inset-0"
+      >
+        <svg width="100%" height="100%" className="absolute inset-0 opacity-40">
+          <pattern id="topo-bright" width="400" height="400" patternUnits="userSpaceOnUse">
+             <PatternPaths color="#fbbf24" glow />
+          </pattern>
+          <rect width="100%" height="100%" fill="url(#topo-bright)" />
+        </svg>
+      </motion.div>
+      {/* Subtle radial gradient to fade edges */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
+    </div>
+  );
+};
 
 // ═══ CONFIDENCE RING ═══
 const ConfidenceRing = ({ score }: { score: number }) => {
@@ -295,9 +338,10 @@ export function PlannerCard({
       >
         <IntelligenceBackground />
 
-        <div className="relative z-10 p-8">
-          {/* ── Error Display ── */}
-          <AnimatePresence>
+        <div className="relative z-10 p-8 pointer-events-none">
+          <div className="pointer-events-auto flex flex-col w-full h-full">
+            {/* ── Error Display ── */}
+            <AnimatePresence>
             {error && !showResults && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -629,6 +673,7 @@ export function PlannerCard({
               />
             )}
           </AnimatePresence>
+          </div>
         </div>
       </motion.div>
 
