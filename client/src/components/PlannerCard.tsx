@@ -74,7 +74,7 @@ const PatternPaths = ({ color, glow }: { color: string; glow?: boolean }) => (
 // ── Intelligence Background (Topographic + Constellation Layers) ──
 const IntelligenceBackground = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Mouse tracking values
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -97,7 +97,7 @@ const IntelligenceBackground = () => {
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
       className="absolute inset-0 pointer-events-auto overflow-hidden group"
@@ -105,19 +105,19 @@ const IntelligenceBackground = () => {
       {/* LAYER 1: The Dim Base Pattern (Always visible) */}
       <svg width="100%" height="100%" className="absolute inset-0 opacity-[0.05] transition-opacity duration-500 group-hover:opacity-[0.08]">
         <pattern id="topo-dim" width="400" height="400" patternUnits="userSpaceOnUse">
-           <PatternPaths color="#fbbf24" />
+          <PatternPaths color="#fbbf24" />
         </pattern>
         <rect width="100%" height="100%" fill="url(#topo-dim)" />
       </svg>
 
       {/* LAYER 2: The Spotlight Pattern (Only visible near mouse) */}
-      <motion.div 
+      <motion.div
         style={{ maskImage, WebkitMaskImage: maskImage }}
         className="absolute inset-0"
       >
         <svg width="100%" height="100%" className="absolute inset-0 opacity-40">
           <pattern id="topo-bright" width="400" height="400" patternUnits="userSpaceOnUse">
-             <PatternPaths color="#fbbf24" glow />
+            <PatternPaths color="#fbbf24" glow />
           </pattern>
           <rect width="100%" height="100%" fill="url(#topo-bright)" />
         </svg>
@@ -251,6 +251,59 @@ const ResultsPreview = ({
   </motion.div>
 );
 
+const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: () => void, isCalculating: boolean, disabled: boolean, label?: string }) => {
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={disabled ? {} : { scale: 1.05, boxShadow: "0 0 20px rgba(249, 115, 22, 0.5)" }}
+      whileTap={disabled ? {} : { scale: 0.95 }}
+      className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-orange-glow border border-white/20 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
+    >
+      {/* Specular Highlight */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full" />
+
+      {/* Intelligence Pulse */}
+      {isCalculating && (
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.5, 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="absolute inset-0 bg-orange-300/20 rounded-full blur-md"
+        />
+      )}
+
+      {/* The Icon Layer */}
+      <AnimatePresence mode="wait">
+        {isCalculating ? (
+          <motion.div
+            key="loading"
+            initial={{ rotate: 0 }}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+            className="flex items-center gap-2"
+          >
+            {label && <span className="text-sm font-bold text-white uppercase tracking-tighter">{label}</span>}
+            <Zap size={18} className="text-white fill-white/20" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="icon"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center justify-center relative gap-2"
+          >
+            {label && <span className="text-sm font-bold text-white uppercase tracking-tighter">{label}</span>}
+            <div className="relative">
+              <Search size={18} strokeWidth={2.5} className="text-white drop-shadow-md" />
+              <div className="absolute top-[2px] left-[2px] w-1 h-1 bg-white/50 rounded-full blur-[0.5px]" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+};
+
 export function PlannerCard({
   start,
   destination,
@@ -342,347 +395,262 @@ export function PlannerCard({
           <div className="pointer-events-auto flex flex-col w-full h-full">
             {/* ── Error Display ── */}
             <AnimatePresence>
-            {error && !showResults && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden mb-6"
-              >
-                <div className="px-4 py-3 rounded-2xl text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400">
-                  {error}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              {error && !showResults && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mb-6"
+                >
+                  <div className="px-4 py-3 rounded-2xl text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400">
+                    {error}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          <AnimatePresence mode="wait">
-            {!showResults ? (
-              <motion.div
-                key="form"
-                initial={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.35 }}
-                className="flex flex-col gap-8"
-              >
-                {/* ═══ Tab Content ═══ */}
-                <AnimatePresence mode="wait">
-                  {activeTab === 'Route' && (
-                    <motion.div
-                      key="route"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] md:grid-cols-2 gap-4 items-center"
-                    >
-                      {/* Origin */}
-                      <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-orange-400 uppercase">
-                          <MapPin size={12} /> Origin
-                        </div>
-                        <div className="min-w-0">
-                          <LocationInput
-                            value={start}
-                            onChange={onStartChange}
-                            onSelect={onStartSelect}
-                            label="Origin"
-                            variant="minimal"
-                            placeholder="Where from?"
-                            icon="start"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Destination */}
-                      <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-                          <MapPin size={12} /> Destination
-                        </div>
-                        <div className="min-w-0">
-                          <LocationInput
-                            value={destination}
-                            onChange={onDestinationChange}
-                            onSelect={onDestSelect}
-                            label="Destination"
-                            variant="minimal"
-                            placeholder="Where to?"
-                            icon="destination"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Dates */}
-                      <div className="flex flex-col gap-1 px-4">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-                          <Calendar size={12} /> Departure — Return
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <CombinedDateTimePicker
-                            dateValue={departureDate}
-                            onDateChange={onDepartureDateChange}
-                            timeValue={departureTime}
-                            onTimeChange={onDepartureTimeChange}
-                            minDate={today}
-                            maxDate={maxDate}
-                            label=""
-                          />
-                          <div
-                            className={`transition-opacity duration-300 ${
-                              !isRoundTrip ? 'opacity-30 hover:opacity-50 cursor-pointer' : 'opacity-100'
-                            }`}
-                            onClick={() => { if (!isRoundTrip) onRoundTripToggle(); }}
-                          >
-                            <CombinedDateTimePicker
-                              dateValue={returnDate}
-                              onDateChange={(val) => {
-                                onReturnDateChange(val);
-                                if (!isRoundTrip) onRoundTripToggle();
-                              }}
-                              timeValue={returnTime}
-                              onTimeChange={(val) => {
-                                onReturnTimeChange(val);
-                                if (!isRoundTrip) onRoundTripToggle();
-                              }}
-                              minDate={departureDate}
-                              maxDate={maxDate}
-                              label=""
+            <AnimatePresence mode="wait">
+              {!showResults ? (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.35 }}
+                  className="flex flex-col gap-8"
+                >
+                  {/* ═══ Tab Content ═══ */}
+                  <AnimatePresence mode="wait">
+                    {activeTab === 'Route' && (
+                      <motion.div
+                        key="route"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] md:grid-cols-2 gap-4 items-center"
+                      >
+                        {/* Origin */}
+                        <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-orange-400 uppercase">
+                            <MapPin size={12} /> Origin
+                          </div>
+                          <div className="min-w-0">
+                            <LocationInput
+                              value={start}
+                              onChange={onStartChange}
+                              onSelect={onStartSelect}
+                              label="Origin"
+                              variant="minimal"
+                              placeholder="Where from?"
+                              icon="start"
                             />
                           </div>
                         </div>
-                      </div>
 
-                      {/* Search Orb */}
-                      <motion.button
-                        whileHover={{ scale: isCalculating ? 1 : 1.05 }}
-                        whileTap={{ scale: isCalculating ? 1 : 0.95 }}
-                        onClick={handleSearchClick}
-                        disabled={isCalculating || loading}
-                        className="p-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
+                        {/* Destination */}
+                        <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
+                            <MapPin size={12} /> Destination
+                          </div>
+                          <div className="min-w-0">
+                            <LocationInput
+                              value={destination}
+                              onChange={onDestinationChange}
+                              onSelect={onDestSelect}
+                              label="Destination"
+                              variant="minimal"
+                              placeholder="Where to?"
+                              icon="destination"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Dates */}
+                        <div className="flex flex-col gap-1 px-4">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
+                            <Calendar size={12} /> Departure — Return
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <CombinedDateTimePicker
+                              dateValue={departureDate}
+                              onDateChange={onDepartureDateChange}
+                              timeValue={departureTime}
+                              onTimeChange={onDepartureTimeChange}
+                              minDate={today}
+                              maxDate={maxDate}
+                              label=""
+                            />
+                            <div
+                              className={`transition-opacity duration-300 ${!isRoundTrip ? 'opacity-30 hover:opacity-50 cursor-pointer' : 'opacity-100'
+                                }`}
+                              onClick={() => { if (!isRoundTrip) onRoundTripToggle(); }}
+                            >
+                              <CombinedDateTimePicker
+                                dateValue={returnDate}
+                                onDateChange={(val) => {
+                                  onReturnDateChange(val);
+                                  if (!isRoundTrip) onRoundTripToggle();
+                                }}
+                                timeValue={returnTime}
+                                onTimeChange={(val) => {
+                                  onReturnTimeChange(val);
+                                  if (!isRoundTrip) onRoundTripToggle();
+                                }}
+                                minDate={departureDate}
+                                maxDate={maxDate}
+                                label=""
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Search Orb */}
+                        {/* Search Orb */}
+                        <SearchButton 
+                          onClick={handleSearchClick} 
+                          isCalculating={isCalculating} 
+                          disabled={isCalculating || loading} 
+                        />
+                      </motion.div>
+                    )}
+
+                    {activeTab === 'Weather' && (
+                      <motion.div
+                        key="weather"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_auto] gap-6 items-center"
                       >
-                        <AnimatePresence mode="wait">
-                          {isCalculating ? (
-                            <motion.div
-                              key="loader"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1, rotate: 360 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ rotate: { repeat: Infinity, duration: 0.8, ease: 'linear' }, opacity: { duration: 0.2 } }}
-                            >
-                              <Zap size={24} />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="search-icon"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <Search size={24} />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.button>
-                    </motion.div>
-                  )}
+                        <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-blue-400 uppercase">
+                            <CloudRain size={12} /> Forecast Sensitivity
+                          </div>
+                          <select className="bg-transparent text-white focus:outline-none text-lg appearance-none cursor-pointer">
+                            <option className="bg-neutral-900">Avoid All Precipitation</option>
+                            <option className="bg-neutral-900">Light Rain OK</option>
+                            <option className="bg-neutral-900">Prioritize Clear Skies</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1 px-4">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
+                            Temp Preference
+                          </div>
+                          <div className="flex gap-4 text-white text-lg">
+                            <span className="text-orange-400">70°F+</span>
+                            <span className="opacity-30">Any</span>
+                          </div>
+                        </div>
+                        <SearchButton 
+                          label="Scan Weather"
+                          onClick={handleSearchClick} 
+                          isCalculating={isCalculating} 
+                          disabled={isCalculating || loading} 
+                        />
+                      </motion.div>
+                    )}
 
-                  {activeTab === 'Weather' && (
-                    <motion.div
-                      key="weather"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_auto] gap-6 items-center"
-                    >
-                      <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-blue-400 uppercase">
-                          <CloudRain size={12} /> Forecast Sensitivity
-                        </div>
-                        <select className="bg-transparent text-white focus:outline-none text-lg appearance-none cursor-pointer">
-                          <option className="bg-neutral-900">Avoid All Precipitation</option>
-                          <option className="bg-neutral-900">Light Rain OK</option>
-                          <option className="bg-neutral-900">Prioritize Clear Skies</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1 px-4">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-                          Temp Preference
-                        </div>
-                        <div className="flex gap-4 text-white text-lg">
-                          <span className="text-orange-400">70°F+</span>
-                          <span className="opacity-30">Any</span>
-                        </div>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: isCalculating ? 1 : 1.05 }}
-                        whileTap={{ scale: isCalculating ? 1 : 0.95 }}
-                        onClick={handleSearchClick}
-                        disabled={isCalculating || loading}
-                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] font-bold hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
+                    {activeTab === 'Savings' && (
+                      <motion.div
+                        key="savings"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4 items-center"
                       >
-                        <AnimatePresence mode="wait">
-                          {isCalculating ? (
-                            <motion.div
-                              key="loader"
-                              className="flex items-center gap-3"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}>
-                                <Zap size={20} />
-                              </motion.div>
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="label"
-                              className="flex items-center gap-3"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <span className="text-sm uppercase tracking-tighter">Scan Weather</span>
-                              <Search size={20} />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.button>
-                    </motion.div>
-                  )}
+                        <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-green-400 uppercase">
+                            <Fuel size={12} /> Fuel Type
+                          </div>
+                          <select className="bg-transparent text-white focus:outline-none text-lg appearance-none">
+                            <option className="bg-neutral-900">Premium Gas</option>
+                            <option className="bg-neutral-900">Electric (EV)</option>
+                            <option className="bg-neutral-900">Hybrid</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
+                            <Users size={12} /> Passengers
+                          </div>
+                          <input type="number" defaultValue="2" className="bg-transparent text-white focus:outline-none text-lg w-full" />
+                        </div>
+                        <div className="flex flex-col gap-1 px-4">
+                          <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
+                            Target MPG
+                          </div>
+                          <input placeholder="e.g. 30" className="bg-transparent text-white placeholder:text-white/30 focus:outline-none text-lg" />
+                        </div>
+                        <SearchButton 
+                          label="Calculate"
+                          onClick={handleSearchClick} 
+                          isCalculating={isCalculating} 
+                          disabled={isCalculating || loading} 
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {activeTab === 'Savings' && (
-                    <motion.div
-                      key="savings"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4 items-center"
-                    >
-                      <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-green-400 uppercase">
-                          <Fuel size={12} /> Fuel Type
-                        </div>
-                        <select className="bg-transparent text-white focus:outline-none text-lg appearance-none">
-                          <option className="bg-neutral-900">Premium Gas</option>
-                          <option className="bg-neutral-900">Electric (EV)</option>
-                          <option className="bg-neutral-900">Hybrid</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-                          <Users size={12} /> Passengers
-                        </div>
-                        <input type="number" defaultValue="2" className="bg-transparent text-white focus:outline-none text-lg w-full" />
-                      </div>
-                      <div className="flex flex-col gap-1 px-4">
-                        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-                          Target MPG
-                        </div>
-                        <input placeholder="e.g. 30" className="bg-transparent text-white placeholder:text-white/30 focus:outline-none text-lg" />
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: isCalculating ? 1 : 1.05 }}
-                        whileTap={{ scale: isCalculating ? 1 : 0.95 }}
-                        onClick={handleSearchClick}
-                        disabled={isCalculating || loading}
-                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] font-bold hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
+                  {/* ═══ Secondary Toggles ═══ */}
+                  <div className="flex flex-wrap items-center justify-between border-t border-white/10 pt-6 gap-3">
+                    {/* One-Way / Round-Trip */}
+                    <div className="flex gap-2 p-1 rounded-full bg-black/30 backdrop-blur-md">
+                      <button
+                        onClick={() => { if (isRoundTrip) onRoundTripToggle(); }}
+                        className={`px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${!isRoundTrip ? 'bg-white/10 text-white shadow-inner' : 'text-white/30 hover:text-white'
+                          }`}
                       >
-                        <AnimatePresence mode="wait">
-                          {isCalculating ? (
-                            <motion.div
-                              key="loader"
-                              className="flex items-center gap-3"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}>
-                                <Zap size={20} />
-                              </motion.div>
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="label"
-                              className="flex items-center gap-3"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                            >
-                              <span className="text-sm uppercase tracking-tighter">Calculate</span>
-                              <Search size={20} />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        → One-way
+                      </button>
+                      <button
+                        onClick={() => { if (!isRoundTrip) onRoundTripToggle(); }}
+                        className={`px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${isRoundTrip ? 'bg-white/10 text-white shadow-inner' : 'text-white/30 hover:text-white'
+                          }`}
+                      >
+                        ⇄ Round-trip
+                      </button>
+                    </div>
 
-                {/* ═══ Secondary Toggles ═══ */}
-                <div className="flex flex-wrap items-center justify-between border-t border-white/10 pt-6 gap-3">
-                  {/* One-Way / Round-Trip */}
-                  <div className="flex gap-2 p-1 rounded-full bg-black/30 backdrop-blur-md">
-                    <button
-                      onClick={() => { if (isRoundTrip) onRoundTripToggle(); }}
-                      className={`px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        !isRoundTrip ? 'bg-white/10 text-white shadow-inner' : 'text-white/30 hover:text-white'
-                      }`}
-                    >
-                      → One-way
-                    </button>
-                    <button
-                      onClick={() => { if (!isRoundTrip) onRoundTripToggle(); }}
-                      className={`px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        isRoundTrip ? 'bg-white/10 text-white shadow-inner' : 'text-white/30 hover:text-white'
-                      }`}
-                    >
-                      ⇄ Round-trip
-                    </button>
+                    {/* Fastest / Scenic */}
+                    <div className="flex gap-2 p-1 rounded-full bg-black/30 backdrop-blur-md">
+                      <button
+                        onClick={() => onPreferenceChange('fastest')}
+                        className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${routePreference === 'fastest'
+                            ? 'bg-white/10 text-white'
+                            : 'text-white/30 hover:text-white'
+                          }`}
+                      >
+                        <Zap size={14} /> Fastest
+                      </button>
+                      <button
+                        onClick={() => onPreferenceChange('scenic')}
+                        className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${routePreference === 'scenic'
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                            : 'text-white/30 hover:text-white'
+                          }`}
+                      >
+                        <Camera size={14} /> Scenic
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Fastest / Scenic */}
-                  <div className="flex gap-2 p-1 rounded-full bg-black/30 backdrop-blur-md">
-                    <button
-                      onClick={() => onPreferenceChange('fastest')}
-                      className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        routePreference === 'fastest'
-                          ? 'bg-white/10 text-white'
-                          : 'text-white/30 hover:text-white'
-                      }`}
-                    >
-                      <Zap size={14} /> Fastest
-                    </button>
-                    <button
-                      onClick={() => onPreferenceChange('scenic')}
-                      className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        routePreference === 'scenic'
-                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                          : 'text-white/30 hover:text-white'
-                      }`}
-                    >
-                      <Camera size={14} /> Scenic
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              /* ═══ RESULTS PREVIEW ═══ */
-              <ResultsPreview
-                onReset={handleReset}
-                onGoToIntelligence={handleGoToIntelligence}
-              />
-            )}
-          </AnimatePresence>
+                </motion.div>
+              ) : (
+                /* ═══ RESULTS PREVIEW ═══ */
+                <ResultsPreview
+                  onReset={handleReset}
+                  onGoToIntelligence={handleGoToIntelligence}
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </motion.div>
 
-      {/* ═══ NAVIGATION DOCK — hidden when results are shown ═══ */}
+      {/* ═══ NAVIGATION DOCK — shown when results are ready ═══ */}
       <AnimatePresence>
-        {!showResults && (
+        {showResults && (
           <motion.div
             className="flex gap-4"
-            initial={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
           >
@@ -694,11 +662,10 @@ export function PlannerCard({
               <button
                 key={tab.name}
                 onClick={() => setActiveTab(tab.name)}
-                className={`flex items-center gap-3 px-10 py-4 rounded-2xl transition-all duration-300 ${
-                  activeTab === tab.name
+                className={`flex items-center gap-3 px-10 py-4 rounded-2xl transition-all duration-300 ${activeTab === tab.name
                     ? 'bg-[#1a1414] text-white border border-white/10 shadow-orange-glow'
                     : 'bg-black/40 text-white/40 backdrop-blur-md hover:text-white hover:bg-black/60'
-                }`}
+                  }`}
               >
                 <tab.icon size={20} className={activeTab === tab.name ? 'text-orange-500' : ''} />
                 <span className="font-bold tracking-wide">{tab.name}</span>

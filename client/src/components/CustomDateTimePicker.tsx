@@ -79,10 +79,10 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
         <div className={`relative ${className}`} ref={containerRef}>
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group"
+                className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group whitespace-nowrap"
             >
-                <CalendarIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-xs font-semibold text-foreground">
+                <CalendarIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                <span className="text-[10px] xl:text-xs font-semibold text-foreground">
                     {value ? parseDate(value).toLocaleDateString() : 'Select Date'}
                 </span>
             </div>
@@ -177,11 +177,11 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
         <div className={`relative ${className}`} ref={containerRef}>
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group"
+                className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group whitespace-nowrap"
             >
-                <ClockIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-xs font-semibold text-foreground">
-                    {value || 'Select Time'}
+                <ClockIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                <span className="text-[10px] xl:text-xs font-semibold text-foreground">
+                    {value || 'Time'}
                 </span>
             </div>
 
@@ -257,24 +257,24 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
                     {label}
                 </div>
             )}
-            <div className="flex items-center bg-[#33402F] border border-[#628141] rounded-lg p-0.5 shadow-sm hover:border-[#E67E22]/50 transition-all h-9">
+            <div className="flex items-center bg-[#33402F] border border-[#628141] rounded-lg p-0.5 shadow-sm hover:border-[#E67E22]/50 transition-all h-9 flex-nowrap w-full overflow-hidden">
                 {/* Date Section */}
                 <CustomDatePicker
                     value={dateValue}
                     onChange={onDateChange}
                     min={minDate}
                     max={maxDate}
-                    className="flex-1 min-w-[100px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
+                    className="flex-shrink min-w-0 [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1 [&>div]:gap-1"
                 />
 
                 {/* Divider */}
-                <div className="w-px h-4 bg-[#628141]/50 mx-0.5" />
+                <div className="w-px h-4 bg-[#628141]/50 mx-0 flex-shrink-0" />
 
                 {/* Time Section */}
                 <CustomTimePicker
                     value={timeValue}
                     onChange={onTimeChange}
-                    className="flex-1 min-w-[70px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
+                    className="flex-shrink min-w-0 [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1 [&>div]:gap-1"
                 />
             </div>
         </div>
