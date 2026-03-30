@@ -373,10 +373,10 @@ export function PlannerCard({
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
-                      className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.2fr_auto] gap-4 items-center"
+                      className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] md:grid-cols-2 gap-4 items-center"
                     >
                       {/* Origin */}
-                      <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
+                      <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
                         <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-orange-400 uppercase">
                           <MapPin size={12} /> Origin
                         </div>
@@ -394,7 +394,7 @@ export function PlannerCard({
                       </div>
 
                       {/* Destination */}
-                      <div className="flex flex-col gap-1 px-4 md:border-r border-white/10">
+                      <div className="flex flex-col gap-1 px-4 lg:border-r border-white/10">
                         <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
                           <MapPin size={12} /> Destination
                         </div>
@@ -457,7 +457,7 @@ export function PlannerCard({
                         whileTap={{ scale: isCalculating ? 1 : 0.95 }}
                         onClick={handleSearchClick}
                         disabled={isCalculating || loading}
-                        className="p-4 rounded-full bg-orange-500 text-white shadow-orange-glow transition-colors disabled:cursor-not-allowed self-center relative overflow-hidden"
+                        className="p-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
                       >
                         <AnimatePresence mode="wait">
                           {isCalculating ? (
@@ -518,7 +518,7 @@ export function PlannerCard({
                         whileTap={{ scale: isCalculating ? 1 : 0.95 }}
                         onClick={handleSearchClick}
                         disabled={isCalculating || loading}
-                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-orange-500 text-white shadow-orange-glow font-bold disabled:cursor-not-allowed self-center relative overflow-hidden"
+                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] font-bold hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
                       >
                         <AnimatePresence mode="wait">
                           {isCalculating ? (
@@ -585,7 +585,7 @@ export function PlannerCard({
                         whileTap={{ scale: isCalculating ? 1 : 0.95 }}
                         onClick={handleSearchClick}
                         disabled={isCalculating || loading}
-                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-orange-500 text-white shadow-orange-glow font-bold disabled:cursor-not-allowed self-center relative overflow-hidden"
+                        className="flex items-center gap-3 pl-6 pr-6 py-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-orange-500 shadow-[0_0_15px_rgba(0,0,0,0.5)] font-bold hover:bg-white/10 hover:border-orange-500/50 hover:shadow-orange-glow transition-all duration-300 disabled:cursor-not-allowed self-center relative overflow-hidden group"
                       >
                         <AnimatePresence mode="wait">
                           {isCalculating ? (
