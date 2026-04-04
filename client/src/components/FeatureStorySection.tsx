@@ -1,17 +1,11 @@
 import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 
-interface Feature {
-  chapter: string;
-  headline: string;
-  subtext: string;
-  accent: string;
-  mockup: React.ReactNode;
-}
+// interface removed
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as any } },
 };
 
 const stagger = {

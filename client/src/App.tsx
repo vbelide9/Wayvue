@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
 import { FlowHoverButton } from '@/components/ui/flow-hover-button';
 import MapComponent from './components/MapComponent';
 import { getRoute } from './services/api';
@@ -17,6 +16,7 @@ import { AnalyticsService } from './services/analytics';
 
 import RoadTripCanvas from './components/RoadTripCanvas';
 import { PlannerCard } from './components/PlannerCard';
+import { IntelligenceBackground } from './components/IntelligenceBackground';
 
 export default function App() {
   const containerRef = useRef<HTMLElement>(null);
@@ -480,7 +480,10 @@ export default function App() {
       <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 mix-blend-difference text-white">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4">Wayvue</motion.div>
 
-        <motion.div style={{ opacity: useTransform(scrollYProgress, [0, 0.03], [1, 0]), pointerEvents: useTransform(scrollYProgress, [0, 0.03], ["auto", "none"] as any) }}>
+        <motion.div style={{ 
+          opacity: useTransform(scrollYProgress, [0, 0.03], [1, 0]), 
+          pointerEvents: useTransform(scrollYProgress, [0, 0.03], ["auto", "none"]) as any 
+        }}>
           <FlowHoverButton onClick={() => setViewMode('planning')} className="rounded-full">Start Planning</FlowHoverButton>
         </motion.div>
       </nav>
@@ -489,29 +492,12 @@ export default function App() {
       <RoadTripCanvas />
 
       {/* Search Section - appears after cinematic scroll */}
-      <section className="relative z-[50] flex items-center justify-center min-h-screen px-4 py-24"
-        style={{
-          background: `
-            radial-gradient(ellipse 80% 60% at 50% 40%, rgba(180, 110, 40, 0.12) 0%, transparent 70%),
-            radial-gradient(ellipse 60% 50% at 20% 60%, rgba(40, 80, 50, 0.10) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 40% at 80% 30%, rgba(200, 120, 60, 0.08) 0%, transparent 50%),
-            radial-gradient(ellipse 70% 50% at 60% 80%, rgba(30, 60, 45, 0.10) 0%, transparent 60%),
-            linear-gradient(180deg, #0a0a08 0%, #0f0e0a 30%, #12100c 60%, #0a0a08 100%)
-          `
-        }}
-      >
-        {/* Ambient glow orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Warm golden glow - top center */}
-          <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full bg-amber-600/[0.06] blur-[150px]" />
-          {/* Forest green glow - bottom left */}
-          <div className="absolute bottom-[15%] left-[5%] w-[500px] h-[400px] rounded-full bg-[#2d4a30]/[0.12] blur-[120px]" />
-          {/* Warm rose glow - right */}
-          <div className="absolute top-[40%] right-[5%] w-[400px] h-[350px] rounded-full bg-[#8B4513]/[0.06] blur-[100px]" />
-          {/* Subtle top edge transition glow */}
-          <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-amber-900/[0.04] to-transparent" />
-        </div>
+      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 py-24 overflow-hidden">
+        
+        {/* Full-bleed interactive background for the search section */}
+        <IntelligenceBackground />
 
+        {/* Loading Screen Overlay */}
         {loading && <LoadingScreen />}
 
         <PlannerCard
@@ -551,12 +537,15 @@ export default function App() {
 
   // 2. Planning View (Centered Glassmorphic Search Card)
   const renderPlanningView = () => (
-    <main className="relative flex flex-col min-h-screen bg-[#050505] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
-      {/* Ambient background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[20%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#E67E22]/[0.03] blur-[120px]" />
-        <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-emerald-500/[0.03] blur-[100px]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+    <main className="relative flex flex-col min-h-screen bg-[#05050A] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
+      {/* Immersive SVG glowing line Background */}
+      <IntelligenceBackground />
+      
+      {/* Ambient overlay glows */}
+      <div className="absolute inset-0 pointer-events-none mix-blend-screen">
+        <div className="absolute top-[20%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#E67E22]/[0.05] blur-[120px]" />
+        <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-emerald-500/[0.05] blur-[100px]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
       </div>
 
       {/* Loading Screen Overlay */}
@@ -621,7 +610,7 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
             className="h-screen w-full relative"
           >
             {renderLandingView()}
@@ -632,7 +621,7 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
             className="min-h-screen w-full relative bg-[#050505]"
           >
             {renderPlanningView()}
@@ -643,7 +632,7 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
             className="min-h-screen w-full relative bg-[#05050A]"
           >
             <ErrorBoundary>

@@ -125,7 +125,7 @@ export function ThreeGlobeBackground() {
                 <fog attach="fog" args={['#05050A', 5, 20]} />
                 <ParticleSphere />
                 <Dust />
-                <EffectComposer>
+                <EffectComposer multisampling={0}>
                     <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={300} intensity={1.5} />
                 </EffectComposer>
             </Canvas>

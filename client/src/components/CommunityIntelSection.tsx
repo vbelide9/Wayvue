@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 
 interface StatItem {
@@ -22,7 +22,7 @@ const POPULAR_ROUTES = [
 ];
 
 const AnimatedNumber = ({ value, suffix, inView }: { value: string; suffix: string; inView: boolean }) => {
-  const num = parseFloat(value);
+  // num removed
   return (
     <span className="font-black text-5xl text-white">
       {inView ? value : '0'}
