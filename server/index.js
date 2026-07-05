@@ -160,6 +160,75 @@ app.post('/api/route', async (req, res) => {
   }
 });
 
+// --- Fast Route Preview (Phase 1 of streaming) ---
+// Returns just the route geometry + basic metrics for the primary preference so the
+// client can render the map in ~2-3s while /api/route enriches the rest in the background.
+app.post('/api/route/preview', async (req, res) => {
+  try {
+    const { start, end, startCoords, endCoords, preference, waypoints } = req.body;
+    const { getRouteFromOSRM } = require('./services/routeService');
+
+    if (!start || !end) {
+      return res.status(400).json({ error: 'Start and End locations are required' });
+    }
+
+    // Geocode endpoints (reuse client-provided coords when available)
+    let sCoords, dCoords;
+    if (startCoords && startCoords.lat && startCoords.lng) {
+      sCoords = { lat: startCoords.lat, lon: startCoords.lng };
+    } else {
+      sCoords = await geocode(start);
+    }
+    if (endCoords && endCoords.lat && endCoords.lng) {
+      dCoords = { lat: endCoords.lat, lon: endCoords.lng };
+    } else {
+      dCoords = await geocode(end);
+    }
+    if (!sCoords || !dCoords) {
+      return res.status(422).json({ error: 'Could not resolve locations.' });
+    }
+
+    // Geocode any waypoints lacking coordinates (so phase 2 can reuse them)
+    let wpCoords = [];
+    if (Array.isArray(waypoints) && waypoints.length > 0) {
+      wpCoords = await Promise.all(waypoints.map(async (wp) => {
+        if (!wp) return null;
+        if (wp.lat && (wp.lng || wp.lon)) {
+          return { lat: wp.lat, lon: wp.lng !== undefined ? wp.lng : wp.lon, name: wp.name || 'Stop' };
+        }
+        if (wp.name) {
+          try { const c = await geocode(wp.name); if (c) return { lat: c.lat, lon: c.lon, name: wp.name }; } catch (e) { }
+        }
+        return null;
+      }));
+      wpCoords = wpCoords.filter(Boolean);
+    }
+
+    // OSRM route for the requested preference (outbound only, no enrichment)
+    const isScenic = preference === 'scenic';
+    const routeData = await getRouteFromOSRM(
+      sCoords.lon, sCoords.lat, dCoords.lon, dCoords.lat, isScenic, 'fastest', wpCoords
+    );
+
+    const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
+    const minutes = Math.round(routeData.duration / 60);
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const durationVal = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
+
+    res.json({
+      route: routeData.geometry,
+      metrics: { distance: distanceVal, time: durationVal },
+      startCoords: { lat: sCoords.lat, lng: sCoords.lon },
+      endCoords: { lat: dCoords.lat, lng: dCoords.lon },
+      waypointCoords: wpCoords.map(w => ({ lat: w.lat, lng: w.lon, name: w.name }))
+    });
+  } catch (error) {
+    console.error('Route preview error:', error.message);
+    res.status(500).json({ error: 'Failed to generate route preview' });
+  }
+});
+
 // --- Analytics Endpoints ---
 
 // In-Memory Fallback for Analytics

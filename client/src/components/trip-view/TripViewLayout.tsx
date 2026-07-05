@@ -10,9 +10,12 @@ import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { TopCategoryNav } from '../TopCategoryNav';
 import { ThreeGlobeBackground } from '../ThreeGlobeBackground';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
 
 interface TripViewLayoutProps {
     isLoading?: boolean;
+    isEnriching?: boolean;
     start: string;
     destination: string;
     metrics: { distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean; };
@@ -41,8 +44,27 @@ interface TripViewLayoutProps {
     map: React.ReactNode;
 }
 
+// Streaming placeholders shown while phase-2 enrichment is in flight
+function CardSkeleton({ rows = 3 }: { rows?: number }) {
+    const widths = ['w-11/12', 'w-4/5', 'w-3/4', 'w-5/6'];
+    return (
+        <div className="p-6 md:p-8 space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            {Array.from({ length: rows }).map((_, i) => (
+                <Skeleton key={i} className={`h-4 ${widths[i % widths.length]}`} />
+            ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-2xl" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function TripViewLayout({
     isLoading,
+    isEnriching,
     start,
     destination,
     metrics,
@@ -134,15 +156,14 @@ export function TripViewLayout({
             {/* Main content */}
             <div className="relative">
 
-                {/* 1. Hero Section */}
-                <div className="relative min-h-[70vh] flex flex-col items-center pt-12 pb-32 w-full">
+                {/* 1. Header (slim) — the map is now the persistent anchor below */}
+                <div className="relative pt-8 pb-4 w-full">
                     <ThreeGlobeBackground />
 
                     {/* Warm ambient glow overlays */}
                     <div className="absolute inset-0 pointer-events-none z-[1]">
                         <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-[#628141]/[0.08] blur-[150px]" />
                         <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-[#E67E22]/[0.06] blur-[130px]" />
-                        <div className="absolute bottom-[10%] left-[40%] w-[350px] h-[350px] rounded-full bg-[#40513B]/[0.1] blur-[120px]" />
                     </div>
 
                     {/* Header Controls */}
@@ -168,13 +189,6 @@ export function TripViewLayout({
                             onSetRoundTrip={onSetRoundTrip}
                         />
                     </div>
-
-                    {/* Premium Glass Map Container */}
-                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 mt-8 h-[40vh] md:h-[50vh]">
-                        <div className="w-full h-full rounded-3xl overflow-hidden border border-[#628141]/20 shadow-[0_8px_32px_rgba(64,81,59,0.15),0_0_0_1px_rgba(98,129,65,0.1)] bg-[#111D14]/60 backdrop-blur-xl">
-                            {map}
-                        </div>
-                    </div>
                 </div>
 
                 {/* 2. Top-Center Floating Category Navigation */}
@@ -184,23 +198,49 @@ export function TripViewLayout({
                     </div>
                 </div>
 
-                {/* 3. Vertical Sections Container */}
-                <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-64 flex flex-col gap-40 relative z-10">
+                {/* Streaming indicator — map is live, richer intelligence still loading */}
+                {isEnriching && (
+                    <div className="w-full flex justify-center mb-8 px-4" role="status" aria-live="polite">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#628141]/15 border border-[#628141]/30 text-[#E5D9B6] text-xs font-medium backdrop-blur-md">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Gathering live weather, traffic &amp; insights…
+                        </div>
+                    </div>
+                )}
+
+                {/* 3. Split: persistent map anchor + scrolling insight sections */}
+                <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-40 relative z-10 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-8 lg:items-start">
+
+                    {/* Map column — the spatial core of the product, sticky on desktop */}
+                    <div className="mb-8 lg:mb-0 lg:sticky lg:top-24 h-[42vh] lg:h-[calc(100vh-7rem)]">
+                        <div className="w-full h-full glass-surface overflow-hidden">
+                            {map}
+                        </div>
+                    </div>
+
+                    {/* Content column — scrolling insights */}
+                    <div className="flex flex-col gap-16">
 
                     {/* Overview Section */}
                     <section id="overview" className="scroll-mt-32">
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#628141] to-[#628141]/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Overview</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Overview</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">AI-powered journey confidence and insights</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
-                            <OverviewTab
-                                tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
-                                aiAnalysis={aiAnalysis}
-                            />
+                        <div className="glass-surface overflow-hidden p-4 md:p-8">
+                            {isEnriching && !aiAnalysis ? (
+                                <CardSkeleton rows={2} />
+                            ) : (
+                                <OverviewTab
+                                    tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
+                                    aiAnalysis={aiAnalysis}
+                                    metrics={metrics}
+                                    alertCount={alertCount}
+                                />
+                            )}
                         </div>
                     </section>
 
@@ -209,12 +249,16 @@ export function TripViewLayout({
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E67E22] to-[#E67E22]/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Weather Forecast</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Weather Forecast</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">Local forecasts along your route</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
-                            <ForecastTab weatherData={weatherData} unit={unit} />
+                        <div className="glass-surface overflow-hidden p-4 md:p-8">
+                            {isEnriching && weatherData.length === 0 ? (
+                                <CardSkeleton rows={2} />
+                            ) : (
+                                <ForecastTab weatherData={weatherData} unit={unit} />
+                            )}
                         </div>
                     </section>
 
@@ -223,12 +267,16 @@ export function TripViewLayout({
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E5D9B6] to-[#E5D9B6]/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Stops</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Stops</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">Recommended stops, dining, and accommodations along the route</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] min-h-[400px]">
-                            <StopsTab recommendations={recommendations} />
+                        <div className="glass-surface overflow-hidden min-h-[400px]">
+                            {isEnriching && recommendations.length === 0 ? (
+                                <CardSkeleton rows={2} />
+                            ) : (
+                                <StopsTab recommendations={recommendations} />
+                            )}
                         </div>
                     </section>
 
@@ -237,11 +285,14 @@ export function TripViewLayout({
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-amber-500 to-amber-500/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Road Conditions</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Road Conditions</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">Alerts and driving logistics for your destination</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)]">
+                        <div className="glass-surface overflow-hidden">
+                            {isEnriching && roadConditions.length === 0 && (!incidents || incidents.length === 0) ? (
+                                <CardSkeleton rows={2} />
+                            ) : (
                             <RoadTab
                                 roadConditions={roadConditions}
                                 incidents={incidents}
@@ -256,6 +307,7 @@ export function TripViewLayout({
                                     }
                                 }}
                             />
+                            )}
                         </div>
                     </section>
 
@@ -264,11 +316,11 @@ export function TripViewLayout({
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#628141] to-[#E67E22]/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Rental Vehicles</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Rental Vehicles</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">Smart vehicle recommendations for your trip profile</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
+                        <div className="glass-surface overflow-hidden p-4 md:p-8">
                             <RentalTab
                                 metrics={metrics}
                                 weatherData={weatherData}
@@ -287,11 +339,11 @@ export function TripViewLayout({
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E5D9B6] to-[#628141]/30" />
-                                <h2 className="text-4xl font-display font-medium text-foreground">Hotels</h2>
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">Hotels</h2>
                             </div>
                             <p className="text-muted-foreground mt-2 ml-[19px]">Overnight stays matched to your route and budget</p>
                         </div>
-                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
+                        <div className="glass-surface overflow-hidden p-4 md:p-8">
                             <StayTab
                                 metrics={metrics}
                                 start={start}
@@ -302,7 +354,8 @@ export function TripViewLayout({
                         </div>
                     </section>
 
-                </div>
+                    </div> {/* end content column */}
+                </div> {/* end split grid */}
             </div>
         </div>
     );

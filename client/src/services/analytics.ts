@@ -27,7 +27,6 @@ export const AnalyticsService = {
 
             // Use fetch with keepalive for reliability during page unload/navigation
             // Axios cancels requests on unload, but keepalive ensures they complete
-            console.log(`[ANALYTICS] Logging event: ${eventType}`, metadata);
             const response = await fetch('/api/analytics/event', {
                 method: 'POST',
                 headers: {
@@ -36,11 +35,13 @@ export const AnalyticsService = {
                 body: JSON.stringify(payload),
                 keepalive: true
             });
-            const result = await response.json();
-            console.log(`[ANALYTICS] Response for ${eventType}:`, result);
-        } catch (error) {
-            console.error('Failed to log analytics event', error);
-            // Fail silently to not disrupt user experience
+            // Analytics is best-effort: never throw on empty/non-JSON/error responses.
+            if (response.ok) {
+                const text = await response.text().catch(() => '');
+                if (text) { try { JSON.parse(text); } catch { /* ignore non-JSON body */ } }
+            }
+        } catch {
+            // Fail silently — analytics must never disrupt the app or spam the console.
         }
     },
 
@@ -66,10 +67,10 @@ export const AnalyticsService = {
         if (sessionStorage.getItem('user_location_logged') === 'true') return;
 
         try {
-            console.log('[ANALYTICS] Fetching user location...');
             const response = await fetch('https://ipapi.co/json/');
-            const data = await response.json();
-            if (data.error) return;
+            if (!response.ok) return;
+            const data = await response.json().catch(() => null);
+            if (!data || data.error) return;
 
             AnalyticsService.logEvent('user_location', {
                 city: data.city,
@@ -78,10 +79,8 @@ export const AnalyticsService = {
                 ip: data.ip
             });
             sessionStorage.setItem('user_location_logged', 'true');
-            console.log('[ANALYTICS] User location tracked:', data.city);
-        } catch (error) {
-            console.error('[ANALYTICS] Failed to fetch user location:', error);
-            // Don't set the flag so we can retry on next mount
+        } catch {
+            // Best-effort; don't set the flag so we can retry on next mount
         }
     },
 

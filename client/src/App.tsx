@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { FlowHoverButton } from '@/components/ui/flow-hover-button';
 import MapComponent from './components/MapComponent';
-import { getRoute } from './services/api';
+import { getRoute, getRoutePreview } from './services/api';
 
 import { LoadingScreen } from './components/LoadingScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -31,6 +31,13 @@ export default function App() {
   const navPointerEvents = useTransform(scrollYProgress, [0, 0.03], ["auto", "none"]);
 
   useEffect(() => {
+    // Respect the OS "reduce motion" setting — skip smooth-scroll hijacking entirely,
+    // which is the biggest motion-sickness / accessibility offender.
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
     // Lenis Smooth Scroll Initialization - Godly Feel
     const lenis = new Lenis({
       duration: 1.5,
@@ -89,6 +96,7 @@ export default function App() {
   const [returnTime, setReturnTime] = useState('10:00');
 
   const [loading, setLoading] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false); // Phase 2 in progress: map shown, cards streaming in
   const [unit, setUnit] = useState<'C' | 'F'>('F');
 
   // Round Trip State
@@ -363,6 +371,7 @@ export default function App() {
           // Usually keeping active leg is better for UX when toggling
         }
         setLoading(false);
+        setIsEnriching(false); // cached data is complete — no streaming needed
 
         // Track TTFI for cached switch
         const ttfi = Date.now() - searchStart;
@@ -381,13 +390,47 @@ export default function App() {
     });
 
     setLoading(true);
+    const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
+
+    // PHASE 1 — fast preview: render the map + basic metrics in ~3s, then enrich.
+    let resolvedStart = sCoords;
+    let resolvedEnd = dCoords;
+    try {
+      const preview = await getRoutePreview(s, d, sCoords, dCoords, prefToUse as 'fastest' | 'scenic', activeWaypoints);
+      if (preview && preview.route) {
+        resolvedStart = preview.startCoords || sCoords;
+        resolvedEnd = preview.endCoords || dCoords;
+
+        // Reset enrichment-dependent state and reveal the map immediately
+        setTripData(null);
+        setRoute(preview.route);
+        setMetrics({ distance: preview.metrics.distance, time: preview.metrics.time, fuel: '', ev: '' });
+        setWeatherData([]);
+        setReturnWeatherData([]);
+        setRoadConditions([]);
+        setIncidents([]);
+        setRecommendations([]);
+        setAiAnalysis(null);
+        setActiveLeg('outbound');
+        setViewMode('trip');
+        setLoading(false);      // dismiss the full-screen loader
+        setIsEnriching(true);   // trip view shows skeletons while phase 2 runs
+
+        if (searchStartTime) {
+          AnalyticsService.trackPerformance('time_to_map', Date.now() - searchStartTime, { preference: prefToUse });
+        }
+      }
+    } catch (previewErr) {
+      // Preview failed (e.g. geocoding) — fall through to the full call, which
+      // does its own geocoding + error handling and shows the loader.
+      console.warn('[App] Preview failed, falling back to full load:', previewErr);
+    }
+
+    // PHASE 2 — full enrichment (reuses resolved coords to skip re-geocoding)
     try {
       console.log('[App] handleRouteSubmit params:', { s, d, dateToUse, timeToUse, rtToUse, returnDateToUse, returnTimeToUse });
 
-      // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
-      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse, activeWaypoints);
+      const response = await getRoute(s, d, resolvedStart, resolvedEnd, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse, activeWaypoints);
       if (response) {
         setTripData(response);
 
@@ -473,6 +516,7 @@ export default function App() {
       }
     } finally {
       setLoading(false);
+      setIsEnriching(false); // stop skeletons once phase 2 resolves (success or failure)
     }
   };
 
@@ -490,16 +534,26 @@ export default function App() {
   const renderLandingView = () => (
     <main ref={containerRef} className="relative w-full h-[350vh] bg-[#0B1A0F] text-white selection:bg-white/20">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 mix-blend-difference text-white">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4">Wayvue</motion.div>
+      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 text-white">
+        {/* Guaranteed-contrast wordmark — no mix-blend gamble; drop-shadow keeps it legible on any frame */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">Wayvue</motion.div>
 
-        <motion.div style={{ 
-          opacity: navOpacity, 
-          pointerEvents: navPointerEvents as any 
+        <motion.div style={{
+          opacity: navOpacity,
+          pointerEvents: navPointerEvents as any
         }}>
           <FlowHoverButton onClick={() => setViewMode('planning')} className="rounded-full">Start Planning</FlowHoverButton>
         </motion.div>
       </nav>
+
+      {/* Persistent escape hatch — always reachable so returning users can skip the intro */}
+      <button
+        onClick={() => setViewMode('planning')}
+        aria-label="Skip intro and plan a trip"
+        className="fixed bottom-6 right-6 z-[801] flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold text-white/90 bg-black/40 backdrop-blur-md border border-white/15 hover:bg-black/60 hover:border-white/30 transition-colors shadow-lg"
+      >
+        Skip intro <span aria-hidden="true">→</span>
+      </button>
 
       {/* Scrollytelling Canvas Animation */}
       <RoadTripCanvas />
@@ -655,6 +709,7 @@ export default function App() {
             <ErrorBoundary>
               <TripViewLayout
                 isLoading={loading}
+                isEnriching={isEnriching}
                 start={start}
                 destination={destination}
                 metrics={metrics}

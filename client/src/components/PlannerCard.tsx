@@ -43,6 +43,7 @@ const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: ()
     <motion.button
       onClick={onClick}
       disabled={disabled}
+      aria-label={isCalculating ? 'Planning your trip' : (label || 'Plan trip')}
       whileHover={disabled ? {} : { scale: 1.05, boxShadow: "0 0 20px rgba(249, 115, 22, 0.4)" }}
       whileTap={disabled ? {} : { scale: 0.95 }}
       className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-glow border border-white/10 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
@@ -262,8 +263,9 @@ export function PlannerCard({
                           </div>
                         </div>
 
-                        {/* Search Orb */}
+                        {/* Primary CTA */}
                         <SearchButton
+                          label="Plan trip"
                           onClick={handleSearchClick}
                           isCalculating={loading}
                           disabled={loading}
@@ -301,6 +303,7 @@ export function PlannerCard({
                                     onClick={() => removeWaypoint(i)}
                                     className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors shrink-0"
                                     title="Remove stop"
+                                    aria-label={`Remove stop ${i + 1}`}
                                   >
                                     <X size={16} />
                                   </button>

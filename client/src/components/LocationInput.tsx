@@ -151,6 +151,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                         }}
                         className="absolute right-3 top-3.5 text-white/60 hover:text-white transition-colors z-20"
                         title="Use Current Location"
+                        aria-label="Use current location"
                     >
                         <Locate className="w-4 h-4" />
                     </button>

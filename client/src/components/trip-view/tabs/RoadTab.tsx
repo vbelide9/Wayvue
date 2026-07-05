@@ -40,17 +40,29 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
 
     return (
         <div className="h-full animate-in fade-in slide-in-from-right-2 duration-300 flex flex-col gap-4 p-4">
-            {/* Live Traffic Incidents */}
-            {hasIncidents && (
+            {/* Live Traffic Incidents — framed for calm: major vs. minor, not one alarming count */}
+            {hasIncidents && (() => {
+                const majorTypes = ['accident', 'closure'];
+                const majorCount = incidents!.filter(i => majorTypes.includes(i.type)).length;
+                const minorCount = incidents!.length - majorCount;
+                const calm = majorCount === 0;
+                return (
                 <div className="bg-card/95 backdrop-blur-xl rounded-xl border border-border overflow-hidden shadow-sm">
-                    <div className="p-4 border-b border-border flex items-center justify-between bg-card">
-                        <h3 className="font-semibold text-foreground flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
-                            Live Incidents
-                        </h3>
-                        <span className="text-xs bg-red-500/15 text-red-500 px-2.5 py-0.5 rounded-full font-medium">
-                            {incidents!.length} Active
-                        </span>
+                    <div className="p-4 border-b border-border bg-card">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-foreground flex items-center gap-2">
+                                <AlertTriangle className={`w-5 h-5 ${calm ? 'text-amber-400' : 'text-red-500'}`} />
+                                Road Alerts
+                            </h3>
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${calm ? 'bg-amber-400/10 text-amber-400' : 'bg-red-500/15 text-red-500'}`}>
+                                {majorCount} major · {minorCount} minor
+                            </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                            {calm
+                                ? `No major disruptions on your route — ${minorCount} minor item${minorCount !== 1 ? 's' : ''} to be aware of.`
+                                : `${majorCount} disruption${majorCount !== 1 ? 's' : ''} may affect your route. Review before you go.`}
+                        </p>
                     </div>
                     <div className="divide-y divide-border max-h-[280px] overflow-y-auto custom-scrollbar">
                         {incidents!.map((inc, idx) => {
@@ -83,7 +95,8 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                         })}
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Road Conditions (weather-derived segments) */}
             {hasConditions && (

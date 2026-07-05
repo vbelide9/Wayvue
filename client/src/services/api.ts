@@ -43,6 +43,22 @@ export const getRoute = async (
     }
 };
 
+// Phase 1 of streaming: fast route geometry + basic metrics (map renders in ~3s)
+export const getRoutePreview = async (
+    start: string,
+    end: string,
+    startCoords?: { lat: number; lng: number },
+    endCoords?: { lat: number; lng: number },
+    preference?: 'fastest' | 'scenic',
+    waypoints?: { name: string; lat?: number; lng?: number }[]
+) => {
+    const startTime = performance.now();
+    const payload = { start, end, startCoords, endCoords, preference, waypoints };
+    const response = await api.post('/route/preview', payload);
+    AnalyticsService.trackPerformance('api_latency', performance.now() - startTime, { endpoint: '/route/preview' });
+    return response.data;
+};
+
 export const getPlaceDetails = async (lat: number, lon: number) => {
     const response = await api.post('/place-details', { lat, lon });
     return response.data;
