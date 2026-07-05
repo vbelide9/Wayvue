@@ -7,7 +7,9 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     const {
         fuelCost, evCost, minTemp, maxTemp,
         trafficDelay, maxWind, precipChance, recommendations,
-        departureDate, departureTime
+        departureDate, departureTime,
+        tollCost, tollDisplay, tollEstimated,
+        incidents, incidentCounts
     } = context;
 
     const cleanCity = (c) => c.split(',')[0].trim();
@@ -23,7 +25,9 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     // 2. Fuel
     const fuel = {
         gas: fuelCost || "N/A",
-        ev: evCost || null
+        ev: evCost || null,
+        toll: (tollCost && tollCost > 0) ? tollDisplay : null,
+        tollEstimated: !!tollEstimated
     };
 
     // 3. Weather
@@ -123,6 +127,25 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
         items.push(`Fuel Tip: Lowest gas estimated at $${bestGas.price} near ${bestGas.loc}.`);
     }
 
+    // Toll Analysis
+    if (tollCost && tollCost >= 3) {
+        const estNote = tollEstimated ? " (estimated)" : "";
+        items.push(`Budget about ${tollDisplay} for tolls${estNote} along this route—keep a card or transponder handy.`);
+    }
+
+    // Incident Analysis (accidents, closures, construction)
+    if (incidents && incidents.length > 0) {
+        const c = incidentCounts || {};
+        const parts = [];
+        if (c.closure) parts.push(`${c.closure} closure${c.closure > 1 ? 's' : ''}`);
+        if (c.accident) parts.push(`${c.accident} accident${c.accident > 1 ? 's' : ''}`);
+        if (c.construction) parts.push(`${c.construction} work zone${c.construction > 1 ? 's' : ''}`);
+        if (c.jam) parts.push(`${c.jam} jam${c.jam > 1 ? 's' : ''}`);
+        if (parts.length > 0) {
+            items.push(`Live traffic: ${parts.join(', ')} reported on your route—expect possible delays.`);
+        }
+    }
+
     // Practical/Fatigue
     const hours = parseInt(duration);
     if (hours >= 4) {
@@ -164,7 +187,7 @@ function calculateTripScore(context) {
     let score = 100;
     const deductions = [];
 
-    const { precipChance, maxWind, trafficDelay, roadConditions, minTemp } = context;
+    const { precipChance, maxWind, trafficDelay, roadConditions, minTemp, incidentCounts } = context;
 
     // 1. Precip Penalty
     if (precipChance > 70) {
@@ -209,6 +232,20 @@ function calculateTripScore(context) {
     if (minTemp < 10) { // < 10F is very cold
         score -= 10;
         deductions.push({ type: 'Extreme Cold', val: -10 });
+    }
+
+    // 6. Traffic Incident Penalty (accidents / closures on route)
+    if (incidentCounts) {
+        const closures = incidentCounts.closure || 0;
+        const accidents = incidentCounts.accident || 0;
+        if (closures > 0) {
+            score -= 15;
+            deductions.push({ type: 'Road Closure on Route', val: -15 });
+        }
+        if (accidents > 0) {
+            score -= 10;
+            deductions.push({ type: `${accidents} Accident${accidents > 1 ? 's' : ''} Reported`, val: -10 });
+        }
     }
 
     // Clamp score

@@ -36,6 +36,15 @@ export const CommunityIntel = () => {
 
     if (loading) return <div className="p-8 text-center text-xs text-muted-foreground animate-pulse">Loading Community Data...</div>;
 
+    // Hide the entire panel when there is no real data yet (no fabricated placeholders)
+    const hasData = !!stats && (
+        stats.activeUsers > 0 ||
+        stats.totalSafeMiles > 0 ||
+        (stats.topDestinations?.length ?? 0) > 0 ||
+        (stats.recentActivity?.length ?? 0) > 0
+    );
+    if (!hasData) return null;
+
     return (
         <div className="flex flex-col h-full bg-gradient-to-b from-card/50 to-background/50 backdrop-blur-md overflow-hidden">
             {/* HEADER */}
@@ -50,7 +59,8 @@ export const CommunityIntel = () => {
             {/* SCROLLABLE CONTENT */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
 
-                {/* STAT 1: ACTIVE PLANNERS */}
+                {/* STAT 1: ACTIVE PLANNERS — only when there are real active users */}
+                {(stats?.activeUsers ?? 0) > 0 && (
                 <div className="relative group">
                     <div className="absolute inset-0 bg-primary/5 blur-xl group-hover:bg-primary/10 transition-colors" />
                     <div className="relative p-5 rounded-2xl border border-white/5 bg-black/20">
@@ -68,20 +78,24 @@ export const CommunityIntel = () => {
                         <p className="text-[10px] text-white/40">Users planning trips right now</p>
                     </div>
                 </div>
+                )}
 
-                {/* STAT 2: SAFE MILES */}
-                <div className="p-5 rounded-2xl border border-white/5 bg-black/20">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Safe Miles Generated</span>
-                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                {/* STAT 2: SAFE MILES — only when real miles have been logged */}
+                {(stats?.totalSafeMiles ?? 0) > 0 && (
+                    <div className="p-5 rounded-2xl border border-white/5 bg-black/20">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Safe Miles Generated</span>
+                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="text-3xl font-black text-white mb-1">
+                            {stats?.totalSafeMiles.toLocaleString()}
+                        </div>
+                        <p className="text-[10px] text-white/40">Cumulative distance of AI-verified routes</p>
                     </div>
-                    <div className="text-3xl font-black text-white mb-1">
-                        {stats?.totalSafeMiles.toLocaleString()}
-                    </div>
-                    <p className="text-[10px] text-white/40">Cumulative distance of AI-verified routes</p>
-                </div>
+                )}
 
-                {/* STAT 3: TRENDING */}
+                {/* STAT 3: TRENDING — only when there are real destinations */}
+                {(stats?.topDestinations?.length ?? 0) > 0 && (
                 <div>
                     <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Activity className="w-3 h-3" /> Trending Destinations
@@ -100,6 +114,7 @@ export const CommunityIntel = () => {
                         ))}
                     </div>
                 </div>
+                )}
 
                 {/* FEED */}
                 <div>

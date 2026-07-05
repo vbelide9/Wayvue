@@ -2,31 +2,7 @@ import { useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export const palettes = [
-  ['#E87F24', '#FFC81E', '#FEFDDF', '#73A5CA'],
-  ['#A98B76', '#BFA28C', '#F3E4C9', '#BABF94'],
-  ['#9AB17A', '#C3CC9B', '#E4DFB5', '#FBE8CE'],
-  ['#FAE251', '#D75656', '#BD114A', '#EEEEEE'],
-  ['#DB1A1A', '#FFF6F6', '#8CC7C4', '#2C687B'],
-  ['#FFC570', '#EFD2B0', '#547792', '#1A3263'],
-  ['#FFF8F0', '#C08552', '#8C5A3C', '#4B2E2B'],
-  ['#81A6C6', '#AACDDC', '#F3E3D0', '#D2C4B4'],
-  ['#F3F4F4', '#853953', '#612D53', '#2C2C2C'],
-  ['#87B6BC', '#BED4CB', '#F6F09F', '#B35656'],
-  ['#8A7650', '#8E977D', '#ECE7D1', '#DBCEA5'],
-  ['#355872', '#7AAACE', '#9CD5FF', '#F7F8F0'],
-  ['#F4F0E4', '#44A194', '#537D96', '#EC8F8D'],
-  ['#F26076', '#FF9760', '#FFD150', '#458B73'],
-  ['#09637E', '#088395', '#7AB2B2', '#EBF4F6'],
-  ['#1A3263', '#547792', '#FAB95B', '#E8E2DB'],
-  ['#30364F', '#ACBAC4', '#E1D9BC', '#F0F0DB'],
-  ['#0C2C55', '#296374', '#629FAD', '#EDEDCE'],
-  ['#F63049', '#D02752', '#8A244B', '#111F35'],
-  ['#574964', '#9F8383', '#C8AAAA', '#FFDAB3'],
-  ['#0F2854', '#1C4D8D', '#4988C4', '#BDE8F5'],
-  ['#EBF4DD', '#90AB8B', '#5A7863', '#3B4953'],
-  ['#213448', '#547792', '#94B4C1', '#EAE0CF'],
-  ['#1B3C53', '#234C6A', '#456882', '#E3E3E3'],
-  ['#F1F3E0', '#D2DCB6', '#A1BC98', '#778873']
+  ['#40513B', '#628141', '#E5D9B6', '#E67E22']
 ];
 
 function hexToRgb(hex: string) {
@@ -183,7 +159,7 @@ export const IntelligenceBackground = ({ forcePaletteIndex }: { forcePaletteInde
       ref={containerRef}
       // Use pointer-events-auto so the background intercepts hover interactions naturally,
       // but keep it on z-[0] so the planner card (z-[50]) rests securely on top untouched.
-      className="absolute inset-0 z-[0] pointer-events-auto overflow-hidden bg-[#0A0A10]"
+      className="absolute inset-0 z-[0] pointer-events-auto overflow-hidden bg-[#0F1A12]"
     >
       <svg 
         width="100%" 
@@ -217,8 +193,8 @@ export const IntelligenceBackground = ({ forcePaletteIndex }: { forcePaletteInde
       </svg>
       
       {/* Ambient gradient overlays to cleanly blend edges with the global app layout */}
-      <div className="absolute inset-x-0 top-0 h-[10vh] bg-gradient-to-b from-[#05050A] to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-[10vh] bg-gradient-to-t from-[#05050A] to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[10vh] bg-gradient-to-b from-[#0B1A0F] to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-[10vh] bg-gradient-to-t from-[#0B1A0F] to-transparent pointer-events-none" />
     </div>
   );
 };

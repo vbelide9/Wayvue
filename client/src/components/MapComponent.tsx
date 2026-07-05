@@ -46,11 +46,23 @@ const getWeatherDescription = (code: number) => {
     return codes[code] || 'Unknown';
 };
 
+interface TrafficIncident {
+    id: string;
+    type: 'accident' | 'closure' | 'construction' | 'jam' | 'hazard';
+    severity?: number;
+    description: string;
+    location?: { lat: number; lng: number } | null;
+    from?: string | null;
+    to?: string | null;
+}
+
 interface MapComponentProps {
     routeGeoJSON?: FeatureCollection | Geometry | null;
     returnRouteGeoJSON?: FeatureCollection | Geometry | null; // New prop for return route
     weatherData?: WeatherPoint[];
     returnWeatherData?: WeatherPoint[]; // New prop
+    incidents?: TrafficIncident[]; // Traffic incidents (accidents, closures, construction)
+    waypoints?: { name: string; lat?: number; lng?: number }[]; // Multi-stop waypoint markers
     unit: 'C' | 'F';
     selectedLocation?: { lat: number; lng: number } | null;
     activeLeg?: 'outbound' | 'return'; // New prop
@@ -58,7 +70,7 @@ interface MapComponentProps {
     routeColor?: string; // (Deprecating single routeColor in favor of fixed Blue/Orange, but keeping for now)
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON }) => {
     // Default: San Francisco
     const defaultCenter: LatLngExpression = [37.7749, -122.4194];
 
@@ -166,6 +178,60 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
             </div>`,
             iconSize: [52, 32],
             iconAnchor: [26, 16]
+        });
+    };
+
+    // Incident marker styling per type
+    const INCIDENT_STYLE: Record<string, { color: string; emoji: string; label: string }> = {
+        accident: { color: '#ef4444', emoji: '🚨', label: 'Accident' },
+        closure: { color: '#b91c1c', emoji: '⛔', label: 'Road Closure' },
+        construction: { color: '#f59e0b', emoji: '🚧', label: 'Construction' },
+        jam: { color: '#f97316', emoji: '🚗', label: 'Traffic Jam' },
+        hazard: { color: '#eab308', emoji: '⚠️', label: 'Hazard' }
+    };
+
+    const createWaypointIcon = (label: string) => {
+        return L.divIcon({
+            className: 'custom-waypoint-icon',
+            html: `<div style="
+                background-color: #628141;
+                color: #E5DAB8;
+                width: 24px;
+                height: 24px;
+                border-radius: 50% 50% 50% 0;
+                transform: translate(-50%, -100%) rotate(-45deg);
+                border: 2px solid #E5DAB8;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                font-size: 11px;
+            "><span style="transform: rotate(45deg);">${label}</span></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 24]
+        });
+    };
+
+    const createIncidentIcon = (type: string) => {
+        const style = INCIDENT_STYLE[type] || INCIDENT_STYLE.hazard;
+        return L.divIcon({
+            className: 'custom-incident-icon',
+            html: `<div style="
+                background-color: ${style.color};
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                border: 2px solid #ffffff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                transform: translate(-50%, -50%);
+            ">${style.emoji}</div>`,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
         });
     };
 
@@ -544,6 +610,64 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                                 </Popup>
                             </Marker>
                         ) : null;
+                    })
+                }
+
+                {/* Waypoint Markers (multi-stop) */}
+                {
+                    waypoints && waypoints.filter(w => w.lat && w.lng).map((wp, idx) => (
+                        <Marker
+                            key={`waypoint-${idx}`}
+                            position={[wp.lat as number, wp.lng as number]}
+                            icon={createWaypointIcon(String(idx + 1))}
+                        >
+                            <Popup className="custom-popup-overrides">
+                                <div className="px-3 py-2 font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white text-xs">
+                                    <span className="font-bold uppercase tracking-widest text-[10px] text-[#E5DAB8]">Stop {idx + 1}</span>
+                                    <p className="text-white/80 mt-1 max-w-[200px]">{wp.name}</p>
+                                </div>
+                            </Popup>
+                        </Marker>
+                    ))
+                }
+
+                {/* Traffic Incident Markers (accidents, closures, construction, jams) */}
+                {
+                    layers.traffic && incidents && incidents.map((inc, idx) => {
+                        if (!inc.location) return null;
+                        const style = INCIDENT_STYLE[inc.type] || INCIDENT_STYLE.hazard;
+                        return (
+                            <Marker
+                                key={`incident-${inc.id || idx}`}
+                                position={[inc.location.lat, inc.location.lng]}
+                                icon={createIncidentIcon(inc.type)}
+                                eventHandlers={{
+                                    click: () => AnalyticsService.trackClick('incident_marker_click', {
+                                        type: inc.type,
+                                        leg: activeLeg
+                                    })
+                                }}
+                            >
+                                <Popup className="custom-popup-overrides">
+                                    <div className="flex flex-col min-w-[180px] max-w-[240px] font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                                        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10" style={{ background: `${style.color}22` }}>
+                                            <span style={{ fontSize: '14px' }}>{style.emoji}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/90">
+                                                {style.label}
+                                            </span>
+                                        </div>
+                                        <div className="p-3">
+                                            <p className="text-xs text-white/80 leading-snug">{inc.description}</p>
+                                            {(inc.from || inc.to) && (
+                                                <p className="text-[10px] text-white/50 mt-1.5 font-mono">
+                                                    {inc.from}{inc.to ? ` → ${inc.to}` : ''}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        );
                     })
                 }
             </MapContainer>

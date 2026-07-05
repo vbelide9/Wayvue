@@ -7,6 +7,7 @@ import { ForecastTab } from './tabs/ForecastTab';
 import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
+import { StayTab } from './tabs/StayTab';
 import { TopCategoryNav } from '../TopCategoryNav';
 import { ThreeGlobeBackground } from '../ThreeGlobeBackground';
 
@@ -14,9 +15,10 @@ interface TripViewLayoutProps {
     isLoading?: boolean;
     start: string;
     destination: string;
-    metrics: { distance: string; time: string; fuel: string; ev: string; };
+    metrics: { distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean; };
     tripScore?: { score: number; label: string; };
     roadConditions: RoadCondition[];
+    incidents?: any[];
     weatherData: any[];
     aiAnalysis: any;
     recommendations: any[];
@@ -46,6 +48,7 @@ export function TripViewLayout({
     metrics,
     tripScore,
     roadConditions,
+    incidents,
     weatherData,
     aiAnalysis,
     recommendations,
@@ -66,15 +69,24 @@ export function TripViewLayout({
     isRoundTrip,
     rawReturnDate,
 }: TripViewLayoutProps) {
-    const [activeSection, setActiveSection] = useState('experiences');
+    const [activeSection, setActiveSection] = useState('');
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Scroll to the very top on mount so the map hero is visible first
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ top: 0 });
+        }
+        // Also reset window scroll in case the outer container is scrolled
+        window.scrollTo({ top: 0 });
+    }, []);
 
     // Provide scroll spy functionality
     useEffect(() => {
         const handleScroll = () => {
             if (!scrollContainerRef.current) return;
-            const sections = ['hotels', 'rentals', 'experiences', 'destinations'];
-            let current = 'experiences'; // default top visible initially below hero
+            const sections = ['overview', 'weather', 'stops', 'road', 'rentals', 'stay'];
+            let current = ''; // empty when hero/map is visible
 
             for (const section of sections) {
                 const element = document.getElementById(section);
@@ -113,18 +125,25 @@ export function TripViewLayout({
         }
     };
 
-    const alertCount = roadConditions.filter(c => c.status !== 'good').length;
+    const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans relative">
+        <div ref={scrollContainerRef} className={`min-h-screen overflow-y-auto overflow-x-hidden bg-[#0B1A0F] text-foreground font-sans relative scroll-smooth ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
             {isLoading && <LoadingScreen title="Updating your journey" />}
 
-            {/* Main scrollable container */}
-            <div ref={scrollContainerRef} className={`flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
+            {/* Main content */}
+            <div className="relative">
 
                 {/* 1. Hero Section */}
                 <div className="relative min-h-[70vh] flex flex-col items-center pt-12 pb-32 w-full">
                     <ThreeGlobeBackground />
+
+                    {/* Warm ambient glow overlays */}
+                    <div className="absolute inset-0 pointer-events-none z-[1]">
+                        <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-[#628141]/[0.08] blur-[150px]" />
+                        <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-[#E67E22]/[0.06] blur-[130px]" />
+                        <div className="absolute bottom-[10%] left-[40%] w-[350px] h-[350px] rounded-full bg-[#40513B]/[0.1] blur-[120px]" />
+                    </div>
 
                     {/* Header Controls */}
                     <div className="w-full relative z-20">
@@ -152,7 +171,7 @@ export function TripViewLayout({
 
                     {/* Premium Glass Map Container */}
                     <div className="relative z-10 w-full max-w-7xl mx-auto px-4 mt-8 h-[40vh] md:h-[50vh]">
-                        <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-card/40 backdrop-blur-xl">
+                        <div className="w-full h-full rounded-3xl overflow-hidden border border-[#628141]/20 shadow-[0_8px_32px_rgba(64,81,59,0.15),0_0_0_1px_rgba(98,129,65,0.1)] bg-[#111D14]/60 backdrop-blur-xl">
                             {map}
                         </div>
                     </div>
@@ -168,32 +187,88 @@ export function TripViewLayout({
                 {/* 3. Vertical Sections Container */}
                 <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-64 flex flex-col gap-40 relative z-10">
 
-                    {/* Experiences Section (AI Insights & Weather) */}
-                    <section id="experiences" className="scroll-mt-32">
+                    {/* Overview Section */}
+                    <section id="overview" className="scroll-mt-32">
                         <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Experiences & Insights</h2>
-                            <p className="text-muted-foreground mt-2">AI-powered journey confidence and local forecasts</p>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#628141] to-[#628141]/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Overview</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">AI-powered journey confidence and insights</p>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <OverviewTab
-                                    tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
-                                    aiAnalysis={aiAnalysis}
-                                />
-                            </div>
-                            <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                                <ForecastTab weatherData={weatherData} unit={unit} />
-                            </div>
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
+                            <OverviewTab
+                                tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
+                                aiAnalysis={aiAnalysis}
+                            />
                         </div>
                     </section>
 
-                    {/* Rental Cars Section */}
+                    {/* Weather Forecast Section */}
+                    <section id="weather" className="scroll-mt-32">
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E67E22] to-[#E67E22]/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Weather Forecast</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">Local forecasts along your route</p>
+                        </div>
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
+                            <ForecastTab weatherData={weatherData} unit={unit} />
+                        </div>
+                    </section>
+
+                    {/* Stops Section */}
+                    <section id="stops" className="scroll-mt-32">
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E5D9B6] to-[#E5D9B6]/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Stops</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">Recommended stops, dining, and accommodations along the route</p>
+                        </div>
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] min-h-[400px]">
+                            <StopsTab recommendations={recommendations} />
+                        </div>
+                    </section>
+
+                    {/* Road Conditions Section */}
+                    <section id="road" className="scroll-mt-32">
+                        <div className="mb-8">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-amber-500 to-amber-500/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Road Conditions</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">Alerts and driving logistics for your destination</p>
+                        </div>
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)]">
+                            <RoadTab
+                                roadConditions={roadConditions}
+                                incidents={incidents}
+                                onSegmentSelect={(condition) => {
+                                    if (condition.location) {
+                                        onSegmentSelect(condition.location.lat, condition.location.lon);
+                                    }
+                                }}
+                                onIncidentSelect={(incident) => {
+                                    if (incident.location) {
+                                        onSegmentSelect(incident.location.lat, incident.location.lng);
+                                    }
+                                }}
+                            />
+                        </div>
+                    </section>
+
+                    {/* Rental Vehicles Section */}
                     <section id="rentals" className="scroll-mt-32">
                         <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Rental Cars</h2>
-                            <p className="text-muted-foreground mt-2">Smart vehicle recommendations for your trip profile</p>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#628141] to-[#E67E22]/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Rental Vehicles</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">Smart vehicle recommendations for your trip profile</p>
                         </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-4 md:p-8">
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
                             <RentalTab
                                 metrics={metrics}
                                 weatherData={weatherData}
@@ -207,31 +282,22 @@ export function TripViewLayout({
                         </div>
                     </section>
 
-                    {/* Hotels & Stops Section */}
-                    <section id="hotels" className="scroll-mt-32">
+                    {/* Hotels / Stay Section */}
+                    <section id="stay" className="scroll-mt-32">
                         <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Hotels & Places</h2>
-                            <p className="text-muted-foreground mt-2">Recommended stops, dining, and accommodations along the route</p>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#E5D9B6] to-[#628141]/30" />
+                                <h2 className="text-4xl font-display font-medium text-foreground">Hotels</h2>
+                            </div>
+                            <p className="text-muted-foreground mt-2 ml-[19px]">Overnight stays matched to your route and budget</p>
                         </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl min-h-[400px]">
-                            <StopsTab recommendations={recommendations} />
-                        </div>
-                    </section>
-
-                    {/* Destinations & Road Info Section */}
-                    <section id="destinations" className="scroll-mt-32">
-                        <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Route & Road Conditions</h2>
-                            <p className="text-muted-foreground mt-2">Alerts and driving logistics for your destination</p>
-                        </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                            <RoadTab
-                                roadConditions={roadConditions}
-                                onSegmentSelect={(condition) => {
-                                    if (condition.location) {
-                                        onSegmentSelect(condition.location.lat, condition.location.lon);
-                                    }
-                                }}
+                        <div className="bg-[#111D14]/60 backdrop-blur-xl border border-[#628141]/15 rounded-3xl overflow-hidden shadow-[0_8px_32px_rgba(64,81,59,0.12)] p-4 md:p-8">
+                            <StayTab
+                                metrics={metrics}
+                                start={start}
+                                destination={destination}
+                                depDate={depDate}
+                                returnDate={rawReturnDate || returnDate}
                             />
                         </div>
                     </section>

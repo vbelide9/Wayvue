@@ -6,7 +6,7 @@ interface StopsTabProps {
 
 export function StopsTab({ recommendations }: StopsTabProps) {
     return (
-        <div className="h-full overflow-y-auto custom-scrollbar">
+        <div className="custom-scrollbar">
             <div className="p-4">
                 <PlacesRecommendations
                     places={recommendations}

@@ -32,51 +32,57 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
-    --color-void: #050505;
+    --color-void: #0B1A0F;
     --font-sans: "Inter", sans-serif;
     --font-serif: "Cormorant Garamond", serif;
 }
 
 @layer base {
     :root {
-        /* Godly / Architectural Dark Palette */
-        --background: 0 0% 2%;
-        /* #050505 */
-        --foreground: 40 20% 96%;
-        /* Bone white #F5F5F0 */
+        /* Nature-Inspired Forest Dark Palette */
+        --background: 140 30% 5%;
+        /* Deep Forest #0B1A0F */
+        --foreground: 40 30% 95%;
+        /* Warm bone white #F5F0E8 */
 
-        --card: 0 0% 6%;
-        --card-foreground: 40 20% 96%;
+        --card: 140 22% 7%;
+        /* Warm dark forest #111D14 */
+        --card-foreground: 40 30% 95%;
 
-        --popover: 0 0% 6%;
-        --popover-foreground: 40 20% 96%;
+        --popover: 140 22% 7%;
+        --popover-foreground: 40 30% 95%;
 
-        /* Muted Stone / Desaturated Accent instead of Neon */
-        --primary: 40 10% 80%;
-        --primary-foreground: 0 0% 4%;
+        /* Forest Emerald Primary */
+        --primary: 95 30% 35%;
+        /* #628141 → Forest green */
+        --primary-foreground: 40 30% 95%;
 
-        /* Deep translucent secondary */
-        --secondary: 0 0% 12%;
-        --secondary-foreground: 40 20% 96%;
+        /* Deep forest secondary */
+        --secondary: 140 15% 12%;
+        --secondary-foreground: 40 30% 95%;
 
-        --muted: 0 0% 12%;
-        --muted-foreground: 0 0% 60%;
+        --muted: 140 12% 14%;
+        --muted-foreground: 80 8% 55%;
+        /* Warm gray-green */
 
-        /* Subtle gold/amber accent */
-        --accent: 40 40% 60%;
+        /* Warm amber accent */
+        --accent: 30 80% 50%;
+        /* #E67E22 Sunset amber */
         --accent-foreground: 0 0% 100%;
 
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 0 0% 98%;
 
-        --border: 240 6% 15%;
-        --input: 240 6% 15%;
-        --ring: 217 91% 60%;
+        --border: 140 10% 16%;
+        /* Earthy green-tinted border */
+        --input: 140 10% 16%;
+        --ring: 95 30% 35%;
+        /* Forest green ring */
 
         --radius: 0.75rem;
 
-        /* Selection Color */
-        --selection-bg: 217 91% 60%;
+        /* Selection Color — warm amber */
+        --selection-bg: 30 80% 50%;
         --selection-text: 0 0% 100%;
     }
 }
@@ -86,7 +92,7 @@
     color: hsl(var(--selection-text));
 }
 
-/* Godly Tactile Noise Filter */
+/* Tactile Noise Filter — slightly warmed */
 body {
     position: relative;
 }
@@ -101,7 +107,7 @@ body::after {
     pointer-events: none;
     z-index: 9999;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.04;
+    opacity: 0.035;
     mix-blend-mode: overlay;
 }
 
@@ -127,22 +133,22 @@ body::after {
     margin: 0 !important;
 }
 
-/* Custom Minimal Scrollbar */
+/* Custom Minimal Scrollbar — Forest tinted */
 ::-webkit-scrollbar {
   width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #050505;
+  background: #0B1A0F;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222;
+  background: #2A3A25;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #333;
+  background: #3A4A35;
 }
 
 .scrollbar-none::-webkit-scrollbar {

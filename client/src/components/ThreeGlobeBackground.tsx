@@ -13,8 +13,8 @@ function ParticleSphere() {
     const [positions, colors] = useMemo(() => {
         const pos = new Float32Array(count * 3);
         const col = new Float32Array(count * 3);
-        const colorA = new THREE.Color('#3b82f6'); // Electric blue
-        const colorB = new THREE.Color('#8b5cf6'); // Purple/Pink
+        const colorA = new THREE.Color('#628141'); // Forest green
+        const colorB = new THREE.Color('#E67E22'); // Sunset amber
 
         for (let i = 0; i < count; i++) {
             // Point on sphere distribution
@@ -78,7 +78,7 @@ function ParticleSphere() {
             {/* Inner dark core to block particles from the other side, creating solid depth */}
             <mesh>
                 <sphereGeometry args={[radius * 0.98, 32, 32]} />
-                <meshBasicMaterial color="#05050A" />
+                <meshBasicMaterial color="#0B1A0F" />
             </mesh>
         </points>
     );
@@ -120,13 +120,13 @@ function Dust() {
 
 export function ThreeGlobeBackground() {
     return (
-        <div className="absolute inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#05050A]">
+        <div className="absolute inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#0B1A0F]">
             <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-                <fog attach="fog" args={['#05050A', 5, 20]} />
+                <fog attach="fog" args={['#0B1A0F', 5, 20]} />
                 <ParticleSphere />
                 <Dust />
                 <EffectComposer multisampling={0}>
-                    <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={300} intensity={1.5} />
+                    <Bloom luminanceThreshold={0.15} luminanceSmoothing={0.9} height={300} intensity={1.2} />
                 </EffectComposer>
             </Canvas>
             {/* Deep gradient fade at bottom to blend into content */}

@@ -22,12 +22,13 @@ export const getRoute = async (
     roundTrip?: boolean,
     preference?: 'fastest' | 'scenic',
     returnDate?: string,
-    returnTime?: string
+    returnTime?: string,
+    waypoints?: { name: string; lat?: number; lng?: number }[]
 ) => {
     console.log(`[API] Fetching route from ${start} to ${end}...`);
     const startTime = performance.now();
     try {
-        const payload = { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime };
+        const payload = { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime, waypoints };
         const response = await api.post('/route', payload);
         const endTime = performance.now();
         AnalyticsService.trackPerformance('api_latency', endTime - startTime, { endpoint: '/route' });

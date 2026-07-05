@@ -1,5 +1,5 @@
 import { CombinedDateTimePicker } from '../../components/CustomDateTimePicker';
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check, CircleDollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -12,6 +12,8 @@ interface TripHeaderProps {
         time: string;
         fuel: string;
         ev: string;
+        tollCost?: string;
+        tollEstimated?: boolean;
     };
     tripScore?: {
         score: number;
@@ -152,7 +154,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     };
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative gap-3 md:gap-4" ref={containerRef}>
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-[#0F1A12]/90 backdrop-blur-xl border-b border-[#628141]/15 z-50 relative gap-3 md:gap-4" ref={containerRef}>
 
             {/* Left: Back & Route */}
             <div className="flex items-center gap-3 min-w-0 justify-start">
@@ -416,6 +418,19 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                     <div className="flex items-center gap-1.5">
                                         <Zap className="w-3.5 h-3.5 text-yellow-500" />
                                         <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.ev}</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Toll Cost */}
+                            {metrics.tollCost && metrics.tollCost !== "$0" && (
+                                <>
+                                    <div className="w-px h-3 bg-border" />
+                                    <div className="flex items-center gap-1.5" title={metrics.tollEstimated ? "Estimated tolls" : "Tolls"}>
+                                        <CircleDollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                                            {metrics.tollCost}{metrics.tollEstimated ? ' est.' : ''}
+                                        </span>
                                     </div>
                                 </>
                             )}

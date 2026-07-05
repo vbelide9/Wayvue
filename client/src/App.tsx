@@ -19,11 +19,16 @@ import { PlannerCard } from './components/PlannerCard';
 import { IntelligenceBackground } from './components/IntelligenceBackground';
 
 export default function App() {
+
   const containerRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef as any,
     offset: ["start start", "end end"]
   });
+
+  // Hoisted from renderLandingView to comply with Rules of Hooks
+  const navOpacity = useTransform(scrollYProgress, [0, 0.03], [1, 0]);
+  const navPointerEvents = useTransform(scrollYProgress, [0, 0.03], ["auto", "none"]);
 
   useEffect(() => {
     // Lenis Smooth Scroll Initialization - Godly Feel
@@ -55,6 +60,7 @@ export default function App() {
   const [destination, setDestination] = useState("Buffalo, NY");
   const [startCoords, setStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
   const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+  const [waypoints, setWaypoints] = useState<{ name: string; lat?: number; lng?: number }[]>([]);
 
   // Trip Data State
   const [route, setRoute] = useState<any>(null);
@@ -62,6 +68,7 @@ export default function App() {
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [returnWeatherData, setReturnWeatherData] = useState<any[]>([]); // New state for return leg weather
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -69,8 +76,10 @@ export default function App() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
-  const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
-
+  const [departureTime, setDepartureTime] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
   // Return Date/Time State
   const [returnDate, setReturnDate] = useState(() => {
     const d = new Date();
@@ -178,6 +187,7 @@ export default function App() {
     setMetrics(data.metrics);
     setWeatherData(data.weather || []);
     setRoadConditions(data.roadConditions || []);
+    setIncidents(data.incidents || []);
 
     // Merge AI Analysis with top-level insight fields if they exist there (likely structured differently in new backend)
     // In our new backend structure, 'aiAnalysis', 'tripScore', 'departureInsights' are inside the 'data' object.
@@ -340,6 +350,7 @@ export default function App() {
           if (initialData.metrics) setMetrics(initialData.metrics);
           setWeatherData(initialData.weather || []);
           setRoadConditions(initialData.roadConditions || []);
+          setIncidents(initialData.incidents || []);
           const fullAiAnalysis = {
             ...initialData.aiAnalysis,
             tripScore: initialData.tripScore,
@@ -375,7 +386,8 @@ export default function App() {
 
       // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
       // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse);
+      const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
+      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse, activeWaypoints);
       if (response) {
         setTripData(response);
 
@@ -403,6 +415,7 @@ export default function App() {
           if (initialData.metrics) setMetrics(initialData.metrics);
           setWeatherData(initialData.weather || []);
           setRoadConditions(initialData.roadConditions || []);
+          setIncidents(initialData.incidents || []);
 
           const fullAiAnalysis = {
             ...initialData.aiAnalysis,
@@ -475,14 +488,14 @@ export default function App() {
 
   // 1. Landing View (Cinematic Intro)
   const renderLandingView = () => (
-    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#050505] text-white selection:bg-white/20">
+    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#0B1A0F] text-white selection:bg-white/20">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 mix-blend-difference text-white">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4">Wayvue</motion.div>
 
         <motion.div style={{ 
-          opacity: useTransform(scrollYProgress, [0, 0.03], [1, 0]), 
-          pointerEvents: useTransform(scrollYProgress, [0, 0.03], ["auto", "none"]) as any 
+          opacity: navOpacity, 
+          pointerEvents: navPointerEvents as any 
         }}>
           <FlowHoverButton onClick={() => setViewMode('planning')} className="rounded-full">Start Planning</FlowHoverButton>
         </motion.div>
@@ -507,6 +520,8 @@ export default function App() {
           onDestinationChange={setDestination}
           onStartSelect={setStartCoords}
           onDestSelect={setDestCoords}
+          waypoints={waypoints}
+          onWaypointsChange={setWaypoints}
           departureDate={departureDate}
           departureTime={departureTime}
           onDepartureDateChange={setDepartureDate}
@@ -537,7 +552,7 @@ export default function App() {
 
   // 2. Planning View (Centered Glassmorphic Search Card)
   const renderPlanningView = () => (
-    <main className="relative flex flex-col min-h-screen bg-[#05050A] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
+    <main className="relative flex flex-col min-h-screen bg-[#0B1A0F] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
       {/* Immersive SVG glowing line Background */}
       <IntelligenceBackground />
       
@@ -573,6 +588,8 @@ export default function App() {
           onDestinationChange={setDestination}
           onStartSelect={setStartCoords}
           onDestSelect={setDestCoords}
+          waypoints={waypoints}
+          onWaypointsChange={setWaypoints}
           departureDate={departureDate}
           departureTime={departureTime}
           onDepartureDateChange={setDepartureDate}
@@ -622,7 +639,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#050505]"
+            className="min-h-screen w-full relative bg-[#0B1A0F]"
           >
             {renderPlanningView()}
           </motion.div>
@@ -633,7 +650,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#05050A]"
+            className="min-h-screen w-full relative bg-[#0B1A0F]"
           >
             <ErrorBoundary>
               <TripViewLayout
@@ -643,6 +660,7 @@ export default function App() {
                 metrics={metrics}
                 tripScore={aiAnalysis?.tripScore}
                 roadConditions={roadConditions}
+                incidents={incidents}
                 weatherData={weatherData}
 
                 aiAnalysis={aiAnalysis}
@@ -710,6 +728,8 @@ export default function App() {
                     returnRouteGeoJSON={tripData?.return?.route} // Pass return route
                     weatherData={weatherData}
                     returnWeatherData={returnWeatherData} // Pass return weather
+                    incidents={incidents}
+                    waypoints={waypoints}
                     unit={unit}
                     selectedLocation={selectedLocation}
                     activeLeg={activeLeg}

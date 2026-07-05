@@ -25,7 +25,7 @@ export function OverviewTab({ tripScore, aiAnalysis }: OverviewTabProps) {
     // So we need to ensure we pass these correctly.
 
     return (
-        <div className="flex flex-col gap-4 p-4 overflow-y-auto h-full custom-scrollbar">
+        <div className="flex flex-col gap-4 p-4">
             {/* 1. Trip Confidence Score - The "Hero" Metric */}
             {tripScore !== undefined && (
                 <TripConfidenceCard
