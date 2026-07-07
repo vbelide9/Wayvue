@@ -175,6 +175,17 @@ export default function RoadTripCanvas() {
 
         <canvas ref={canvasRef} className="block" />
 
+        {/* Aurora cool color-grade — shifts the warm road sequence toward the blue palette (zoox-style duotone) */}
+        <div
+          className="absolute inset-0 pointer-events-none mix-blend-color"
+          style={{ background: "linear-gradient(160deg, #1b3f86 0%, #0c2350 55%, #061024 100%)", opacity: 0.6 }}
+        />
+        {/* Electric-blue spotlight sheen */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(1100px circle at 70% 30%, rgba(59,123,255,0.22), transparent 60%)" }}
+        />
+
         {/* Heat Haze Overlay */}
         <div
           className="absolute bottom-0 w-full h-[30%] pointer-events-none"

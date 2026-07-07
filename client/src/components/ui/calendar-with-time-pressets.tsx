@@ -98,7 +98,7 @@ export const CalendarWithTimePresets = ({ date, setDate, disabled, className, on
           initialFocus
           className="bg-transparent"
           classNames={{
-            day_selected: "bg-orange-500 text-white hover:bg-orange-600 focus:bg-orange-600",
+            day_selected: "bg-primary text-white hover:bg-primary focus:bg-primary",
             day_today: "bg-white/5 text-white underline underline-offset-4"
           }}
         />

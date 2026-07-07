@@ -84,7 +84,7 @@ async function getTollGuruEstimate(apiKey, routeCoordinates) {
             const data = {
                 total,
                 currency: response.data?.summary?.currency || 'USD',
-                display: total > 0 ? `$${total.toFixed(2)}` : '$0',
+                display: total > 0 ? `$${Math.round(total)}` : '$0',
                 breakdown: (route.tolls || []).map(t => ({
                     name: t.name || t.road || 'Toll',
                     state: t.state || '',
@@ -122,7 +122,7 @@ function getHeuristicToll(distanceMiles, regionHints) {
         return {
             total,
             currency: 'USD',
-            display: total > 0 ? `$${total.toFixed(2)}` : '$0',
+            display: total > 0 ? `$${Math.round(total)}` : '$0',
             breakdown: [],
             isEstimated: true,
             source: 'heuristic'
@@ -142,7 +142,7 @@ function getHeuristicToll(distanceMiles, regionHints) {
     return {
         total,
         currency: 'USD',
-        display: total > 0 ? `$${total.toFixed(2)}` : '$0',
+        display: total > 0 ? `$${Math.round(total)}` : '$0',
         breakdown,
         isEstimated: true,
         source: 'heuristic'

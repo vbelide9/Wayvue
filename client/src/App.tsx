@@ -532,11 +532,11 @@ export default function App() {
 
   // 1. Landing View (Cinematic Intro)
   const renderLandingView = () => (
-    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#0B1A0F] text-white selection:bg-white/20">
+    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#08090C] text-white selection:bg-white/20">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 text-white">
         {/* Guaranteed-contrast wordmark — no mix-blend gamble; drop-shadow keeps it legible on any frame */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-serif italic pr-4 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">Wayvue</motion.div>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-display font-bold not-italic tracking-tight pr-4 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">Wayvue</motion.div>
 
         <motion.div style={{
           opacity: navOpacity,
@@ -606,13 +606,13 @@ export default function App() {
 
   // 2. Planning View (Centered Glassmorphic Search Card)
   const renderPlanningView = () => (
-    <main className="relative flex flex-col min-h-screen bg-[#0B1A0F] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
+    <main className="relative flex flex-col min-h-screen bg-[#08090C] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
       {/* Immersive SVG glowing line Background */}
       <IntelligenceBackground />
       
       {/* Ambient overlay glows */}
       <div className="absolute inset-0 pointer-events-none mix-blend-screen">
-        <div className="absolute top-[20%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#E67E22]/[0.05] blur-[120px]" />
+        <div className="absolute top-[20%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#22D3EE]/[0.05] blur-[120px]" />
         <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-emerald-500/[0.05] blur-[100px]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
       </div>
@@ -623,11 +623,11 @@ export default function App() {
       {/* Top Nav Bar */}
       <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
         <div className="flex items-center gap-3">
-          <div className="bg-[#40513B] rounded-full shadow-md border border-white/5 overflow-hidden w-10 h-10 flex items-center justify-center shrink-0">
+          <div className="bg-[#1E2A44] rounded-full shadow-md border border-white/5 overflow-hidden w-10 h-10 flex items-center justify-center shrink-0">
             <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight leading-none text-white">Wayvue</h1>
+            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-white">Wayvue</h1>
             <p className="text-[10px] text-white/40 font-medium">Trip Intelligence</p>
           </div>
         </div>
@@ -693,7 +693,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#0B1A0F]"
+            className="min-h-screen w-full relative bg-[#08090C]"
           >
             {renderPlanningView()}
           </motion.div>
@@ -704,7 +704,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#0B1A0F]"
+            className="min-h-screen w-full relative bg-[#08090C]"
           >
             <ErrorBoundary>
               <TripViewLayout
@@ -777,7 +777,7 @@ export default function App() {
                 rawReturnDate={returnDate}
                 rawReturnTime={returnTime}
 
-                map={
+                map={(activeTab) => (
                   <MapComponent
                     routeGeoJSON={tripData?.outbound?.route || route}
                     returnRouteGeoJSON={tripData?.return?.route} // Pass return route
@@ -786,6 +786,7 @@ export default function App() {
                     incidents={incidents}
                     waypoints={waypoints}
                     unit={unit}
+                    activeTab={activeTab}
                     selectedLocation={selectedLocation}
                     activeLeg={activeLeg}
                     alternativeRouteGeoJSON={(() => {
@@ -801,7 +802,7 @@ export default function App() {
                       return null;
                     })()}
                   />
-                }
+                )}
               />
             </ErrorBoundary>
           </motion.div>

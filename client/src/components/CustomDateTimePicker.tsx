@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock as ClockIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock as ClockIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { CalendarWithTimePresets } from './ui/calendar-with-time-pressets';
 
 interface CustomDatePickerProps {
@@ -250,6 +250,7 @@ interface CombinedDateTimePickerProps {
     label?: string;
     className?: string;
     isActive?: boolean;
+    compact?: boolean; // single-line pill trigger for tight toolbars (results header)
 }
 
 export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
@@ -261,7 +262,8 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
     maxDate,
     label,
     className = "",
-    isActive = false
+    isActive = false,
+    compact = false
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -289,8 +291,8 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
     };
 
     const baseCardClass = "relative group flex flex-col rounded-2xl p-3 transition-all duration-300 shadow-inner cursor-pointer";
-    const activeClass = isActive 
-        ? "border border-orange-500/40 bg-gradient-to-b from-white/[0.08] to-white/[0.02] shadow-[0_0_20px_rgba(249,115,22,0.1)]" 
+    const activeClass = isActive
+        ? "border border-primary/50 bg-gradient-to-b from-white/[0.08] to-white/[0.02] shadow-[0_0_20px_rgba(59,123,255,0.18)]"
         : "border border-white/5 bg-white/[0.03] hover:bg-white/[0.06]";
 
     // Get a unified Date object from string props
@@ -329,31 +331,47 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
 
     return (
         <div className={`relative ${className} ${isOpen ? 'z-[9999]' : 'z-0'}`} ref={containerRef}>
-            <div 
-                className={`${baseCardClass} ${activeClass} ${isOpen ? 'border-orange-500/40 bg-white/[0.08]' : ''} w-full h-full`}
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                {label && (
-                    <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1 pointer-events-none">
-                        {label}
-                    </div>
-                )}
-                <div className="flex flex-col gap-1.5 relative mt-1 pointer-events-none">
-                    <div className="flex items-center gap-2 group">
-                        <CalendarIcon strokeWidth={1.25} size={18} className="text-white/40 transition-colors flex-shrink-0" />
-                        <span className="text-[17px] font-bold text-white tracking-tight font-sans">
-                            {formatDisplayDate(dateValue)}
-                        </span>
-                    </div>
+            {compact ? (
+                /* Compact single-line pill trigger — fits inline in tight toolbars */
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`h-8 flex items-center gap-2 pl-2.5 pr-2 rounded-lg border text-xs font-bold whitespace-nowrap transition-all ${isOpen ? 'border-primary/50 bg-white/[0.08] text-foreground' : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                >
+                    <CalendarIcon strokeWidth={1.5} size={14} className="text-primary flex-shrink-0" />
+                    {label && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>}
+                    <span className="text-foreground">{formatDisplayDate(dateValue)}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="text-muted-foreground">{formatDisplayTime(timeValue)}</span>
+                    <ChevronDown size={12} className={`text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+            ) : (
+                <div
+                    className={`${baseCardClass} ${activeClass} ${isOpen ? 'border-primary/50 bg-white/[0.08]' : ''} w-full h-full`}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    {label && (
+                        <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1 pointer-events-none">
+                            {label}
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-1.5 relative mt-1 pointer-events-none">
+                        <div className="flex items-center gap-2 group">
+                            <CalendarIcon strokeWidth={1.25} size={18} className="text-white/40 transition-colors flex-shrink-0" />
+                            <span className="text-[17px] font-bold text-white tracking-tight font-sans">
+                                {formatDisplayDate(dateValue)}
+                            </span>
+                        </div>
 
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <ClockIcon strokeWidth={1.25} size={15} className="text-neutral-500 transition-colors flex-shrink-0 ml-[1px]" />
-                        <span className="text-[13px] font-medium text-neutral-400 tracking-wide left-[1px] relative font-sans">
-                            {formatDisplayTime(timeValue)}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <ClockIcon strokeWidth={1.25} size={15} className="text-neutral-500 transition-colors flex-shrink-0 ml-[1px]" />
+                            <span className="text-[13px] font-medium text-neutral-400 tracking-wide left-[1px] relative font-sans">
+                                {formatDisplayTime(timeValue)}
+                            </span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {isOpen && (
                 <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-2 bg-[#141414]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] md:min-w-[400px]">

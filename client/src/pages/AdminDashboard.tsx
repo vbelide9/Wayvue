@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 
-const COLORS = ['#E77E23', '#628141', '#E5DAB8', '#40513B', '#1A2314'];
+const COLORS = ['#E77E23', '#3B7BFF', '#E7ECF5', '#1E2A44', '#1A2314'];
 
 const AdminDashboard = () => {
     const [token, setToken] = useState(localStorage.getItem('admin_token'));
@@ -377,7 +377,7 @@ const AdminDashboard = () => {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie data={engagementStats.routePreference} innerRadius={0} outerRadius={80} dataKey="value" stroke="none">
-                                                <Cell fill="#628141" /> {/* Scenic */}
+                                                <Cell fill="#3B7BFF" /> {/* Scenic */}
                                                 <Cell fill="#E77E23" /> {/* Fast */}
                                             </Pie>
                                             <RechartsTooltip contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -426,7 +426,7 @@ const AdminDashboard = () => {
                                                 <RechartsTooltip contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
                                                 <Legend />
                                                 <Line type="monotone" dataKey="today" name="This Week" stroke="#E77E23" strokeWidth={3} dot={{ r: 4 }} />
-                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#628141" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#3B7BFF" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                                             </LineChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -441,8 +441,8 @@ const AdminDashboard = () => {
                                                 <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
                                                 <RechartsTooltip contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
                                                 <Legend />
-                                                <Line type="monotone" dataKey="today" name="This Week" stroke="#E5DAB8" strokeWidth={3} dot={{ r: 4 }} />
-                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#40513B" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                                <Line type="monotone" dataKey="today" name="This Week" stroke="#E7ECF5" strokeWidth={3} dot={{ r: 4 }} />
+                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#1E2A44" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                                             </LineChart>
                                         </ResponsiveContainer>
                                     </div>

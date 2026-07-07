@@ -135,7 +135,7 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
                                 </Button>
                                 {links?.kayak && (
                                     <Button
-                                        className="h-10 text-sm bg-gradient-to-r from-[#FF690F] to-[#d9580b] hover:from-[#f97316] hover:to-[#ea580c] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(255,105,15,0.3)] hover:shadow-[0_6px_20px_rgba(255,105,15,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                                        className="h-10 text-sm bg-gradient-to-r from-[#3B7BFF] to-[#2563EB] hover:from-[#f97316] hover:to-[#ea580c] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(59,123,255,0.3)] hover:shadow-[0_6px_20px_rgba(59,123,255,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             window.open(links.kayak, '_blank');

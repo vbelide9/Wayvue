@@ -68,9 +68,14 @@ interface MapComponentProps {
     activeLeg?: 'outbound' | 'return'; // New prop
     alternativeRouteGeoJSON?: FeatureCollection | Geometry | null; // New prop for alternative route display
     routeColor?: string; // (Deprecating single routeColor in favor of fixed Blue/Orange, but keeping for now)
+    activeTab?: string; // Results-page tab — emphasize the relevant marker layer
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON, activeTab }) => {
+    // Map ↔ tab sync: show weather markers on overview/weather, incident markers on overview/road.
+    // When no tab context is provided, show everything (backwards-compatible).
+    const showWeatherLayer = !activeTab || activeTab === 'overview' || activeTab === 'weather';
+    const showIncidentLayer = !activeTab || activeTab === 'overview' || activeTab === 'road';
     // Default: San Francisco
     const defaultCenter: LatLngExpression = [37.7749, -122.4194];
 
@@ -150,22 +155,22 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         const hasTemp = tempC !== undefined && tempC !== null;
         const tempDisplay = unit === 'F' ? Math.round((tempC * 9 / 5) + 32) : Math.round(tempC);
 
-        // Earthy Palette (Live Site Match)
-        let bgColor = '#628141'; // Mild
-        if (tempC < 10) bgColor = '#40513B'; // Cold
-        if (tempC > 25) bgColor = '#E67E22'; // Hot
+        // Intuitive temperature scale on the cool palette: cold→blue, mild→cyan, hot→amber
+        let bgColor = '#22D3EE'; // Mild (cyan)
+        if (tempC < 10) bgColor = '#3B7BFF'; // Cold (blue)
+        if (tempC > 25) bgColor = '#FBBF24'; // Hot (amber)
 
         return L.divIcon({
             className: 'custom-weather-icon',
             html: `<div style="
                 background-color: ${bgColor}; 
-                color: #E5DAB8; 
+                color: #E7ECF5; 
                 padding: 6px 14px; 
                 border-radius: 12px; 
                 font-weight: 800; 
                 font-size: 15px; 
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
-                border: 2px solid #E5DAB8;
+                border: 2px solid #E7ECF5;
                 display: flex; 
                 align-items: center; 
                 justify-content: center; 
@@ -194,13 +199,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
         return L.divIcon({
             className: 'custom-waypoint-icon',
             html: `<div style="
-                background-color: #628141;
-                color: #E5DAB8;
+                background-color: #3B7BFF;
+                color: #E7ECF5;
                 width: 24px;
                 height: 24px;
                 border-radius: 50% 50% 50% 0;
                 transform: translate(-50%, -100%) rotate(-45deg);
-                border: 2px solid #E5DAB8;
+                border: 2px solid #E7ECF5;
                 box-shadow: 0 3px 8px rgba(0,0,0,0.4);
                 display: flex;
                 align-items: center;
@@ -249,7 +254,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
     // Legend Component
     const MapLegend = () => (
-        <div className="absolute bottom-8 left-4 z-[400] bg-[#E5DAB8] backdrop-blur-xl border border-black/10 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[140px] animate-in slide-in-from-bottom-4 fade-in duration-700">
+        <div className="absolute bottom-8 left-4 z-[400] bg-[#E7ECF5] backdrop-blur-xl border border-black/10 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[140px] animate-in slide-in-from-bottom-4 fade-in duration-700">
             <div className="flex items-center gap-2 mb-1 border-b border-black/10 pb-2">
                 <Thermometer className="w-3 h-3 text-primary" />
                 <h4 className="text-[10px] uppercase tracking-widest font-bold text-black/80">Temperature</h4>
@@ -257,8 +262,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
             <div className="flex items-center gap-3">
                 <div className="relative flex items-center justify-center">
-                    <div className="absolute w-4 h-4 bg-[#40513B]/20 rounded-full blur-[2px] z-0"></div>
-                    <div className="w-2 h-2 rounded-full bg-[#40513B] shadow-[0_0_8px_rgba(64,81,59,0.8)] z-10 relative"></div>
+                    <div className="absolute w-4 h-4 bg-[#3B7BFF]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#3B7BFF] shadow-[0_0_8px_rgba(59,123,255,0.8)] z-10 relative"></div>
                 </div>
                 <span className="text-xs font-medium text-black/80">Cold</span>
                 <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '< 50°' : '< 10°'}</span>
@@ -266,8 +271,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
             <div className="flex items-center gap-3">
                 <div className="relative flex items-center justify-center">
-                    <div className="absolute w-4 h-4 bg-[#628141]/20 rounded-full blur-[2px] z-0"></div>
-                    <div className="w-2 h-2 rounded-full bg-[#628141] shadow-[0_0_8px_rgba(98,129,65,0.8)] z-10 relative"></div>
+                    <div className="absolute w-4 h-4 bg-[#22D3EE]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#22D3EE] shadow-[0_0_8px_rgba(34,211,238,0.8)] z-10 relative"></div>
                 </div>
                 <span className="text-xs font-medium text-black/80">Mild</span>
                 <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '50–77°' : '10–25°'}</span>
@@ -275,8 +280,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
             <div className="flex items-center gap-3">
                 <div className="relative flex items-center justify-center">
-                    <div className="absolute w-4 h-4 bg-[#E67E22]/20 rounded-full blur-[2px] z-0"></div>
-                    <div className="w-2 h-2 rounded-full bg-[#E67E22] shadow-[0_0_8px_rgba(230,126,34,0.8)] z-10 relative"></div>
+                    <div className="absolute w-4 h-4 bg-[#FBBF24]/20 rounded-full blur-[2px] z-0"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#FBBF24] shadow-[0_0_8px_rgba(251,191,36,0.8)] z-10 relative"></div>
                 </div>
                 <span className="text-xs font-medium text-black/80">Hot</span>
                 <span className="text-[10px] text-black/50 ml-auto font-mono">{unit === 'F' ? '> 77°' : '> 25°'}</span>
@@ -407,7 +412,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
                 {/* Weather Markers (Outbound) - Only if activeLeg is outbound */}
                 {
-                    layers.weather && activeLeg === 'outbound' && weatherData && weatherData.filter((_, idx) => {
+                    showWeatherLayer && layers.weather && activeLeg === 'outbound' && weatherData && weatherData.filter((_, idx) => {
                         // Always show first and last
                         if (idx === 0 || idx === weatherData.length - 1) return true;
                         // Calculate dynamic stride to keep total under 15
@@ -452,9 +457,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                                                 </span>
                                             </div>
                                             {/* Status Dot */}
-                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
-                                                (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
-                                                    'bg-[#628141] text-[#628141]'
+                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#3B7BFF] text-[#3B7BFF]' :
+                                                (tempC || 0) > 25 ? 'bg-[#FBBF24] text-[#FBBF24]' :
+                                                    'bg-[#22D3EE] text-[#22D3EE]'
                                                 }`} />
                                         </div>
 
@@ -522,7 +527,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
                 {/* Return Weather Markers (Only if activeLeg is return) */}
                 {
-                    layers.weather && activeLeg === 'return' && returnWeatherData && returnWeatherData.filter((_, idx) => {
+                    showWeatherLayer && layers.weather && activeLeg === 'return' && returnWeatherData && returnWeatherData.filter((_, idx) => {
                         if (idx === 0 || idx === returnWeatherData.length - 1) return true;
                         const stride = Math.ceil(returnWeatherData.length / 15);
                         return idx % stride === 0;
@@ -560,9 +565,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                                                     {weatherDesc}
                                                 </span>
                                             </div>
-                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#40513B] text-[#40513B]' :
-                                                (tempC || 0) > 25 ? 'bg-[#E67E22] text-[#E67E22]' :
-                                                    'bg-[#628141] text-[#628141]'
+                                            <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor] ${(tempC || 0) < 10 ? 'bg-[#3B7BFF] text-[#3B7BFF]' :
+                                                (tempC || 0) > 25 ? 'bg-[#FBBF24] text-[#FBBF24]' :
+                                                    'bg-[#22D3EE] text-[#22D3EE]'
                                                 }`} />
                                         </div>
                                         <div className="p-3 flex flex-col gap-3">
@@ -623,7 +628,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                         >
                             <Popup className="custom-popup-overrides">
                                 <div className="px-3 py-2 font-sans bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl text-white text-xs">
-                                    <span className="font-bold uppercase tracking-widest text-[10px] text-[#E5DAB8]">Stop {idx + 1}</span>
+                                    <span className="font-bold uppercase tracking-widest text-[10px] text-[#E7ECF5]">Stop {idx + 1}</span>
                                     <p className="text-white/80 mt-1 max-w-[200px]">{wp.name}</p>
                                 </div>
                             </Popup>
@@ -633,7 +638,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
 
                 {/* Traffic Incident Markers (accidents, closures, construction, jams) */}
                 {
-                    layers.traffic && incidents && incidents.map((inc, idx) => {
+                    showIncidentLayer && layers.traffic && incidents && incidents.map((inc, idx) => {
                         if (!inc.location) return null;
                         const style = INCIDENT_STYLE[inc.type] || INCIDENT_STYLE.hazard;
                         return (

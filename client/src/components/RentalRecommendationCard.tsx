@@ -116,7 +116,7 @@ export function RentalRecommendationCard({ data, links }: RentalRecommendationPr
                         <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
                             <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto">
                                 <Button
-                                    className="h-10 text-sm bg-gradient-to-r from-[#FF690F] to-[#d9580b] hover:from-[#f97316] hover:to-[#ea580c] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(255,105,15,0.3)] hover:shadow-[0_6px_20px_rgba(255,105,15,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                                    className="h-10 text-sm bg-gradient-to-r from-[#3B7BFF] to-[#2563EB] hover:from-[#f97316] hover:to-[#ea580c] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(59,123,255,0.3)] hover:shadow-[0_6px_20px_rgba(59,123,255,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         window.open(links?.kayak || option.link, '_blank');

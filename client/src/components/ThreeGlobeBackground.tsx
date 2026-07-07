@@ -13,8 +13,8 @@ function ParticleSphere() {
     const [positions, colors] = useMemo(() => {
         const pos = new Float32Array(count * 3);
         const col = new Float32Array(count * 3);
-        const colorA = new THREE.Color('#628141'); // Forest green
-        const colorB = new THREE.Color('#E67E22'); // Sunset amber
+        const colorA = new THREE.Color('#3B7BFF'); // Forest green
+        const colorB = new THREE.Color('#22D3EE'); // Sunset amber
 
         for (let i = 0; i < count; i++) {
             // Point on sphere distribution
@@ -78,7 +78,7 @@ function ParticleSphere() {
             {/* Inner dark core to block particles from the other side, creating solid depth */}
             <mesh>
                 <sphereGeometry args={[radius * 0.98, 32, 32]} />
-                <meshBasicMaterial color="#0B1A0F" />
+                <meshBasicMaterial color="#08090C" />
             </mesh>
         </points>
     );
@@ -120,9 +120,9 @@ function Dust() {
 
 export function ThreeGlobeBackground() {
     return (
-        <div className="absolute inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#0B1A0F]">
+        <div className="absolute inset-0 z-[-1] pointer-events-none overflow-hidden bg-[#08090C]">
             <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-                <fog attach="fog" args={['#0B1A0F', 5, 20]} />
+                <fog attach="fog" args={['#08090C', 5, 20]} />
                 <ParticleSphere />
                 <Dust />
                 <EffectComposer multisampling={0}>

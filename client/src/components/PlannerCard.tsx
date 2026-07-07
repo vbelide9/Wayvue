@@ -44,9 +44,9 @@ const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: ()
       onClick={onClick}
       disabled={disabled}
       aria-label={isCalculating ? 'Planning your trip' : (label || 'Plan trip')}
-      whileHover={disabled ? {} : { scale: 1.05, boxShadow: "0 0 20px rgba(249, 115, 22, 0.4)" }}
+      whileHover={disabled ? {} : { scale: 1.05, boxShadow: "0 0 28px rgba(59, 123, 255, 0.5)" }}
       whileTap={disabled ? {} : { scale: 0.95 }}
-      className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-gradient-to-r from-orange-500 to-red-500 shadow-orange-glow border border-white/10 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
+      className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_24px_rgba(59,123,255,0.4)] border border-white/10 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
     >
       {/* Specular Highlight */}
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full" />
@@ -56,7 +56,7 @@ const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: ()
         <motion.div
           animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.5, 0.2] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
-          className="absolute inset-0 bg-orange-300/20 rounded-full blur-md"
+          className="absolute inset-0 bg-blue-400/25 rounded-full blur-md"
         />
       )}
 

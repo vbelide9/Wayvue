@@ -120,7 +120,7 @@ export function TripSidebar({
                             <button
                                 onClick={() => onLegChange('return')}
                                 className={`flex-1 flex items-center justify-center py-1.5 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all duration-200 ${activeLeg === 'return'
-                                    ? 'bg-[#E67E22] text-white shadow-sm' // Orange for Return leg distinctiveness
+                                    ? 'bg-[#22D3EE] text-white shadow-sm' // Orange for Return leg distinctiveness
                                     : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
                                     }`}
                             >

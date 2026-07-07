@@ -154,7 +154,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     };
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-[#0F1A12]/90 backdrop-blur-xl border-b border-[#628141]/15 z-50 relative gap-3 md:gap-4" ref={containerRef}>
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-[#0C0E14]/90 backdrop-blur-xl border-b border-[#3B7BFF]/15 z-50 relative gap-3 md:gap-4" ref={containerRef}>
 
             {/* Left: Back & Route */}
             <div className="flex items-center gap-3 min-w-0 justify-start">
@@ -318,9 +318,10 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         )}
                     </div>
 
-                    {/* Date/Time Picker - Always visible, context aware */}
-                    <div className="h-8 flex items-center gap-2">
+                    {/* Date/Time Picker - Always visible, context aware (compact inline) */}
+                    <div className="flex items-center gap-2">
                         <CombinedDateTimePicker
+                            compact
                             label={isReturnContext ? "Return" : "Leave"}
                             dateValue={activeDate}
                             onDateChange={handleDateChange}
@@ -328,7 +329,6 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                             onTimeChange={handleTimeChange}
                             minDate={new Date().toISOString().split('T')[0]}
                             maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                            className="scale-90 origin-left"
                         />
                         {/* Manual Update Button for Return Leg Changes */}
                         {isReturnContext && (editReturnDate !== rawReturnDate || editReturnTime !== rawReturnTime || /* Initial State Check: If rawReturnDate is undefined (one-way), but we are in return context, we need to show update */ (!rawReturnDate && isRoundTrip)) && (

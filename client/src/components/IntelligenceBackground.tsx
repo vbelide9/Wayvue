@@ -2,7 +2,7 @@ import { useRef, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
 export const palettes = [
-  ['#40513B', '#628141', '#E5D9B6', '#E67E22']
+  ['#1E2A44', '#3B7BFF', '#E7ECF5', '#22D3EE']
 ];
 
 function hexToRgb(hex: string) {
@@ -159,7 +159,7 @@ export const IntelligenceBackground = ({ forcePaletteIndex }: { forcePaletteInde
       ref={containerRef}
       // Use pointer-events-auto so the background intercepts hover interactions naturally,
       // but keep it on z-[0] so the planner card (z-[50]) rests securely on top untouched.
-      className="absolute inset-0 z-[0] pointer-events-auto overflow-hidden bg-[#0F1A12]"
+      className="absolute inset-0 z-[0] pointer-events-auto overflow-hidden bg-[#0C0E14]"
     >
       <svg 
         width="100%" 
@@ -193,8 +193,8 @@ export const IntelligenceBackground = ({ forcePaletteIndex }: { forcePaletteInde
       </svg>
       
       {/* Ambient gradient overlays to cleanly blend edges with the global app layout */}
-      <div className="absolute inset-x-0 top-0 h-[10vh] bg-gradient-to-b from-[#0B1A0F] to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-[10vh] bg-gradient-to-t from-[#0B1A0F] to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[10vh] bg-gradient-to-b from-[#08090C] to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-[10vh] bg-gradient-to-t from-[#08090C] to-transparent pointer-events-none" />
     </div>
   );
 };

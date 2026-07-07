@@ -32,57 +32,58 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
-    --color-void: #0B1A0F;
+    --color-void: #08090C;
     --font-sans: "Inter", sans-serif;
-    --font-serif: "Cormorant Garamond", serif;
+    --font-display: "Space Grotesk", "Inter", sans-serif;
+    --font-serif: "Space Grotesk", sans-serif;
 }
 
 @layer base {
     :root {
-        /* Nature-Inspired Forest Dark Palette */
-        --background: 140 30% 5%;
-        /* Deep Forest #0B1A0F */
-        --foreground: 40 30% 95%;
-        /* Warm bone white #F5F0E8 */
+        /* Aurora — zoox-inspired cool dark palette */
+        --background: 228 22% 4%;
+        /* Near-black #08090C */
+        --foreground: 222 40% 97%;
+        /* Crisp white #F4F6FB */
 
-        --card: 140 22% 7%;
-        /* Warm dark forest #111D14 */
-        --card-foreground: 40 30% 95%;
+        --card: 226 20% 8%;
+        /* Elevated surface #0F1117 */
+        --card-foreground: 222 40% 97%;
 
-        --popover: 140 22% 7%;
-        --popover-foreground: 40 30% 95%;
+        --popover: 226 22% 7%;
+        --popover-foreground: 222 40% 97%;
 
-        /* Forest Emerald Primary */
-        --primary: 95 30% 35%;
-        /* #628141 → Forest green */
-        --primary-foreground: 40 30% 95%;
+        /* Electric blue primary */
+        --primary: 222 100% 62%;
+        /* #3B7BFF → electric blue */
+        --primary-foreground: 0 0% 100%;
 
-        /* Deep forest secondary */
-        --secondary: 140 15% 12%;
-        --secondary-foreground: 40 30% 95%;
+        /* Cool slate secondary */
+        --secondary: 225 16% 13%;
+        --secondary-foreground: 222 40% 97%;
 
-        --muted: 140 12% 14%;
-        --muted-foreground: 80 10% 66%;
-        /* Warm gray-green — lightened for WCAG AA legibility on the dark forest bg */
+        --muted: 225 14% 15%;
+        --muted-foreground: 220 15% 68%;
+        /* Cool gray — WCAG AA on near-black */
 
-        /* Warm amber accent */
-        --accent: 30 80% 50%;
-        /* #E67E22 Sunset amber */
-        --accent-foreground: 0 0% 100%;
+        /* Cyan spotlight accent */
+        --accent: 190 95% 55%;
+        /* #22D3EE → cyan */
+        --accent-foreground: 228 22% 6%;
 
-        --destructive: 0 84.2% 60.2%;
+        --destructive: 0 84% 62%;
         --destructive-foreground: 0 0% 98%;
 
-        --border: 140 10% 16%;
-        /* Earthy green-tinted border */
-        --input: 140 10% 16%;
-        --ring: 95 30% 35%;
-        /* Forest green ring */
+        --border: 225 14% 16%;
+        /* Cool slate hairline */
+        --input: 225 14% 16%;
+        --ring: 222 100% 62%;
+        /* Electric blue ring */
 
         --radius: 0.75rem;
 
-        /* Selection Color — warm amber */
-        --selection-bg: 30 80% 50%;
+        /* Selection Color — electric blue */
+        --selection-bg: 222 100% 62%;
         --selection-text: 0 0% 100%;
     }
 }
@@ -95,20 +96,38 @@
 /* ── Design-system surfaces ──
    One canonical glass treatment so cards/nav stop diverging into bespoke styles. */
 .glass-surface {
-    background-color: rgba(17, 29, 20, 0.6);      /* #111D14 @ 60% */
+    background-color: rgba(15, 17, 23, 0.6);        /* #0F1117 @ 60% */
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(98, 129, 65, 0.15);     /* forest-tinted hairline */
+    border: 1px solid rgba(120, 140, 190, 0.12);    /* cool hairline */
     border-radius: 1.5rem;                          /* = rounded-3xl */
-    box-shadow: 0 8px 32px rgba(64, 81, 59, 0.12);  /* elevation-1 */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);      /* elevation-1 */
 }
 
 .glass-surface-strong {
-    background-color: rgba(15, 26, 18, 0.9);        /* #0F1A12 @ 90% */
+    background-color: rgba(12, 14, 20, 0.9);        /* #0C0E14 @ 90% */
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(98, 129, 65, 0.12);
-    box-shadow: 0 0 40px rgba(64, 81, 59, 0.2);     /* elevation-2 (nav/header) */
+    border: 1px solid rgba(120, 140, 190, 0.1);
+    box-shadow: 0 0 40px rgba(59, 123, 255, 0.12);  /* elevation-2 (nav/header) — blue glow */
+}
+
+/* ── Aurora accents ── */
+.font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+}
+
+/* Blue spotlight glow — place behind hero/section focal points */
+.spotlight {
+    background: radial-gradient(600px circle at center, rgba(59, 123, 255, 0.16), transparent 70%);
+}
+.spotlight-cyan {
+    background: radial-gradient(600px circle at center, rgba(34, 211, 238, 0.14), transparent 70%);
+}
+
+.text-glow {
+    text-shadow: 0 0 24px rgba(59, 123, 255, 0.45);
 }
 
 /* ── Accessibility baseline ── */
@@ -168,29 +187,29 @@ body::after {
 }
 
 .leaflet-popup-tip {
-    background-color: #E5D9B6 !important;
+    background-color: #0F1117 !important;
 }
 
 .custom-popup-overrides .leaflet-popup-content {
     margin: 0 !important;
 }
 
-/* Custom Minimal Scrollbar — Forest tinted */
+/* Custom Minimal Scrollbar — Aurora tinted */
 ::-webkit-scrollbar {
   width: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B1A0F;
+  background: #08090C;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A3A25;
+  background: #263048;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3A4A35;
+  background: #3B7BFF;
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -233,13 +252,13 @@ input[type="time"] {
 
 .btn-cta-shimmer {
   position: relative;
-  background: linear-gradient(135deg, #40513B 0%, #628141 50%, #40513B 100%);
-  color: #E5D9B6;
-  border: 1.5px solid #628141;
+  background: linear-gradient(135deg, #1E2A44 0%, #3B7BFF 50%, #1E2A44 100%);
+  color: #E7ECF5;
+  border: 1.5px solid #3B7BFF;
   font-weight: 600;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 0 16px rgba(98,129,65,0.25), inset 0 1px 0 rgba(229,217,182,0.1);
+  box-shadow: 0 0 16px rgba(59,123,255,0.25), inset 0 1px 0 rgba(229,217,182,0.1);
 }
 
 .btn-cta-shimmer::before {
@@ -250,7 +269,7 @@ input[type="time"] {
     90deg,
     transparent 0%,
     rgba(229,217,182,0.15) 45%,
-    rgba(230,126,34,0.2) 50%,
+    rgba(34,211,238,0.2) 50%,
     rgba(229,217,182,0.15) 55%,
     transparent 100%
   );
@@ -260,10 +279,10 @@ input[type="time"] {
 }
 
 .btn-cta-shimmer:hover {
-  background: linear-gradient(135deg, #628141 0%, #E67E22 50%, #628141 100%);
-  border-color: #E67E22;
+  background: linear-gradient(135deg, #3B7BFF 0%, #22D3EE 50%, #3B7BFF 100%);
+  border-color: #22D3EE;
   color: #fff;
-  box-shadow: 0 0 28px rgba(230,126,34,0.4), 0 0 8px rgba(98,129,65,0.3);
+  box-shadow: 0 0 28px rgba(34,211,238,0.4), 0 0 8px rgba(59,123,255,0.3);
   transform: scale(1.05);
   letter-spacing: 0.05em;
 }
