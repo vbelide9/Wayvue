@@ -47,11 +47,11 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
     // Icon Helper
     const getIcon = (cond: string, sizeClass: string) => {
         switch (cond) {
-            case "clear": return <Sun className={`${sizeClass} text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]`} />
+            case "clear": return <Sun className={`${sizeClass} text-yellow-600 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]`} />
             case "cloudy": return <Cloud className={`${sizeClass} text-slate-300 drop-shadow-[0_0_10px_rgba(203,213,225,0.4)]`} />
-            case "rain": return <CloudRain className={`${sizeClass} text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]`} />
-            case "snow": return <CloudSnow className={`${sizeClass} text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`} />
-            default: return <Sun className={`${sizeClass} text-yellow-400`} />
+            case "rain": return <CloudRain className={`${sizeClass} text-blue-600 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]`} />
+            case "snow": return <CloudSnow className={`${sizeClass} text-foreground drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`} />
+            default: return <Sun className={`${sizeClass} text-yellow-600`} />
         }
     }
 
@@ -68,7 +68,7 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
             [95, 96, 99].includes(code) || // Thunderstorm
             wind > 35
         ) {
-            return { level: 'hazard', color: 'bg-red-500', text: 'Hazard', icon: AlertOctagon, textColor: 'text-red-400' };
+            return { level: 'hazard', color: 'bg-red-500', text: 'Hazard', icon: AlertOctagon, textColor: 'text-red-600' };
         }
 
         // Caution: Rain, Fog, Wind > 20, or near freezing
@@ -79,11 +79,11 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
             precip > 50 ||
             temp < 3
         ) {
-            return { level: 'caution', color: 'bg-yellow-500', text: 'Caution', icon: AlertTriangle, textColor: 'text-yellow-400' };
+            return { level: 'caution', color: 'bg-yellow-500', text: 'Caution', icon: AlertTriangle, textColor: 'text-yellow-600' };
         }
 
         // Clear
-        return { level: 'clear', color: 'bg-emerald-500', text: 'Clear', icon: CheckCircle, textColor: 'text-emerald-400' };
+        return { level: 'clear', color: 'bg-emerald-500', text: 'Clear', icon: CheckCircle, textColor: 'text-emerald-600' };
     };
 
     // --- VARIANT: CHIP (Timeline) ---
@@ -97,7 +97,7 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="flex flex-col min-w-[160px] rounded-[2rem] bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/[0.05] shadow-[0_4px_24px_rgba(0,0,0,0.6)] hover:bg-[#FFFFFF]/[0.02] transition-colors cursor-pointer group relative overflow-hidden"
+                className="flex flex-col min-w-[160px] rounded-[2rem] bg-card border border-border shadow-soft hover:bg-secondary/40 transition-colors cursor-pointer group relative overflow-hidden"
             >
                 {/* Subtle Hover Glow */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -115,7 +115,7 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
 
                     {/* Main: Temp & Icon */}
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="p-2 bg-background/50 rounded-xl shadow-inner border border-white/5">
+                        <div className="p-2 bg-background/50 rounded-xl shadow-inner border border-border">
                             {getIcon(condition, "w-10 h-10")}
                         </div>
                         <div className="flex flex-col">
@@ -129,12 +129,12 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     </div>
 
                     {/* Metrics: Signals (Wind & Precip) */}
-                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5 mb-1">
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border mb-1">
                         {/* Precip */}
                         <div className="flex flex-col items-center gap-1" title="Precipitation Probability">
                             {(unit === 'F' ? weather.temperature <= 32 : weather.temperature <= 0)
-                                ? <CloudSnow className="w-4 h-4 text-white/80" />
-                                : <Droplets className="w-4 h-4 text-blue-400/80" />
+                                ? <CloudSnow className="w-4 h-4 text-foreground/80" />
+                                : <Droplets className="w-4 h-4 text-blue-600/90" />
                             }
                             <span className="text-[10px] font-bold text-foreground">{precip}%</span>
                         </div>
@@ -146,13 +146,13 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                             <span className="text-[10px] font-bold text-foreground flex items-center gap-0.5">
                                 {Math.round(weather.windSpeed)}
                                 <ArrowUp
-                                    className="w-2.5 h-2.5 text-blue-400"
+                                    className="w-2.5 h-2.5 text-blue-600"
                                     style={{ transform: `rotate(${windDir}deg)` }}
                                 />
                             </span>
                         </div>
                         <div className="flex flex-col items-center gap-1" title="Est. Gas Price">
-                            <Fuel className="w-4 h-4 text-orange-400/80" />
+                            <Fuel className="w-4 h-4 text-orange-600/90" />
                             <span className="text-[10px] font-bold text-foreground">${weather.gasPrice || '--'}</span>
                         </div>
                     </div>
@@ -175,9 +175,9 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-[#0a0a0f]/90 backdrop-blur-3xl border border-white/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.6)] rounded-[2rem] p-4 flex items-center gap-4 min-w-[160px] pointer-events-auto"
+                className="bg-card border border-border shadow-soft rounded-[2rem] p-4 flex items-center gap-4 min-w-[160px] pointer-events-auto"
             >
-                <div className="p-3 rounded-full bg-gradient-to-br from-background to-secondary/50 shadow-inner border border-white/5">
+                <div className="p-3 rounded-full bg-gradient-to-br from-background to-secondary/50 shadow-inner border border-border">
                     {getIcon(condition, "w-6 h-6")}
                 </div>
                 <div>
@@ -202,14 +202,14 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            className="bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/[0.05] rounded-[2rem] p-6 sm:p-8 flex flex-col gap-6 shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-all duration-500 group relative overflow-hidden hover:border-primary/30 hover:shadow-[0_8px_64px_rgba(59,130,246,0.15)]"
+            className="bg-card border border-border rounded-[2rem] p-6 sm:p-8 flex flex-col gap-6 shadow-soft transition-all duration-500 group relative overflow-hidden hover:border-primary/30 hover:shadow-soft-lg"
         >
             {/* Ambient background glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
             <div className="flex justify-between items-start relative z-10">
                 <div className="flex flex-col gap-1">
-                    <h3 className="font-bold text-white text-2xl tracking-tight max-w-[200px] truncate" title={weather.location}>
+                    <h3 className="font-bold text-foreground text-2xl tracking-tight max-w-[200px] truncate" title={weather.location}>
                         {weather.location}
                     </h3>
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] opacity-80 mt-1">
@@ -220,12 +220,12 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     {(weather.eta || weather.distanceFromStart !== undefined) && (
                         <div className="flex items-center gap-3 mt-4">
                             {weather.eta && (
-                                <span className="text-[11px] font-bold text-white font-mono bg-[#FFFFFF]/[0.05] px-3 py-1.5 rounded-xl border border-white/[0.05] shadow-inner">
+                                <span className="text-[11px] font-bold text-foreground font-mono bg-secondary px-3 py-1.5 rounded-xl border border-border shadow-inner">
                                     <span className="text-primary mr-2">ETA</span>{weather.eta}
                                 </span>
                             )}
                             {weather.distanceFromStart !== undefined && (
-                                <span className="text-[11px] font-bold text-muted-foreground font-mono uppercase tracking-wider bg-[#000000]/30 px-3 py-1.5 rounded-xl border border-white/[0.02]">
+                                <span className="text-[11px] font-bold text-muted-foreground font-mono uppercase tracking-wider bg-secondary/60 px-3 py-1.5 rounded-xl border border-border">
                                     {weather.distanceFromStart} mi away
                                 </span>
                             )}
@@ -233,13 +233,13 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     )}
                 </div>
 
-                <div className="p-4 bg-[#FFFFFF]/[0.02] rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-white/[0.05] group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out">
+                <div className="p-4 bg-secondary/50 rounded-2xl shadow-none border border-border group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out">
                     {getIcon(condition, "w-12 h-12 drop-shadow-xl")}
                 </div>
             </div>
 
             <div className="flex items-end gap-3 mt-2 relative z-10">
-                <span className="font-black text-white text-[4rem] leading-none tracking-tighter drop-shadow-md">
+                <span className="font-black text-foreground text-[4rem] leading-none tracking-tighter drop-shadow-md">
                     {displayTemp}{hasTemp ? "°" : ""}
                 </span>
                 <span className="text-xl font-bold text-muted-foreground mb-2">{unit.toUpperCase()}</span>
@@ -247,16 +247,16 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
 
             {/* Bento Grid Metrics */}
             <div className="grid grid-cols-2 gap-3 pt-6 mt-2 relative z-10">
-                <div className="flex items-center gap-3 text-sm font-medium text-white/80 bg-[#FFFFFF]/[0.02] p-3 rounded-2xl border border-white/[0.05] shadow-inner hover:bg-[#FFFFFF]/[0.04] transition-colors">
+                <div className="flex items-center gap-3 text-sm font-medium text-foreground/80 bg-secondary/50 p-3 rounded-2xl border border-border shadow-inner hover:bg-secondary transition-colors">
                     <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Wind className="w-5 h-5 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
+                        <Wind className="w-5 h-5 text-blue-600 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
                     </div>
                     <span className="tracking-wide text-lg font-semibold">{weather.windSpeed || 0} <span className="text-xs text-muted-foreground uppercase opacity-70">mph</span></span>
                 </div>
 
-                <div className="flex items-center gap-3 text-sm font-medium text-white/80 bg-[#FFFFFF]/[0.02] p-3 rounded-2xl border border-white/[0.05] shadow-inner hover:bg-[#FFFFFF]/[0.04] transition-colors">
+                <div className="flex items-center gap-3 text-sm font-medium text-foreground/80 bg-secondary/50 p-3 rounded-2xl border border-border shadow-inner hover:bg-secondary transition-colors">
                     <div className="p-2 bg-cyan-500/10 rounded-lg">
-                        <Droplets className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,212,238,0.5)]" />
+                        <Droplets className="w-5 h-5 text-cyan-600 drop-shadow-[0_0_8px_rgba(34,212,238,0.5)]" />
                     </div>
                     <span className="tracking-wide text-lg font-semibold">{weather.humidity || 0} <span className="text-xs text-muted-foreground uppercase opacity-70">%</span></span>
                 </div>
@@ -265,14 +265,14 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
             {/* Prices Block (Gas Only) - Integrated as another bento cell */}
             {weather.gasPrice && (
                 <div className="mt-1 relative z-10">
-                    <div className="flex justify-between items-center bg-gradient-to-r from-[#FFFFFF]/[0.02] to-transparent p-4 rounded-2xl border border-white/[0.05] hover:border-primary/20 hover:bg-[#FFFFFF]/[0.04] transition-all" title="Est. Gas Price">
+                    <div className="flex justify-between items-center bg-gradient-to-r from-[#FFFFFF]/[0.02] to-transparent p-4 rounded-2xl border border-border hover:border-primary/20 hover:bg-secondary transition-all" title="Est. Gas Price">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-orange-500/10 rounded-lg">
-                                <Fuel className="w-5 h-5 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
+                                <Fuel className="w-5 h-5 text-orange-600 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
                             </div>
                             <span className="text-sm font-bold text-muted-foreground tracking-wide">Avg Gas Price</span>
                         </div>
-                        <span className="font-black text-xl text-white tracking-tight drop-shadow-md">
+                        <span className="font-black text-xl text-foreground tracking-tight drop-shadow-md">
                             ${weather.gasPrice}
                         </span>
                     </div>

@@ -11,7 +11,6 @@ import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { TopCategoryNav } from '../TopCategoryNav';
-import { ThreeGlobeBackground } from '../ThreeGlobeBackground';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 
@@ -162,17 +161,16 @@ export function TripViewLayout({
     };
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#08090C] text-foreground font-sans relative">
+        <div className="min-h-screen overflow-x-hidden bg-background text-foreground font-sans relative">
             {isLoading && <LoadingScreen title="Updating your journey" />}
 
             <div className={`relative ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
 
                 {/* 1. Header toolbar */}
                 <div className="relative pt-8 pb-4 w-full">
-                    <ThreeGlobeBackground />
                     <div className="absolute inset-0 pointer-events-none z-[1]">
-                        <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-[#3B7BFF]/[0.08] blur-[150px]" />
-                        <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-[#22D3EE]/[0.06] blur-[130px]" />
+                        <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[150px]" />
+                        <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-amber-300/[0.10] blur-[130px]" />
                     </div>
                     <div className="w-full relative z-20">
                         <TripHeader
@@ -212,7 +210,7 @@ export function TripViewLayout({
 
                 {isEnriching && (
                     <div className="w-full flex justify-center mb-6 px-4" role="status" aria-live="polite">
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#3B7BFF]/15 border border-[#3B7BFF]/30 text-[#E7ECF5] text-xs font-medium backdrop-blur-md">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-medium backdrop-blur-md">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             Gathering live weather, traffic &amp; insights…
                         </div>
@@ -233,7 +231,7 @@ export function TripViewLayout({
                     <div className="lg:min-h-[calc(100vh-8rem)]">
                         <div className="mb-5">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-[#3B7BFF] to-[#22D3EE]/40" />
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
                                 <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">{active.title}</h2>
                             </div>
                             <p className="text-muted-foreground ml-[19px]">{active.subtitle}</p>

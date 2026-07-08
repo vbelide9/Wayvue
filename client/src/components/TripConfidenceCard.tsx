@@ -15,10 +15,10 @@ interface TripConfidenceCardProps {
 export function TripConfidenceCard({ score, label, deductions }: TripConfidenceCardProps) {
     // Determine color based on score
     const getColor = (s: number) => {
-        if (s >= 90) return "text-green-400";
-        if (s >= 75) return "text-emerald-400";
-        if (s >= 60) return "text-yellow-400";
-        return "text-red-400";
+        if (s >= 90) return "text-green-600";
+        if (s >= 75) return "text-emerald-600";
+        if (s >= 60) return "text-yellow-600";
+        return "text-red-600";
     };
 
     const getBgColor = (s: number) => {
@@ -37,16 +37,16 @@ export function TripConfidenceCard({ score, label, deductions }: TripConfidenceC
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 1.0, ease: [0.76, 0, 0.24, 1] }}
-            className="bg-card/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col gap-4 shadow-2xl hover:-translate-y-1 hover:shadow-primary/10 transition-all duration-300"
+            className="bg-card/60 backdrop-blur-xl border border-border rounded-2xl p-6 flex flex-col gap-4 shadow-2xl hover:-translate-y-1 hover:shadow-primary/10 transition-all duration-300"
         >
             <div className="flex justify-between items-start">
                 <div>
                     <h3 className="font-black text-foreground text-xl tracking-tight">Trip Confidence</h3>
-                    <p className="text-sm text-foreground/80 mt-1 font-medium bg-background/30 inline-block px-2.5 py-1 rounded-full border border-white/5">
+                    <p className="text-sm text-foreground/80 mt-1 font-medium bg-background/30 inline-block px-2.5 py-1 rounded-full border border-border">
                         AI-Calculated Safety Score
                     </p>
                 </div>
-                <div className={`p-3 rounded-xl bg-gradient-to-br from-background to-secondary/50 shadow-inner border border-white/5`}>
+                <div className={`p-3 rounded-xl bg-gradient-to-br from-background to-secondary/50 shadow-inner border border-border`}>
                     {score >= 80 ? <ShieldCheck className={`w-8 h-8 ${textColor} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]`} /> :
                         score >= 60 ? <Shield className={`w-8 h-8 ${textColor} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]`} /> :
                             <ShieldAlert className={`w-8 h-8 ${textColor} drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]`} />}
@@ -61,7 +61,7 @@ export function TripConfidenceCard({ score, label, deductions }: TripConfidenceC
                         {label}
                     </span>
                 </div>
-                <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden shadow-inner border border-white/5 p-0.5">
+                <div className="h-3 w-full bg-secondary rounded-full overflow-hidden shadow-inner border border-border p-0.5">
                     <motion.div
                         initial={{ width: 0 }}
                         whileInView={{ width: `${score}%` }}
@@ -75,7 +75,7 @@ export function TripConfidenceCard({ score, label, deductions }: TripConfidenceC
             {/* Deductions / Factors */}
             <div className="space-y-2.5 mt-4">
                 {deductions.length === 0 ? (
-                    <div className="flex items-center gap-3 text-sm text-green-400 font-medium bg-green-500/10 p-4 rounded-xl border border-green-500/20 shadow-inner">
+                    <div className="flex items-center gap-3 text-sm text-green-600 font-medium bg-green-500/10 p-4 rounded-xl border border-green-500/20 shadow-inner">
                         <ShieldCheck className="w-5 h-5" />
                         <span>Conditions look optimal. Safe travels.</span>
                     </div>
@@ -91,13 +91,13 @@ export function TripConfidenceCard({ score, label, deductions }: TripConfidenceC
                         >
                             <div className="flex items-center gap-3 text-foreground font-medium">
                                 <div className="p-1.5 bg-background/50 rounded-lg shadow-inner">
-                                    {d.type.includes('Rain') || d.type.includes('Snow') ? <CloudRain className="w-4 h-4 text-blue-400" /> :
-                                        d.type.includes('Wind') ? <Wind className="w-4 h-4 text-slate-400" /> :
-                                            d.type.includes('Cold') ? <Thermometer className="w-4 h-4 text-cyan-400" /> :
-                                                d.type.includes('Heat') ? <Thermometer className="w-4 h-4 text-orange-400" /> :
+                                    {d.type.includes('Rain') || d.type.includes('Snow') ? <CloudRain className="w-4 h-4 text-blue-600" /> :
+                                        d.type.includes('Wind') ? <Wind className="w-4 h-4 text-muted-foreground" /> :
+                                            d.type.includes('Cold') ? <Thermometer className="w-4 h-4 text-cyan-600" /> :
+                                                d.type.includes('Heat') ? <Thermometer className="w-4 h-4 text-orange-600" /> :
                                                     d.type.includes('Night') ? <Moon className="w-4 h-4 text-indigo-300" /> :
-                                                        d.type.includes('Fatigue') || d.type.includes('Drive') ? <Clock className="w-4 h-4 text-amber-400" /> :
-                                                            <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                                                        d.type.includes('Fatigue') || d.type.includes('Drive') ? <Clock className="w-4 h-4 text-amber-600" /> :
+                                                            <AlertTriangle className="w-4 h-4 text-amber-600" />}
                                 </div>
                                 <span>{d.type}</span>
                             </div>

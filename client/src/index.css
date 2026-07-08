@@ -32,7 +32,7 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
-    --color-void: #08090C;
+    --color-cream: #FBFAF7;
     --font-sans: "Inter", sans-serif;
     --font-display: "Space Grotesk", "Inter", sans-serif;
     --font-serif: "Space Grotesk", sans-serif;
@@ -40,50 +40,49 @@
 
 @layer base {
     :root {
-        /* Aurora — zoox-inspired cool dark palette */
-        --background: 228 22% 4%;
-        /* Near-black #08090C */
-        --foreground: 222 40% 97%;
-        /* Crisp white #F4F6FB */
+        /* Homie — warm, light, editorial real-estate palette */
+        --background: 40 33% 98%;
+        /* Warm off-white #FBFAF7 */
+        --foreground: 24 12% 12%;
+        /* Warm near-black #211D19 */
 
-        --card: 226 20% 8%;
-        /* Elevated surface #0F1117 */
-        --card-foreground: 222 40% 97%;
+        --card: 0 0% 100%;
+        /* Pure white surface */
+        --card-foreground: 24 12% 12%;
 
-        --popover: 226 22% 7%;
-        --popover-foreground: 222 40% 97%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 24 12% 12%;
 
-        /* Electric blue primary */
-        --primary: 222 100% 62%;
-        /* #3B7BFF → electric blue */
-        --primary-foreground: 0 0% 100%;
+        /* Warm amber primary */
+        --primary: 22 84% 52%;
+        /* #E86A2A → warm amber */
+        --primary-foreground: 40 33% 99%;
 
-        /* Cool slate secondary */
-        --secondary: 225 16% 13%;
-        --secondary-foreground: 222 40% 97%;
+        /* Warm cream secondary */
+        --secondary: 36 26% 94%;
+        --secondary-foreground: 24 12% 16%;
 
-        --muted: 225 14% 15%;
-        --muted-foreground: 220 15% 68%;
-        /* Cool gray — WCAG AA on near-black */
+        --muted: 36 22% 93%;
+        --muted-foreground: 28 7% 42%;
+        /* Warm gray — WCAG AA on cream */
 
-        /* Cyan spotlight accent */
-        --accent: 190 95% 55%;
-        /* #22D3EE → cyan */
-        --accent-foreground: 228 22% 6%;
+        /* Soft warm accent */
+        --accent: 34 40% 90%;
+        --accent-foreground: 24 24% 20%;
 
-        --destructive: 0 84% 62%;
-        --destructive-foreground: 0 0% 98%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
 
-        --border: 225 14% 16%;
-        /* Cool slate hairline */
-        --input: 225 14% 16%;
-        --ring: 222 100% 62%;
-        /* Electric blue ring */
+        --border: 34 22% 89%;
+        /* Warm hairline #E8E2D8 */
+        --input: 34 22% 89%;
+        --ring: 22 84% 52%;
+        /* Amber ring */
 
-        --radius: 0.75rem;
+        --radius: 1rem;
 
-        /* Selection Color — electric blue */
-        --selection-bg: 222 100% 62%;
+        /* Selection Color — amber */
+        --selection-bg: 22 84% 52%;
         --selection-text: 0 0% 100%;
     }
 }
@@ -94,47 +93,47 @@
 }
 
 /* ── Design-system surfaces ──
-   One canonical glass treatment so cards/nav stop diverging into bespoke styles. */
+   One canonical light "frosted" treatment so cards/nav stop diverging. */
 .glass-surface {
-    background-color: rgba(15, 17, 23, 0.6);        /* #0F1117 @ 60% */
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(120, 140, 190, 0.12);    /* cool hairline */
+    background-color: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(35, 28, 20, 0.06);
     border-radius: 1.5rem;                          /* = rounded-3xl */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);      /* elevation-1 */
+    box-shadow: 0 12px 40px -12px rgba(60, 44, 24, 0.12);
 }
 
 .glass-surface-strong {
-    background-color: rgba(12, 14, 20, 0.9);        /* #0C0E14 @ 90% */
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(120, 140, 190, 0.1);
-    box-shadow: 0 0 40px rgba(59, 123, 255, 0.12);  /* elevation-2 (nav/header) — blue glow */
+    background-color: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(35, 28, 20, 0.06);
+    box-shadow: 0 8px 30px -8px rgba(60, 44, 24, 0.14);
 }
 
-/* ── Aurora accents ── */
+/* ── Homie accents ── */
 .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
 }
 
-/* Blue spotlight glow — place behind hero/section focal points */
+/* Amber spotlight glow — place behind hero/section focal points */
 .spotlight {
-    background: radial-gradient(600px circle at center, rgba(59, 123, 255, 0.16), transparent 70%);
+    background: radial-gradient(600px circle at center, rgba(232, 106, 42, 0.10), transparent 70%);
 }
 .spotlight-cyan {
-    background: radial-gradient(600px circle at center, rgba(34, 211, 238, 0.14), transparent 70%);
+    background: radial-gradient(600px circle at center, rgba(232, 106, 42, 0.08), transparent 70%);
 }
 
 .text-glow {
-    text-shadow: 0 0 24px rgba(59, 123, 255, 0.45);
+    text-shadow: 0 8px 30px rgba(232, 106, 42, 0.18);
 }
 
 /* ── Accessibility baseline ── */
 
 /* Always-visible keyboard focus (custom icon buttons often lose the default) */
 *:focus-visible {
-    outline: 2px solid hsl(var(--accent));
+    outline: 2px solid hsl(var(--primary));
     outline-offset: 2px;
     border-radius: 4px;
 }
@@ -153,25 +152,6 @@
     }
 }
 
-/* Tactile Noise Filter — slightly warmed */
-body {
-    position: relative;
-}
-
-body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 9999;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.035;
-    mix-blend-mode: overlay;
-}
-
 @layer base {
     body {
         @apply bg-background text-foreground;
@@ -187,29 +167,29 @@ body::after {
 }
 
 .leaflet-popup-tip {
-    background-color: #0F1117 !important;
+    background-color: #FFFFFF !important;
 }
 
 .custom-popup-overrides .leaflet-popup-content {
     margin: 0 !important;
 }
 
-/* Custom Minimal Scrollbar — Aurora tinted */
+/* Custom Minimal Scrollbar — warm tinted */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #08090C;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #263048;
+  background: #D9D2C6;
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B7BFF;
+  background: hsl(var(--primary));
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -244,7 +224,7 @@ input[type="time"] {
   text-transform: uppercase;
 }
 
-/* Premium CTA shimmer animation */
+/* Premium CTA shimmer animation — warm amber sweep */
 @keyframes shimmer-sweep {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -252,13 +232,13 @@ input[type="time"] {
 
 .btn-cta-shimmer {
   position: relative;
-  background: linear-gradient(135deg, #1E2A44 0%, #3B7BFF 50%, #1E2A44 100%);
-  color: #E7ECF5;
-  border: 1.5px solid #3B7BFF;
+  background: hsl(var(--primary));
+  color: #fff;
+  border: 1.5px solid hsl(var(--primary));
   font-weight: 600;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 0 16px rgba(59,123,255,0.25), inset 0 1px 0 rgba(229,217,182,0.1);
+  box-shadow: 0 10px 24px -8px rgba(232, 106, 42, 0.5);
 }
 
 .btn-cta-shimmer::before {
@@ -268,9 +248,9 @@ input[type="time"] {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(229,217,182,0.15) 45%,
-    rgba(34,211,238,0.2) 50%,
-    rgba(229,217,182,0.15) 55%,
+    rgba(255, 255, 255, 0.10) 45%,
+    rgba(255, 255, 255, 0.30) 50%,
+    rgba(255, 255, 255, 0.10) 55%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -279,10 +259,9 @@ input[type="time"] {
 }
 
 .btn-cta-shimmer:hover {
-  background: linear-gradient(135deg, #3B7BFF 0%, #22D3EE 50%, #3B7BFF 100%);
-  border-color: #22D3EE;
+  background: hsl(22 88% 47%);
+  border-color: hsl(22 88% 47%);
   color: #fff;
-  box-shadow: 0 0 28px rgba(34,211,238,0.4), 0 0 8px rgba(59,123,255,0.3);
-  transform: scale(1.05);
-  letter-spacing: 0.05em;
+  box-shadow: 0 14px 30px -8px rgba(232, 106, 42, 0.6);
+  transform: translateY(-1px) scale(1.02);
 }

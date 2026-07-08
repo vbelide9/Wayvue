@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { FlowHoverButton } from '@/components/ui/flow-hover-button';
+import { motion, AnimatePresence } from 'framer-motion';
 import MapComponent from './components/MapComponent';
 import { getRoute, getRoutePreview } from './services/api';
 
@@ -14,21 +13,11 @@ import { type RoadCondition } from '@/components/RoadConditionCard';
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 
-import RoadTripCanvas from './components/RoadTripCanvas';
 import { PlannerCard } from './components/PlannerCard';
-import { IntelligenceBackground } from './components/IntelligenceBackground';
 
 export default function App() {
 
   const containerRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef as any,
-    offset: ["start start", "end end"]
-  });
-
-  // Hoisted from renderLandingView to comply with Rules of Hooks
-  const navOpacity = useTransform(scrollYProgress, [0, 0.03], [1, 0]);
-  const navPointerEvents = useTransform(scrollYProgress, [0, 0.03], ["auto", "none"]);
 
   useEffect(() => {
     // Respect the OS "reduce motion" setting — skip smooth-scroll hijacking entirely,
@@ -530,42 +519,59 @@ export default function App() {
 
   // --- RENDER HELPERS ---
 
-  // 1. Landing View (Cinematic Intro)
+  // 1. Landing View (Light, minimal Homie-style hero)
   const renderLandingView = () => (
-    <main ref={containerRef} className="relative w-full h-[350vh] bg-[#08090C] text-white selection:bg-white/20">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-8 text-white">
-        {/* Guaranteed-contrast wordmark — no mix-blend gamble; drop-shadow keeps it legible on any frame */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-display font-bold not-italic tracking-tight pr-4 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">Wayvue</motion.div>
+    <main ref={containerRef} className="relative w-full min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Warm ambient hero wash */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -right-32 w-[640px] h-[640px] rounded-full bg-primary/[0.07] blur-[130px]" />
+        <div className="absolute -bottom-48 -left-32 w-[560px] h-[560px] rounded-full bg-amber-300/[0.10] blur-[130px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,106,42,0.05),transparent_55%)]" />
+      </div>
 
-        <motion.div style={{
-          opacity: navOpacity,
-          pointerEvents: navPointerEvents as any
-        }}>
-          <FlowHoverButton onClick={() => setViewMode('planning')} className="rounded-full">Start Planning</FlowHoverButton>
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-6">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow">
+            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
+          </div>
+          <span className="text-xl font-display font-bold tracking-tight text-foreground">Wayvue</span>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+          <button
+            onClick={() => setViewMode('planning')}
+            className="rounded-full px-5 py-2.5 text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-orange-glow transition-all hover:-translate-y-0.5"
+          >
+            Start Planning
+          </button>
         </motion.div>
       </nav>
 
-      {/* Persistent escape hatch — always reachable so returning users can skip the intro */}
-      <button
-        onClick={() => setViewMode('planning')}
-        aria-label="Skip intro and plan a trip"
-        className="fixed bottom-6 right-6 z-[801] flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold text-white/90 bg-black/40 backdrop-blur-md border border-white/15 hover:bg-black/60 hover:border-white/30 transition-colors shadow-lg"
-      >
-        Skip intro <span aria-hidden="true">→</span>
-      </button>
-
-      {/* Scrollytelling Canvas Animation */}
-      <RoadTripCanvas />
-
-      {/* Search Section - appears after cinematic scroll */}
-      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 py-24 overflow-hidden">
-        
-        {/* Full-bleed interactive background for the search section */}
-        <IntelligenceBackground />
-
+      {/* Hero Section */}
+      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-28 pb-16">
         {/* Loading Screen Overlay */}
         {loading && <LoadingScreen />}
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+          className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10"
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-soft">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            Trip intelligence for the open road
+          </span>
+          <h1 className="font-display font-bold tracking-tight text-foreground text-5xl md:text-7xl leading-[0.95]">
+            Every mile,<br />
+            <span className="text-primary">planned to perfection.</span>
+          </h1>
+          <p className="mt-6 text-lg text-muted-foreground max-w-xl">
+            Weather, road conditions, tolls, stops and stays — Wayvue reads the whole
+            journey ahead so you can just drive.
+          </p>
+        </motion.div>
 
         <PlannerCard
           start={start}
@@ -604,17 +610,13 @@ export default function App() {
     </main>
   );
 
-  // 2. Planning View (Centered Glassmorphic Search Card)
+  // 2. Planning View (Centered light search card)
   const renderPlanningView = () => (
-    <main className="relative flex flex-col min-h-screen bg-[#08090C] text-white font-sans selection:bg-primary/30 selection:text-white overflow-hidden">
-      {/* Immersive SVG glowing line Background */}
-      <IntelligenceBackground />
-      
-      {/* Ambient overlay glows */}
-      <div className="absolute inset-0 pointer-events-none mix-blend-screen">
-        <div className="absolute top-[20%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#22D3EE]/[0.05] blur-[120px]" />
-        <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-emerald-500/[0.05] blur-[100px]" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
+    <main className="relative flex flex-col min-h-screen bg-background text-foreground font-sans overflow-hidden">
+      {/* Warm ambient wash */}
+      <div className="absolute inset-0 pointer-events-none -z-10">
+        <div className="absolute top-[10%] left-[12%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[120px]" />
+        <div className="absolute bottom-[8%] right-[16%] w-[420px] h-[420px] rounded-full bg-amber-300/[0.10] blur-[110px]" />
       </div>
 
       {/* Loading Screen Overlay */}
@@ -622,15 +624,15 @@ export default function App() {
 
       {/* Top Nav Bar */}
       <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#1E2A44] rounded-full shadow-md border border-white/5 overflow-hidden w-10 h-10 flex items-center justify-center shrink-0">
-            <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
+        <button onClick={() => setViewMode('landing')} className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow shrink-0">
+            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
           </div>
-          <div>
-            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-white">Wayvue</h1>
-            <p className="text-[10px] text-white/40 font-medium">Trip Intelligence</p>
+          <div className="text-left">
+            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
+            <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
           </div>
-        </div>
+        </button>
       </nav>
 
       {/* Centered Card */}
@@ -693,7 +695,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#08090C]"
+            className="min-h-screen w-full relative bg-background"
           >
             {renderPlanningView()}
           </motion.div>
@@ -704,7 +706,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-[#08090C]"
+            className="min-h-screen w-full relative bg-background"
           >
             <ErrorBoundary>
               <TripViewLayout

@@ -35,27 +35,27 @@ export function OverviewTab({ tripScore, aiAnalysis, metrics, alertCount = 0 }: 
             {/* 2. Bento row — headline intelligence at a glance */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Trip cost */}
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 flex flex-col gap-2">
+                <div className="rounded-2xl border border-border bg-secondary/50 p-4 flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" /> Trip cost
+                        <CircleDollarSign className="w-3.5 h-3.5 text-emerald-600" /> Trip cost
                     </div>
                     {(hasFuel || hasEv || hasToll) ? (
                         <div className="flex flex-col gap-1.5 mt-0.5">
                             {hasFuel && (
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-1.5 text-muted-foreground"><Fuel className="w-3.5 h-3.5 text-orange-400" />Fuel</span>
+                                    <span className="flex items-center gap-1.5 text-muted-foreground"><Fuel className="w-3.5 h-3.5 text-orange-600" />Fuel</span>
                                     <span className="font-bold text-foreground">{metrics!.fuel}</span>
                                 </div>
                             )}
                             {hasEv && (
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-1.5 text-muted-foreground"><Zap className="w-3.5 h-3.5 text-yellow-400" />EV</span>
+                                    <span className="flex items-center gap-1.5 text-muted-foreground"><Zap className="w-3.5 h-3.5 text-yellow-600" />EV</span>
                                     <span className="font-bold text-foreground">{metrics!.ev}</span>
                                 </div>
                             )}
                             {hasToll && (
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-1.5 text-muted-foreground"><CircleDollarSign className="w-3.5 h-3.5 text-emerald-400" />Tolls</span>
+                                    <span className="flex items-center gap-1.5 text-muted-foreground"><CircleDollarSign className="w-3.5 h-3.5 text-emerald-600" />Tolls</span>
                                     <span className="font-bold text-foreground">{metrics!.tollCost}{metrics!.tollEstimated ? <span className="text-[10px] text-muted-foreground font-normal ml-1">est.</span> : null}</span>
                                 </div>
                             )}
@@ -66,9 +66,9 @@ export function OverviewTab({ tripScore, aiAnalysis, metrics, alertCount = 0 }: 
                 </div>
 
                 {/* Best departure */}
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 flex flex-col gap-2">
+                <div className="rounded-2xl border border-border bg-secondary/50 p-4 flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5 text-blue-400" /> Best departure
+                        <Clock className="w-3.5 h-3.5 text-blue-600" /> Best departure
                     </div>
                     {bestDeparture ? (
                         <div className="mt-0.5">
@@ -81,17 +81,17 @@ export function OverviewTab({ tripScore, aiAnalysis, metrics, alertCount = 0 }: 
                 </div>
 
                 {/* Alerts */}
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 flex flex-col gap-2">
+                <div className="rounded-2xl border border-border bg-secondary/50 p-4 flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Alerts
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Alerts
                     </div>
                     {alertCount > 0 ? (
                         <div className="mt-0.5 flex items-center gap-2">
-                            <span className="text-2xl font-black text-amber-400 tracking-tight">{alertCount}</span>
+                            <span className="text-2xl font-black text-amber-600 tracking-tight">{alertCount}</span>
                             <span className="text-xs text-muted-foreground">condition{alertCount > 1 ? 's' : ''} to review on your route</span>
                         </div>
                     ) : (
-                        <div className="mt-0.5 flex items-center gap-2 text-emerald-400">
+                        <div className="mt-0.5 flex items-center gap-2 text-emerald-600">
                             <ShieldCheck className="w-5 h-5" />
                             <span className="text-sm font-semibold">All clear</span>
                         </div>

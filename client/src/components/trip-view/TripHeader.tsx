@@ -154,7 +154,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     };
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-[#0C0E14]/90 backdrop-blur-xl border-b border-[#3B7BFF]/15 z-50 relative gap-3 md:gap-4" ref={containerRef}>
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border border-border rounded-3xl shadow-soft z-50 relative gap-3 md:gap-4 mx-4" ref={containerRef}>
 
             {/* Left: Back & Route */}
             <div className="flex items-center gap-3 min-w-0 justify-start">

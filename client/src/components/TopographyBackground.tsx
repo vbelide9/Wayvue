@@ -26,17 +26,17 @@ export const TopographyBackground = () => {
     }, []);
 
     return (
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-[24px] pointer-events-none transition-all duration-[800ms] ease-out 
-                        opacity-20 group-hover/planner:opacity-60 mix-blend-overlay flex items-center justify-center">
-            
-            {/* The SVG lines */}
-            <svg 
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1500ms] ease-out group-hover/planner:scale-[1.02]" 
-                viewBox="0 0 1200 400" 
+        <div className="absolute inset-0 z-0 overflow-hidden rounded-[24px] pointer-events-none transition-all duration-[800ms] ease-out
+                        opacity-40 group-hover/planner:opacity-70 flex items-center justify-center">
+
+            {/* The SVG lines — warm amber contour map */}
+            <svg
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1500ms] ease-out group-hover/planner:scale-[1.02]"
+                viewBox="0 0 1200 400"
                 preserveAspectRatio="xMidYMid slice"
-                fill="none" 
-                stroke="white" 
-                strokeOpacity="0.25" 
+                fill="none"
+                stroke="hsl(22 84% 52%)"
+                strokeOpacity="0.10"
                 strokeWidth="1.2"
                 style={{ filter: 'blur(0.3px)' }} // Soften lines slightly to match the reference style
             >
@@ -46,11 +46,11 @@ export const TopographyBackground = () => {
             </svg>
 
             {/* Subtle glow layer that activates on hover */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08)_0%,transparent_60%)] 
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(232,106,42,0.06)_0%,transparent_60%)]
                             opacity-0 group-hover/planner:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-            
-            {/* Vignette mask to fade out the edges cleanly */}
-            <div className="absolute inset-0 rounded-[24px] shadow-[inset_0_0_80px_60px_rgba(20,20,20,1)] pointer-events-none" />
+
+            {/* Vignette mask to fade edges into the light card */}
+            <div className="absolute inset-0 rounded-[24px] shadow-[inset_0_0_80px_50px_rgba(255,255,255,0.9)] pointer-events-none" />
         </div>
     );
 }

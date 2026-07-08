@@ -44,19 +44,21 @@ export default {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))'
                 },
-                'on-surface': '#dae2fd',
-                'on-surface-variant': '#c2c6d6',
-                outline: '#8c909f',
-                'outline-variant': '#424754',
+                'on-surface': '#2b2620',
+                'on-surface-variant': '#6b625a',
+                outline: '#b8afa0',
+                'outline-variant': '#e8e2d8',
             },
             backdropBlur: {
                 '2xl': '40px',
                 '3xl': '60px',
             },
             boxShadow: {
-                'orange-glow': '0 0 25px 5px rgba(249, 115, 22, 0.4)',
-                'amber-soft': '0 0 15px 2px rgba(251, 191, 36, 0.15)',
-                'inner-glass': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.4)',
+                'orange-glow': '0 12px 30px -8px rgba(232, 106, 42, 0.35)',
+                'amber-soft': '0 10px 30px -12px rgba(232, 106, 42, 0.18)',
+                'soft': '0 12px 40px -12px rgba(60, 44, 24, 0.12)',
+                'soft-lg': '0 24px 60px -16px rgba(60, 44, 24, 0.18)',
+                'inner-glass': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.6)',
             },
             animation: {
                 'glass-shimmer': 'shimmer 10s linear infinite',

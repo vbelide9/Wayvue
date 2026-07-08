@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 
-const COLORS = ['#E77E23', '#3B7BFF', '#E7ECF5', '#1E2A44', '#1A2314'];
+const COLORS = ['#E86A2A', '#F5A623', '#0D9488', '#6B625A', '#D9D2C6'];
 
 const AdminDashboard = () => {
     const [token, setToken] = useState(localStorage.getItem('admin_token'));
@@ -215,8 +215,8 @@ const AdminDashboard = () => {
 
     if (!token) {
         return (
-            <div className="min-h-screen bg-[#1a2314] flex items-center justify-center p-6 text-white">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md bg-black/40 border border-white/10 p-8 rounded-3xl backdrop-blur-xl">
+            <div className="min-h-screen bg-background flex items-center justify-center p-6 text-foreground">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md bg-card border border-border p-8 rounded-3xl backdrop-blur-xl">
                     <div className="flex flex-col items-center mb-8">
                         <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
                             <Lock className="w-8 h-8 text-primary" />
@@ -230,9 +230,9 @@ const AdminDashboard = () => {
                             placeholder="Dashboard Password"
                             value={password}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                            className="w-full bg-black/50 border border-white/10 p-4 rounded-xl text-white outline-none focus:ring-2 focus:ring-primary/50"
+                            className="w-full bg-card border border-border p-4 rounded-xl text-foreground outline-none focus:ring-2 focus:ring-primary/50"
                         />
-                        {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+                        {error && <p className="text-red-600 text-xs text-center">{error}</p>}
                         <Button type="submit" className="w-full py-6 rounded-xl text-lg font-bold" disabled={loading}>
                             {loading ? 'Verifying...' : 'Unlock'}
                         </Button>
@@ -243,7 +243,7 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#0d120a] text-foreground p-6 lg:p-12 font-sans overflow-x-hidden relative">
+        <div className="min-h-screen bg-background text-foreground p-6 lg:p-12 font-sans overflow-x-hidden relative">
             <div className="max-w-7xl mx-auto">
                 <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                     <div>
@@ -251,9 +251,9 @@ const AdminDashboard = () => {
                             <Gauge className="w-5 h-5" />
                             <span className="text-xs font-bold uppercase tracking-widest">Vision Dashboard</span>
                         </div>
-                        <h1 className="text-4xl font-black text-white">Strategic Metrics</h1>
+                        <h1 className="text-4xl font-black text-foreground">Strategic Metrics</h1>
                     </div>
-                    <div className="flex items-center gap-3 p-1 bg-black/40 border border-white/10 rounded-2xl overflow-x-auto scrollbar-none">
+                    <div className="flex items-center gap-3 p-1 bg-card border border-border rounded-2xl overflow-x-auto scrollbar-none">
                         {[
                             { id: 'platform', label: 'Platform Overview', icon: Globe },
                             { id: 'geography', label: 'Geography & Devices', icon: MapPin },
@@ -263,7 +263,7 @@ const AdminDashboard = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-black' : 'text-muted-foreground hover:bg-white/5 hover:text-white'}`}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                             >
                                 <tab.icon className="w-3.5 h-3.5" />
                                 {tab.label}
@@ -274,7 +274,7 @@ const AdminDashboard = () => {
                         variant="ghost"
                         onClick={fetchData}
                         disabled={loading}
-                        className="bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl"
+                        className="bg-secondary border border-border hover:bg-secondary/70 rounded-xl"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
@@ -325,8 +325,8 @@ const AdminDashboard = () => {
                                 <ChartCard title="User Locations" subtitle="Top Cities">
                                     <div className="space-y-4 p-2">
                                         {geoStats.topLocations.map((loc, i) => (
-                                            <div key={i} className="flex items-center justify-between pb-2 border-b border-white/5 last:border-0">
-                                                <span className="text-sm font-medium text-white">{loc.name}</span>
+                                            <div key={i} className="flex items-center justify-between pb-2 border-b border-border last:border-0">
+                                                <span className="text-sm font-medium text-foreground">{loc.name}</span>
                                                 <span className="text-xs font-bold text-primary">{loc.value} visits</span>
                                             </div>
                                         ))}
@@ -336,8 +336,8 @@ const AdminDashboard = () => {
                                 <ChartCard title="Top Routes" subtitle="Most Frequent Destinations">
                                     <div className="space-y-4 p-2">
                                         {geoStats.topRoutes.map((route, i) => (
-                                            <div key={i} className="flex items-center justify-between pb-2 border-b border-white/5 last:border-0">
-                                                <span className="text-sm font-medium text-white">{route.name}</span>
+                                            <div key={i} className="flex items-center justify-between pb-2 border-b border-border last:border-0">
+                                                <span className="text-sm font-medium text-foreground">{route.name}</span>
                                                 <span className="text-xs font-bold text-primary">{route.value} trips</span>
                                             </div>
                                         ))}
@@ -377,7 +377,7 @@ const AdminDashboard = () => {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie data={engagementStats.routePreference} innerRadius={0} outerRadius={80} dataKey="value" stroke="none">
-                                                <Cell fill="#3B7BFF" /> {/* Scenic */}
+                                                <Cell fill="#0D9488" /> {/* Scenic */}
                                                 <Cell fill="#E77E23" /> {/* Fast */}
                                             </Pie>
                                             <RechartsTooltip contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -426,7 +426,7 @@ const AdminDashboard = () => {
                                                 <RechartsTooltip contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
                                                 <Legend />
                                                 <Line type="monotone" dataKey="today" name="This Week" stroke="#E77E23" strokeWidth={3} dot={{ r: 4 }} />
-                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#3B7BFF" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                                <Line type="monotone" dataKey="lastWeek" name="Last Week" stroke="#0D9488" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                                             </LineChart>
                                         </ResponsiveContainer>
                                     </div>
@@ -452,12 +452,12 @@ const AdminDashboard = () => {
                     )}
                 </main>
 
-                <footer className="mt-20 pt-12 border-t border-white/5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-white/20">
+                <footer className="mt-20 pt-12 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                     <div>© 2026 Wayvue Intelligence Engine</div>
                     <div className="flex gap-6">
                         <span className="text-primary/40">Status: {loading ? 'Syncing...' : 'Operational'}</span>
-                        <span className="text-white/40">Events: {totalEvents}</span>
-                        <span className="cursor-pointer hover:text-white transition-colors" onClick={handleLogout}>Log Out</span>
+                        <span className="text-muted-foreground">Events: {totalEvents}</span>
+                        <span className="cursor-pointer hover:text-foreground transition-colors" onClick={handleLogout}>Log Out</span>
                         <div className="flex gap-2">
                             <Smartphone className="w-3 h-3" />
                             <Globe className="w-3 h-3" />
@@ -473,40 +473,40 @@ const AdminDashboard = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
                     >
                         <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-[#0f140c] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+                            className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
                         >
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                            <div className="p-6 border-b border-border flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-bold text-white mb-1">{selectedMetric}</h2>
+                                    <h2 className="text-xl font-bold text-foreground mb-1">{selectedMetric}</h2>
                                     <p className="text-xs text-muted-foreground uppercase tracking-widest">Data Drill-Down</p>
                                 </div>
-                                <button onClick={() => setSelectedMetric(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                                    <X className="w-5 h-5 text-white/50" />
+                                <button onClick={() => setSelectedMetric(null)} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-muted-foreground" />
                                 </button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-0">
                                 {modalData.length > 0 ? (
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-white/5 sticky top-0">
+                                        <thead className="bg-secondary sticky top-0">
                                             <tr>
-                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-white/40">Timestamp</th>
-                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-white/40">User ID</th>
-                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-white/40">Details</th>
+                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Timestamp</th>
+                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground">User ID</th>
+                                                <th className="p-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Details</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
                                             {modalData.map((e: any, i: any) => (
-                                                <tr key={i} className="hover:bg-white/[0.02]">
-                                                    <td className="p-4 text-xs font-mono text-white/60">
+                                                <tr key={i} className="hover:bg-secondary/50">
+                                                    <td className="p-4 text-xs font-mono text-muted-foreground">
                                                         {new Date(e.timestamp).toLocaleTimeString()}
                                                     </td>
-                                                    <td className="p-4 text-xs text-white/80">
+                                                    <td className="p-4 text-xs text-foreground/80">
                                                         {e.userId.substring(0, 8)}...
                                                     </td>
                                                     <td className="p-4 text-xs text-primary/80 font-medium">
@@ -523,7 +523,7 @@ const AdminDashboard = () => {
                                     </div>
                                 )}
                             </div>
-                            <div className="p-4 border-t border-white/5 bg-black/20 text-[10px] text-center text-white/30 uppercase tracking-widest">
+                            <div className="p-4 border-t border-border bg-secondary/60 text-[10px] text-center text-muted-foreground uppercase tracking-widest">
                                 Showing {modalData.length} records
                             </div>
                         </motion.div>
@@ -536,8 +536,8 @@ const AdminDashboard = () => {
                 {error && (
                     <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed bottom-12 right-12 z-[100] bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-4 shadow-2xl backdrop-blur-xl">
                         <AlertCircle className="w-5 h-5 text-red-500" />
-                        <span className="text-sm font-bold text-red-400">{error}</span>
-                        <button onClick={() => setError(null)} className="p-1 hover:bg-white/5 rounded-lg"><X className="w-4 h-4" /></button>
+                        <span className="text-sm font-bold text-red-600">{error}</span>
+                        <button onClick={() => setError(null)} className="p-1 hover:bg-secondary rounded-lg"><X className="w-4 h-4" /></button>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -557,7 +557,7 @@ const MetricCard = ({ title, value, subtitle, icon, delay = 0, isError = false, 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay, duration: 0.4 }}
         onClick={onClick}
-        className={`p-8 rounded-3xl bg-black/40 border border-white/5 hover:border-primary/30 transition-all group/card relative ${onClick ? 'cursor-pointer hover:bg-white/5' : ''}`}
+        className={`p-8 rounded-3xl bg-card border border-border hover:border-primary/30 transition-all group/card relative ${onClick ? 'cursor-pointer hover:bg-secondary' : ''}`}
     >
         <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-2">
@@ -565,26 +565,26 @@ const MetricCard = ({ title, value, subtitle, icon, delay = 0, isError = false, 
                 {description && (
                     <div className="group/info relative z-20" onClick={(e) => e.stopPropagation()}>
                         <Info className="w-3 h-3 text-muted-foreground/50 hover:text-primary cursor-help transition-colors" />
-                        <div className="absolute left-0 bottom-full mb-2 w-48 p-3 bg-[#0f140c] border border-white/10 rounded-xl text-[10px] leading-relaxed text-white/80 normal-case tracking-normal opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none shadow-xl backdrop-blur-xl translate-y-2 group-hover/info:translate-y-0 duration-200">
+                        <div className="absolute left-0 bottom-full mb-2 w-48 p-3 bg-card border border-border rounded-xl text-[10px] leading-relaxed text-foreground/80 normal-case tracking-normal opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none shadow-xl backdrop-blur-xl translate-y-2 group-hover/info:translate-y-0 duration-200">
                             {description}
-                            <div className="absolute left-1.5 -bottom-1 w-2 h-2 bg-[#0f140c] border-b border-r border-white/10 rotate-45"></div>
+                            <div className="absolute left-1.5 -bottom-1 w-2 h-2 bg-card border-b border-r border-border rotate-45"></div>
                         </div>
                     </div>
                 )}
             </div>
-            <div className={`p-2 rounded-xl bg-white/5 ${isError ? 'text-red-400' : 'text-primary'}`}>
+            <div className={`p-2 rounded-xl bg-secondary ${isError ? 'text-red-600' : 'text-primary'}`}>
                 {icon}
             </div>
         </div>
-        <div className="text-4xl font-black text-white mb-2">{value}</div>
+        <div className="text-4xl font-black text-foreground mb-2">{value}</div>
         <div className="text-xs text-muted-foreground font-medium">{subtitle}</div>
     </motion.div>
 );
 
 const ChartCard = ({ title, subtitle, children, className = "" }: any) => (
-    <div className={`p-8 rounded-3xl bg-black/40 border border-white/5 ${className}`}>
+    <div className={`p-8 rounded-3xl bg-card border border-border ${className}`}>
         <div className="mb-8">
-            <h3 className="text-lg font-bold text-white mb-1">{title}</h3>
+            <h3 className="text-lg font-bold text-foreground mb-1">{title}</h3>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{subtitle}</p>
         </div>
         {children}

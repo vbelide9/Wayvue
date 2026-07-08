@@ -51,10 +51,10 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                     <div className="p-4 border-b border-border bg-card">
                         <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-foreground flex items-center gap-2">
-                                <AlertTriangle className={`w-5 h-5 ${calm ? 'text-amber-400' : 'text-red-500'}`} />
+                                <AlertTriangle className={`w-5 h-5 ${calm ? 'text-amber-600' : 'text-red-500'}`} />
                                 Road Alerts
                             </h3>
-                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${calm ? 'bg-amber-400/10 text-amber-400' : 'bg-red-500/15 text-red-500'}`}>
+                            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${calm ? 'bg-amber-500/10 text-amber-700' : 'bg-red-500/15 text-red-500'}`}>
                                 {majorCount} major · {minorCount} minor
                             </span>
                         </div>
@@ -72,7 +72,7 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                                 <div
                                     key={inc.id || idx}
                                     onClick={() => onIncidentSelect && inc.location && onIncidentSelect(inc)}
-                                    className={`p-3.5 flex items-start gap-3 transition-colors ${inc.location ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                                    className={`p-3.5 flex items-start gap-3 transition-colors ${inc.location ? 'cursor-pointer hover:bg-secondary' : ''}`}
                                 >
                                     <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${meta.color}`} />
                                     <div className="flex-1 min-w-0">

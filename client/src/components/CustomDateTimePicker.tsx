@@ -84,30 +84,30 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
             ) : (
                 <div
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
+                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary border border-border rounded-lg hover:bg-secondary/70 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
                 >
-                    <CalendarIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-white/70 group-hover:text-white transition-colors flex-shrink-0" />
-                    <span className="text-[10px] xl:text-xs font-medium text-white">
+                    <CalendarIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    <span className="text-[10px] xl:text-xs font-medium text-foreground">
                         {value ? parseDate(value).toLocaleDateString() : 'Select Date'}
                     </span>
                 </div>
             )}
 
             {isOpen && (
-                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-4 bg-[#141414]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-[280px]">
+                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-4 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg w-[280px]">
                     <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors">
+                        <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronLeft size={16} />
                         </button>
-                        <span className="text-[12px] font-bold uppercase tracking-widest text-white">{currentMonthName} {viewDate.getFullYear()}</span>
-                        <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors">
+                        <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">{currentMonthName} {viewDate.getFullYear()}</span>
+                        <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronRight size={16} />
                         </button>
                     </div>
 
                     <div className="grid grid-cols-7 gap-1 mb-2">
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                            <span key={d} className="text-[10px] font-bold text-white/40 text-center uppercase">{d}</span>
+                            <span key={d} className="text-[10px] font-bold text-muted-foreground text-center uppercase">{d}</span>
                         ))}
                     </div>
 
@@ -128,9 +128,9 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                     onClick={() => handleDateClick(day)}
                                     className={`
                     h-8 w-8 text-[11px] font-medium rounded-lg transition-all flex items-center justify-center
-                    ${isSelected ? 'bg-white text-black shadow-md scale-105' :
-                                            isToday ? 'bg-white/5 text-white border border-white/20' :
-                                                'hover:bg-white/10 text-white/70 hover:text-white'}
+                    ${isSelected ? 'bg-primary text-primary-foreground shadow-md scale-105' :
+                                            isToday ? 'bg-secondary text-foreground border border-primary/30' :
+                                                'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                     ${isDisabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}
                   `}
                                 >
@@ -187,36 +187,36 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
             ) : (
                 <div
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
+                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary border border-border rounded-lg hover:bg-secondary/70 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
                 >
-                    <ClockIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-white/70 group-hover:text-white transition-colors flex-shrink-0" />
-                    <span className="text-[10px] xl:text-xs font-medium text-white">
+                    <ClockIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    <span className="text-[10px] xl:text-xs font-medium text-foreground">
                         {value || 'Time'}
                     </span>
                 </div>
             )}
 
             {isOpen && (
-                <div style={{ zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 bg-[#141414]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] w-60">
+                <div style={{ zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg w-60">
                     <div className="flex gap-2 p-2 h-56">
                         <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pr-1">
-                            <div className="sticky top-0 bg-[#141414]/90 backdrop-blur-md text-[10px] font-bold text-white/40 mb-1 py-1 px-2 uppercase tracking-widest z-10">Hour</div>
+                            <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Hour</div>
                             {hours.map(h => (
                                 <button
                                     key={h}
                                     onClick={() => handleTimeSelect(h, currentMin)}
                                     className={`
                     px-3 py-2 rounded-xl text-xs font-medium transition-all text-left
-                    ${h === currentHour ? 'bg-white text-black shadow-md' : 'hover:bg-white/10 text-white/70 hover:text-white'}
+                    ${h === currentHour ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                   `}
                                 >
                                     {h}
                                 </button>
                             ))}
                         </div>
-                        <div className="w-[1px] bg-white/10 self-stretch my-2" />
+                        <div className="w-[1px] bg-border self-stretch my-2" />
                         <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pl-1">
-                            <div className="sticky top-0 bg-[#141414]/90 backdrop-blur-md text-[10px] font-bold text-white/40 mb-1 py-1 px-2 uppercase tracking-widest z-10">Min</div>
+                            <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Min</div>
                             {minutes.map(m => (
                                 <button
                                     key={m}
@@ -226,7 +226,7 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
                                     }}
                                     className={`
                     px-3 py-2 rounded-xl text-xs font-medium transition-all text-left
-                    ${m === currentMin ? 'bg-white text-black shadow-md' : 'hover:bg-white/10 text-white/70 hover:text-white'}
+                    ${m === currentMin ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                   `}
                                 >
                                     {m}
@@ -290,10 +290,10 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
-    const baseCardClass = "relative group flex flex-col rounded-2xl p-3 transition-all duration-300 shadow-inner cursor-pointer";
+    const baseCardClass = "relative group flex flex-col rounded-2xl p-3 transition-all duration-300 cursor-pointer";
     const activeClass = isActive
-        ? "border border-primary/50 bg-gradient-to-b from-white/[0.08] to-white/[0.02] shadow-[0_0_20px_rgba(59,123,255,0.18)]"
-        : "border border-white/5 bg-white/[0.03] hover:bg-white/[0.06]";
+        ? "border border-primary/40 bg-primary/[0.06] shadow-[0_0_20px_rgba(232,106,42,0.10)]"
+        : "border border-border bg-secondary/40 hover:bg-secondary";
 
     // Get a unified Date object from string props
     let combinedDate: Date | undefined = undefined;
@@ -347,25 +347,25 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
                 </button>
             ) : (
                 <div
-                    className={`${baseCardClass} ${activeClass} ${isOpen ? 'border-primary/50 bg-white/[0.08]' : ''} w-full h-full`}
+                    className={`${baseCardClass} ${activeClass} ${isOpen ? 'border-primary/40 bg-primary/[0.06]' : ''} w-full h-full`}
                     onClick={() => setIsOpen(!isOpen)}
                 >
                     {label && (
-                        <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1 pointer-events-none">
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 pointer-events-none">
                             {label}
                         </div>
                     )}
                     <div className="flex flex-col gap-1.5 relative mt-1 pointer-events-none">
                         <div className="flex items-center gap-2 group">
-                            <CalendarIcon strokeWidth={1.25} size={18} className="text-white/40 transition-colors flex-shrink-0" />
-                            <span className="text-[17px] font-bold text-white tracking-tight font-sans">
+                            <CalendarIcon strokeWidth={1.25} size={18} className="text-primary transition-colors flex-shrink-0" />
+                            <span className="text-[17px] font-bold text-foreground tracking-tight font-sans">
                                 {formatDisplayDate(dateValue)}
                             </span>
                         </div>
 
                         <div className="flex items-center gap-2 mt-0.5">
-                            <ClockIcon strokeWidth={1.25} size={15} className="text-neutral-500 transition-colors flex-shrink-0 ml-[1px]" />
-                            <span className="text-[13px] font-medium text-neutral-400 tracking-wide left-[1px] relative font-sans">
+                            <ClockIcon strokeWidth={1.25} size={15} className="text-muted-foreground transition-colors flex-shrink-0 ml-[1px]" />
+                            <span className="text-[13px] font-medium text-muted-foreground tracking-wide left-[1px] relative font-sans">
                                 {formatDisplayTime(timeValue)}
                             </span>
                         </div>
@@ -374,7 +374,7 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
             )}
 
             {isOpen && (
-                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-2 bg-[#141414]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] md:min-w-[400px]">
+                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-2 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg md:min-w-[400px]">
                     <CalendarWithTimePresets 
                         date={combinedDate}
                         setDate={handleCombinedChange}

@@ -98,23 +98,23 @@ export const CalendarWithTimePresets = ({ date, setDate, disabled, className, on
           initialFocus
           className="bg-transparent"
           classNames={{
-            day_selected: "bg-primary text-white hover:bg-primary focus:bg-primary",
-            day_today: "bg-white/5 text-white underline underline-offset-4"
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary focus:bg-primary",
+            day_today: "bg-secondary text-foreground underline underline-offset-4"
           }}
         />
       </div>
 
-      <div className="w-[1px] bg-white/10 my-4 hidden md:block" />
-      <div className="h-[1px] bg-white/10 mx-4 md:hidden" />
+      <div className="w-[1px] bg-border my-4 hidden md:block" />
+      <div className="h-[1px] bg-border mx-4 md:hidden" />
 
       <div className="flex flex-col gap-4 py-2 pr-2">
-        <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Time</h3>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Time</h3>
         
         {/* Manual Time Selectors */}
         <div className="flex items-center gap-2">
-           <div className="flex items-center bg-white/5 rounded-md border border-white/10 overflow-hidden">
+           <div className="flex items-center bg-secondary rounded-md border border-border overflow-hidden">
              <Select value={currentHour12} onValueChange={handleHourChange}>
-               <SelectTrigger className="w-[60px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-white">
+               <SelectTrigger className="w-[60px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-foreground">
                  <SelectValue />
                </SelectTrigger>
                <SelectContent position="popper">
@@ -134,10 +134,10 @@ export const CalendarWithTimePresets = ({ date, setDate, disabled, className, on
                </SelectContent>
              </Select>
 
-             <span className="text-white/50 bg-transparent py-2 -mx-2 z-10 font-bold">:</span>
+             <span className="text-muted-foreground bg-transparent py-2 -mx-2 z-10 font-bold">:</span>
              
              <Select value={currentMinuteStr} onValueChange={handleMinuteChange}>
-               <SelectTrigger className="w-[60px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-white">
+               <SelectTrigger className="w-[60px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-foreground">
                  <SelectValue />
                </SelectTrigger>
                <SelectContent position="popper">
@@ -156,9 +156,9 @@ export const CalendarWithTimePresets = ({ date, setDate, disabled, className, on
              </Select>
            </div>
            
-           <div className="flex items-center bg-white/5 rounded-md border border-white/10 overflow-hidden">
+           <div className="flex items-center bg-secondary rounded-md border border-border overflow-hidden">
              <Select value={currentAmPm} onValueChange={handleAmPmChange}>
-               <SelectTrigger className="w-[70px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-white">
+               <SelectTrigger className="w-[70px] h-auto border-none bg-transparent focus:ring-0 focus:ring-offset-0 px-3 py-2 text-base text-foreground">
                  <SelectValue />
                </SelectTrigger>
                <SelectContent position="popper">
@@ -176,7 +176,7 @@ export const CalendarWithTimePresets = ({ date, setDate, disabled, className, on
                     e.preventDefault();
                     if (onClose) onClose();
                 }}
-                className="w-full bg-white/10 hover:bg-white/20 text-white font-medium py-2 rounded-xl border border-white/10 transition-colors"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 rounded-xl border border-primary/40 transition-colors"
                 type="button"
             >
                 Apply

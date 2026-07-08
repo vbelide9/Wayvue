@@ -44,12 +44,12 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
         <div className={`rounded-xl border ${containerClass} overflow-hidden backdrop-blur-md transition-all duration-300 shadow-lg flex flex-col h-full`}>
             {/* Header */}
             <div
-                className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/5 active:bg-white/10 border-b border-white/5 flex-none"
+                className="p-3 flex items-center justify-between cursor-pointer hover:bg-secondary active:bg-secondary/70 border-b border-border flex-none"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
-                    <div className={`p-1.5 rounded-lg bg-background/60 border border-white/10 shadow-inner`}>
-                        <Sparkles className={`w-4 h-4 ${isCaution ? 'text-amber-400' : 'text-primary'}`} />
+                    <div className={`p-1.5 rounded-lg bg-background/60 border border-border shadow-inner`}>
+                        <Sparkles className={`w-4 h-4 ${isCaution ? 'text-amber-600' : 'text-primary'}`} />
                     </div>
                     <div>
                         <h3 className="font-bold text-xs tracking-wide text-foreground flex items-center gap-2">
@@ -69,7 +69,7 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
                         {isCaution && (
                             <div className="mb-4 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
                                 <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                                <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Caution advised</span>
+                                <span className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Caution advised</span>
                             </div>
                         )}
 
@@ -87,7 +87,7 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
                                     ))}
                                 </div>
 
-                                <div className="bg-white/5 px-4 py-3 rounded-xl border border-white/10 mt-4">
+                                <div className="bg-secondary/60 px-4 py-3 rounded-xl border border-border mt-4">
                                     <p className="text-xs text-foreground/80 leading-relaxed italic">
                                         <span className="text-primary font-bold not-italic mr-1.5 uppercase text-[10px] tracking-wider">Fun moment:</span>
                                         {analysis.insights.funMoment}

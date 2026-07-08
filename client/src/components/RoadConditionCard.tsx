@@ -55,7 +55,7 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                         <div
                             key={idx}
                             onClick={() => handleSegmentClick(condition)}
-                            className="group transition-all duration-200 cursor-pointer hover:bg-white/5"
+                            className="group transition-all duration-200 cursor-pointer hover:bg-secondary"
                         >
                             <div className="p-3.5">
                                 <div className="flex items-start gap-3">

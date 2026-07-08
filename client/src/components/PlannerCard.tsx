@@ -44,9 +44,9 @@ const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: ()
       onClick={onClick}
       disabled={disabled}
       aria-label={isCalculating ? 'Planning your trip' : (label || 'Plan trip')}
-      whileHover={disabled ? {} : { scale: 1.05, boxShadow: "0 0 28px rgba(59, 123, 255, 0.5)" }}
-      whileTap={disabled ? {} : { scale: 0.95 }}
-      className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_24px_rgba(59,123,255,0.4)] border border-white/10 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
+      whileHover={disabled ? {} : { scale: 1.03, boxShadow: "0 14px 30px -8px rgba(232, 106, 42, 0.55)" }}
+      whileTap={disabled ? {} : { scale: 0.96 }}
+      className={`relative group flex items-center justify-center ${label ? 'w-auto px-6 gap-2' : 'w-12'} h-12 rounded-full bg-primary shadow-orange-glow border border-primary/40 transition-all duration-300 overflow-hidden self-center disabled:cursor-not-allowed`}
     >
       {/* Specular Highlight */}
       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full" />
@@ -56,7 +56,7 @@ const SearchButton = ({ onClick, isCalculating, disabled, label }: { onClick: ()
         <motion.div
           animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.5, 0.2] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
-          className="absolute inset-0 bg-blue-400/25 rounded-full blur-md"
+          className="absolute inset-0 bg-white/30 rounded-full blur-md"
         />
       )}
 
@@ -146,9 +146,9 @@ export function PlannerCard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
-        className="relative w-full group/planner rounded-[24px] bg-[#141414]/55 backdrop-blur-2xl border border-white/12 shadow-2xl min-h-[220px]"
+        className="relative w-full group/planner rounded-[24px] bg-card/85 backdrop-blur-2xl border border-border min-h-[220px]"
         style={{
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0px rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 24px 60px -16px rgba(60, 44, 24, 0.18)',
         }}
       >
         <TopographyBackground />
@@ -163,7 +163,7 @@ export function PlannerCard({
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden mb-6"
                 >
-                  <div className="px-4 py-3 rounded-2xl text-sm font-medium bg-red-500/10 border border-red-500/20 text-red-400">
+                  <div className="px-4 py-3 rounded-2xl text-sm font-medium bg-destructive/10 border border-destructive/20 text-destructive">
                     {error}
                   </div>
                 </motion.div>
@@ -189,8 +189,8 @@ export function PlannerCard({
                       >
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] md:grid-cols-2 gap-4 items-center">
                         {/* Origin */}
-                        <div className="flex flex-col gap-1 px-4 lg:border-r border-white/5 relative z-50">
-                          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/50 uppercase">
+                        <div className="flex flex-col gap-1 px-4 lg:border-r border-border relative z-50">
+                          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                             <MapPin size={12} /> Origin
                           </div>
                           <div className="min-w-0">
@@ -207,8 +207,8 @@ export function PlannerCard({
                         </div>
 
                         {/* Destination */}
-                        <div className="flex flex-col gap-1 px-4 lg:border-r border-white/5 relative z-40">
-                          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/50 uppercase">
+                        <div className="flex flex-col gap-1 px-4 lg:border-r border-border relative z-40">
+                          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                             <MapPin size={12} /> Destination
                           </div>
                           <div className="min-w-0">
@@ -284,7 +284,7 @@ export function PlannerCard({
                                 className="overflow-visible mb-3"
                               >
                                 <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/40 uppercase w-14 shrink-0">
+                                  <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase w-14 shrink-0">
                                     Stop {i + 1}
                                   </div>
                                   <div className="flex-1 min-w-0 relative z-30">
@@ -301,7 +301,7 @@ export function PlannerCard({
                                   <button
                                     type="button"
                                     onClick={() => removeWaypoint(i)}
-                                    className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
                                     title="Remove stop"
                                     aria-label={`Remove stop ${i + 1}`}
                                   >
@@ -315,9 +315,9 @@ export function PlannerCard({
                           <button
                             type="button"
                             onClick={addWaypoint}
-                            className="flex items-center gap-2 text-xs font-semibold text-white/60 hover:text-white transition-colors mt-1"
+                            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mt-1"
                           >
-                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/10">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-secondary">
                               <Plus size={13} />
                             </span>
                             Add stop
@@ -327,19 +327,19 @@ export function PlannerCard({
                   </AnimatePresence>
 
                   {/* ═══ Secondary Toggles ═══ */}
-                  <div className="flex flex-wrap items-center justify-between border-t border-white/5 pt-6 gap-3">
+                  <div className="flex flex-wrap items-center justify-between border-t border-border pt-6 gap-3">
                     {/* One-Way / Round-Trip */}
-                    <div className="flex gap-1 p-1 rounded-full bg-black/40 backdrop-blur-md">
+                    <div className="flex gap-1 p-1 rounded-full bg-secondary border border-border">
                       <button
                         onClick={() => { if (isRoundTrip) onRoundTripToggle(); }}
-                        className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${!isRoundTrip ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${!isRoundTrip ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                           }`}
                       >
                         → One-way
                       </button>
                       <button
                         onClick={() => { if (!isRoundTrip) onRoundTripToggle(); }}
-                        className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${isRoundTrip ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${isRoundTrip ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                           }`}
                       >
                         ⇄ Round-trip
@@ -347,12 +347,12 @@ export function PlannerCard({
                     </div>
 
                     {/* Fastest / Scenic */}
-                    <div className="flex gap-1 p-1 rounded-full bg-black/40 backdrop-blur-md">
+                    <div className="flex gap-1 p-1 rounded-full bg-secondary border border-border">
                       <button
                         onClick={() => onPreferenceChange('fastest')}
                         className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${routePreference === 'fastest'
-                            ? 'bg-white text-black shadow-sm'
-                            : 'text-white/50 hover:text-white'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                           }`}
                       >
                         <Zap size={14} /> Fastest
@@ -360,8 +360,8 @@ export function PlannerCard({
                       <button
                         onClick={() => onPreferenceChange('scenic')}
                         className={`flex items-center gap-2 px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${routePreference === 'scenic'
-                            ? 'bg-white text-black shadow-sm'
-                            : 'text-white/50 hover:text-white'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                           }`}
                       >
                         <Camera size={14} /> Scenic

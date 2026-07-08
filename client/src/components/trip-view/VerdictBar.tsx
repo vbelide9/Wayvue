@@ -16,9 +16,9 @@ function parseDollars(s?: string): number {
 }
 
 function scoreColor(score: number) {
-    if (score >= 80) return { text: 'text-emerald-400', ring: '#34D399', chip: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/20' };
-    if (score >= 60) return { text: 'text-amber-400', ring: '#FBBF24', chip: 'bg-amber-400/10 text-amber-300 border-amber-400/20' };
-    return { text: 'text-red-400', ring: '#F87171', chip: 'bg-red-400/10 text-red-300 border-red-400/20' };
+    if (score >= 80) return { text: 'text-emerald-600', ring: '#059669', chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' };
+    if (score >= 60) return { text: 'text-primary', ring: '#E86A2A', chip: 'bg-primary/10 text-primary border-primary/20' };
+    return { text: 'text-red-600', ring: '#DC2626', chip: 'bg-red-500/10 text-red-700 border-red-500/20' };
 }
 
 export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnriching }: VerdictBarProps) {
@@ -62,7 +62,7 @@ export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnric
             <div className="glass-surface px-5 py-4 md:px-6 md:py-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                 {/* Score */}
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                    <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-secondary/50 border border-border">
                         <span className={`text-3xl font-display font-bold ${c.text}`}>{score}</span>
                     </div>
                     <div className="sm:hidden">
@@ -82,8 +82,8 @@ export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnric
                 {/* Key synthesized chips */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {totalStr && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                            <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/50 border border-border">
+                            <Wallet className="w-3.5 h-3.5 text-emerald-600" />
                             <div className="leading-tight">
                                 <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Est. cost</div>
                                 <div className="text-sm font-bold text-foreground">{totalStr}</div>
@@ -91,7 +91,7 @@ export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnric
                         </div>
                     )}
                     {best && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/50 border border-border">
                             <Clock3 className="w-3.5 h-3.5 text-primary" />
                             <div className="leading-tight">
                                 <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Best departure</div>
