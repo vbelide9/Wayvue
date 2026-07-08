@@ -11,6 +11,21 @@ const { getTollEstimate } = require('./tollService');
 const { getIncidentsAlongRoute } = require('./incidentService');
 
 /**
+ * Human-readable city from a geocoder display name, skipping a leading street-address
+ * segment. e.g. "1063 Olivia Dr, Oakdale, PA, 15071" -> "Oakdale"; "Buffalo, NY" -> "Buffalo".
+ */
+const cityFromDisplay = (displayName) => {
+    if (!displayName) return displayName;
+    const parts = displayName.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return displayName;
+    const looksLikeStreet = parts.length > 1 && (
+        /^\d/.test(parts[0]) ||
+        /\b(st|ave|dr|rd|blvd|ln|ct|way|hwy|pkwy|pike|street|avenue|drive|road|court|lane)\b/i.test(parts[0])
+    );
+    return looksLikeStreet ? parts[1] : parts[0];
+};
+
+/**
  * Processes a single leg of a trip (e.g. Outbound or Return).
  * @param {Object} startLoc - { lat, lon, display_name }
  * @param {Object} endLoc - { lat, lon, display_name }
@@ -109,11 +124,11 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 let city = `Mile ${distMiles}`;
                 let fullLocationForGas = city; // Full name with state for gas price lookup
                 if (i === 0) {
-                    city = startLoc.display_name.split(',')[0];
+                    city = cityFromDisplay(startLoc.display_name);
                     fullLocationForGas = startLoc.display_name;
                 }
                 else if (i === weatherResults.length - 1) {
-                    city = endLoc.display_name.split(',')[0];
+                    city = cityFromDisplay(endLoc.display_name);
                     fullLocationForGas = endLoc.display_name;
                 }
                 else {
@@ -121,8 +136,8 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                     try {
                         const realName = await reverseGeocode(w.lat, w.lng);
                         if (realName) {
-                            city = realName.split(',')[0];  // Display: just city
-                            fullLocationForGas = realName;   // Gas lookup: "City, State"
+                            city = cityFromDisplay(realName);  // Display: just city
+                            fullLocationForGas = realName;      // Gas lookup: "City, State"
                         }
                     } catch (e) {
                         console.warn(`Failed to geocode point ${i}: ${e.message}`);

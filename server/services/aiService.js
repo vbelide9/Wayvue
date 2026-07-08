@@ -115,9 +115,9 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
         const priciest = gasPrices[gasPrices.length - 1];
         const spread = priciest.price - cheapest.price;
         if (spread >= 0.15) {
-            candidates.push({ p: 66, text: `Fuel's cheapest near ${cheapest.loc} at $${cheapest.price.toFixed(2)}/gal — about $${spread.toFixed(2)}/gal less than the priciest stop. Worth timing your fill-up there.` });
+            candidates.push({ p: 66, text: `Fuel's cheapest near ${cheapest.loc} at $${cheapest.price.toFixed(2)}/gal — about $${spread.toFixed(2)}/gal less than the priciest stretch. Worth timing your fill-up there.` });
         } else {
-            candidates.push({ p: 52, text: `Gas is running around $${cheapest.price.toFixed(2)}/gal along the way — best value near ${cheapest.loc}.` });
+            candidates.push({ p: 52, text: `Gas is averaging about $${cheapest.price.toFixed(2)}/gal along your route this week (live regional average).` });
         }
     }
 

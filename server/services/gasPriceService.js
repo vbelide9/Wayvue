@@ -61,6 +61,9 @@ const FALLBACK_PRICES = {
 // Cache: { lookupCode: { price, timestamp, period } }
 const priceCache = new Map();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours (EIA updates weekly)
+// In-flight requests, keyed by EIA code — a single trip fires ~12 gas lookups at once,
+// mostly for the same region; share one live EIA fetch instead of hammering the API.
+const inFlight = new Map();
 
 /**
  * Extract state abbreviation from a location string.
@@ -128,25 +131,32 @@ async function fetchFromEIA(lookupCode) {
     const apiKey = process.env.EIA_API_KEY;
     if (!apiKey) return null;
 
-    try {
-        const url = `https://api.eia.gov/v2/petroleum/pri/gnd/data/?api_key=${apiKey}&frequency=weekly&data[0]=value&facets[product][]=EPM0&facets[duoarea][]=${lookupCode}&sort[0][column]=period&sort[0][direction]=desc&length=1`;
+    const url = `https://api.eia.gov/v2/petroleum/pri/gnd/data/?api_key=${apiKey}&frequency=weekly&data[0]=value&facets[product][]=EPM0&facets[duoarea][]=${lookupCode}&sort[0][column]=period&sort[0][direction]=desc&length=1`;
 
-        const response = await axios.get(url, { timeout: 5000 });
-
-        if (response.data?.response?.data?.length > 0) {
-            const record = response.data.response.data[0];
-            const price = parseFloat(record.value);
-            if (!isNaN(price) && price > 0) {
-                console.log(`[GasPrice] EIA: ${lookupCode} (${record['area-name']}) = $${price.toFixed(3)}/gal (week of ${record.period})`);
-                return price;
+    // EIA can be slow under concurrent load — generous timeout + one retry so real
+    // prices aren't dropped to the hardcoded fallback on a transient slow response.
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const response = await axios.get(url, { timeout: 12000 });
+            if (response.data?.response?.data?.length > 0) {
+                const record = response.data.response.data[0];
+                const price = parseFloat(record.value);
+                if (!isNaN(price) && price > 0) {
+                    console.log(`[GasPrice] EIA: ${lookupCode} (${record['area-name']}) = $${price.toFixed(3)}/gal (week of ${record.period})`);
+                    return price;
+                }
             }
+            return null; // valid response but no data for this code — don't retry
+        } catch (error) {
+            if (attempt === 0) {
+                await new Promise(r => setTimeout(r, 600)); // brief backoff, then retry once
+                continue;
+            }
+            console.error(`[GasPrice] EIA API error for ${lookupCode}: ${error.message}`);
+            return null;
         }
-
-        return null;
-    } catch (error) {
-        console.error(`[GasPrice] EIA API error for ${lookupCode}: ${error.message}`);
-        return null;
     }
+    return null;
 }
 
 /**
@@ -176,25 +186,41 @@ async function getGasPrice(locationOrState) {
         return FALLBACK_PRICES[paddCode] || FALLBACK_PRICES['NUS'];
     }
 
-    // Try state-level first
-    let price = await fetchFromEIA(primaryCode);
-
-    // If state-level failed and we used a state code, try PADD region
-    if (!price && primaryCode.startsWith('S') && paddCode) {
-        console.log(`[GasPrice] State ${primaryCode} unavailable, trying PADD ${paddCode}`);
-        price = await fetchFromEIA(paddCode);
+    // Share a single live fetch across concurrent lookups for the same region
+    if (inFlight.has(primaryCode)) {
+        return inFlight.get(primaryCode);
     }
 
-    // If PADD also failed, try national
-    if (!price && primaryCode !== 'NUS') {
-        console.log(`[GasPrice] PADD ${paddCode || primaryCode} unavailable, trying national`);
-        price = await fetchFromEIA('NUS');
-    }
+    const fetchChain = (async () => {
+        // Try state-level first
+        let price = await fetchFromEIA(primaryCode);
 
-    // If all API calls failed, use hardcoded fallback
-    if (!price) {
-        price = FALLBACK_PRICES[paddCode] || FALLBACK_PRICES['NUS'];
-        console.log(`[GasPrice] All EIA attempts failed. Using hardcoded fallback: $${price}`);
+        // If state-level failed and we used a state code, try PADD region
+        if (!price && primaryCode.startsWith('S') && paddCode) {
+            console.log(`[GasPrice] State ${primaryCode} unavailable, trying PADD ${paddCode}`);
+            price = await fetchFromEIA(paddCode);
+        }
+
+        // If PADD also failed, try national
+        if (!price && primaryCode !== 'NUS') {
+            console.log(`[GasPrice] PADD ${paddCode || primaryCode} unavailable, trying national`);
+            price = await fetchFromEIA('NUS');
+        }
+
+        // If all API calls failed, use hardcoded fallback
+        if (!price) {
+            price = FALLBACK_PRICES[paddCode] || FALLBACK_PRICES['NUS'];
+            console.log(`[GasPrice] All EIA attempts failed. Using hardcoded fallback: $${price}`);
+        }
+        return price;
+    })();
+
+    inFlight.set(primaryCode, fetchChain);
+    let price;
+    try {
+        price = await fetchChain;
+    } finally {
+        inFlight.delete(primaryCode);
     }
 
     // Cache the result

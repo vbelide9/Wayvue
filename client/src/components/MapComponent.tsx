@@ -72,9 +72,9 @@ interface MapComponentProps {
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON, activeTab }) => {
-    // Map ↔ tab sync: show weather markers on overview/weather, incident markers on overview/road.
-    // When no tab context is provided, show everything (backwards-compatible).
-    const showWeatherLayer = !activeTab || activeTab === 'overview' || activeTab === 'weather';
+    // Map ↔ tab sync: weather is the default layer — visible on every tab EXCEPT Road,
+    // where incident markers take over to avoid clutter. Incidents show on overview/road.
+    const showWeatherLayer = activeTab !== 'road';
     const showIncidentLayer = !activeTab || activeTab === 'overview' || activeTab === 'road';
     // Default: San Francisco
     const defaultCenter: LatLngExpression = [37.7749, -122.4194];
