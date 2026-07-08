@@ -31,48 +31,58 @@
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
+
+    --color-cream: #FBFAF7;
+    --font-sans: "Inter", sans-serif;
+    --font-display: "Space Grotesk", "Inter", sans-serif;
+    --font-serif: "Space Grotesk", sans-serif;
 }
 
 @layer base {
     :root {
-        /* Godly / Architectural Dark Palette */
-        --background: 0 0% 4%;
-        /* #0a0a0a */
-        --foreground: 40 20% 96%;
-        /* Bone white #F5F5F0 */
+        /* Homie — warm, light, editorial real-estate palette */
+        --background: 40 33% 98%;
+        /* Warm off-white #FBFAF7 */
+        --foreground: 24 12% 12%;
+        /* Warm near-black #211D19 */
 
-        --card: 0 0% 6%;
-        --card-foreground: 40 20% 96%;
+        --card: 0 0% 100%;
+        /* Pure white surface */
+        --card-foreground: 24 12% 12%;
 
-        --popover: 0 0% 6%;
-        --popover-foreground: 40 20% 96%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 24 12% 12%;
 
-        /* Muted Stone / Desaturated Accent instead of Neon */
-        --primary: 40 10% 80%;
-        --primary-foreground: 0 0% 4%;
+        /* Warm amber primary */
+        --primary: 22 84% 52%;
+        /* #E86A2A → warm amber */
+        --primary-foreground: 40 33% 99%;
 
-        /* Deep translucent secondary */
-        --secondary: 0 0% 12%;
-        --secondary-foreground: 40 20% 96%;
+        /* Warm cream secondary */
+        --secondary: 36 26% 94%;
+        --secondary-foreground: 24 12% 16%;
 
-        --muted: 0 0% 12%;
-        --muted-foreground: 0 0% 60%;
+        --muted: 36 22% 93%;
+        --muted-foreground: 28 7% 42%;
+        /* Warm gray — WCAG AA on cream */
 
-        /* Subtle gold/amber accent */
-        --accent: 40 40% 60%;
-        --accent-foreground: 0 0% 100%;
+        /* Soft warm accent */
+        --accent: 34 40% 90%;
+        --accent-foreground: 24 24% 20%;
 
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
 
-        --border: 240 6% 15%;
-        --input: 240 6% 15%;
-        --ring: 217 91% 60%;
+        --border: 34 22% 89%;
+        /* Warm hairline #E8E2D8 */
+        --input: 34 22% 89%;
+        --ring: 22 84% 52%;
+        /* Amber ring */
 
-        --radius: 0.75rem;
+        --radius: 1rem;
 
-        /* Selection Color */
-        --selection-bg: 217 91% 60%;
+        /* Selection Color — amber */
+        --selection-bg: 22 84% 52%;
         --selection-text: 0 0% 100%;
     }
 }
@@ -82,23 +92,64 @@
     color: hsl(var(--selection-text));
 }
 
-/* Godly Tactile Noise Filter */
-body {
-    position: relative;
+/* ── Design-system surfaces ──
+   One canonical light "frosted" treatment so cards/nav stop diverging. */
+.glass-surface {
+    background-color: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(35, 28, 20, 0.06);
+    border-radius: 1.5rem;                          /* = rounded-3xl */
+    box-shadow: 0 12px 40px -12px rgba(60, 44, 24, 0.12);
 }
 
-body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 9999;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.04;
-    mix-blend-mode: overlay;
+.glass-surface-strong {
+    background-color: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(35, 28, 20, 0.06);
+    box-shadow: 0 8px 30px -8px rgba(60, 44, 24, 0.14);
+}
+
+/* ── Homie accents ── */
+.font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+}
+
+/* Amber spotlight glow — place behind hero/section focal points */
+.spotlight {
+    background: radial-gradient(600px circle at center, rgba(232, 106, 42, 0.10), transparent 70%);
+}
+.spotlight-cyan {
+    background: radial-gradient(600px circle at center, rgba(232, 106, 42, 0.08), transparent 70%);
+}
+
+.text-glow {
+    text-shadow: 0 8px 30px rgba(232, 106, 42, 0.18);
+}
+
+/* ── Accessibility baseline ── */
+
+/* Always-visible keyboard focus (custom icon buttons often lose the default) */
+*:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Honor the OS "reduce motion" setting: neutralize animations, transitions,
+   and smooth-scroll hijacking (Lenis is additionally disabled in App.tsx). */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    html {
+        scroll-behavior: auto !important;
+    }
 }
 
 @layer base {
@@ -116,29 +167,29 @@ body::after {
 }
 
 .leaflet-popup-tip {
-    background-color: #E5D9B6 !important;
+    background-color: #FFFFFF !important;
 }
 
 .custom-popup-overrides .leaflet-popup-content {
     margin: 0 !important;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
+/* Custom Minimal Scrollbar — warm tinted */
+::-webkit-scrollbar {
+  width: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(230, 126, 34, 0.2);
-    border-radius: 10px;
+::-webkit-scrollbar-thumb {
+  background: #D9D2C6;
+  border-radius: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(230, 126, 34, 0.4);
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -165,4 +216,52 @@ input[type="date"],
 input[type="time"] {
     position: relative;
     appearance: none;
+}
+
+.text-micro {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Premium CTA shimmer animation — warm amber sweep */
+@keyframes shimmer-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.btn-cta-shimmer {
+  position: relative;
+  background: hsl(var(--primary));
+  color: #fff;
+  border: 1.5px solid hsl(var(--primary));
+  font-weight: 600;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 10px 24px -8px rgba(232, 106, 42, 0.5);
+}
+
+.btn-cta-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.10) 45%,
+    rgba(255, 255, 255, 0.30) 50%,
+    rgba(255, 255, 255, 0.10) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.btn-cta-shimmer:hover {
+  background: hsl(22 88% 47%);
+  border-color: hsl(22 88% 47%);
+  color: #fff;
+  box-shadow: 0 14px 30px -8px rgba(232, 106, 42, 0.6);
+  transform: translateY(-1px) scale(1.02);
 }

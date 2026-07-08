@@ -7,9 +7,22 @@ const OSRM_API = 'http://router.project-osrm.org/route/v1/driving';
  * @param {string} start - "lat,lng" or "lng,lat" ? OSRM expects "lng,lat"
  * @param {string} end - "lng,lat"
  */
-const getRouteFromOSRM = async (startLng, startLat, endLng, endLat, alternatives = false, preference = 'fastest') => {
+const getRouteFromOSRM = async (startLng, startLat, endLng, endLat, alternatives = false, preference = 'fastest', waypoints = []) => {
     try {
-        const url = `${OSRM_API}/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson${alternatives ? '&alternatives=true' : ''}`;
+        // Build the ordered coordinate path: start → waypoints → end.
+        // OSRM accepts semicolon-separated "lng,lat" pairs; via-waypoints route through each stop.
+        const coordList = [[startLng, startLat]];
+        for (const wp of (waypoints || [])) {
+            const wLng = wp.lon !== undefined ? wp.lon : wp.lng;
+            const wLat = wp.lat;
+            if (wLng !== undefined && wLat !== undefined) coordList.push([wLng, wLat]);
+        }
+        coordList.push([endLng, endLat]);
+        const coordPath = coordList.map(c => `${c[0]},${c[1]}`).join(';');
+
+        // OSRM only returns alternatives for simple 2-point routes; disable when via-waypoints exist.
+        const useAlternatives = alternatives && coordList.length === 2;
+        const url = `${OSRM_API}/${coordPath}?overview=full&geometries=geojson${useAlternatives ? '&alternatives=true' : ''}`;
         const response = await axios.get(url);
 
         if (response.data.code !== 'Ok') {

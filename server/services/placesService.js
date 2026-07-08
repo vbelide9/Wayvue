@@ -45,6 +45,7 @@ async function getRecommendations(routeSegments) {
         const commonAmenity = "cafe|fast_food|restaurant|diner|fuel";
         const sparseAmenity = "charging_station|rest_area"; // Removed toilets
         const tourismRegex = "viewpoint|museum|park|theme_park"; // Removed attraction
+        const lodgingRegex = "hotel|motel|guest_house|hostel"; // Overnight stays
         const historicRegex = "memorial|monument|castle|ruins";
         const highwayRegex = "rest_area";
 
@@ -58,6 +59,7 @@ async function getRecommendations(routeSegments) {
               node["amenity"~"${sparseAmenity}"](around:15000, ${lat}, ${lon});
               node["highway"~"${highwayRegex}"](around:15000, ${lat}, ${lon});
               node["tourism"~"${tourismRegex}"](around:15000, ${lat}, ${lon});
+              node["tourism"~"${lodgingRegex}"](around:15000, ${lat}, ${lon});
               node["historic"~"${historicRegex}"](around:15000, ${lat}, ${lon});
             );
             out center 100;
@@ -89,6 +91,7 @@ async function getRecommendations(routeSegments) {
                     if (['rest_area', 'toilets'].some(v => tags.amenity.includes(v))) return 'rest';
                 }
                 if (tags.highway && tags.highway.includes('rest_area')) return 'rest';
+                if (tags.tourism && ['hotel', 'motel', 'guest_house', 'hostel'].some(v => tags.tourism.includes(v))) return 'lodging';
                 if (tags.tourism) return 'view';
                 if (tags.historic) return 'view';
                 return 'view'; // default
@@ -111,7 +114,7 @@ async function getRecommendations(routeSegments) {
                         type: type,
                         location: displayLocation,
                         title: name,
-                        description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'charging' ? 'EV Charging Station' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest Area' : 'Local Stop'),
+                        description: node.tags.cuisine || (type === 'gas' ? 'Fuel & Services' : type === 'charging' ? 'EV Charging Station' : type === 'view' ? 'Scenic Spot' : type === 'rest' ? 'Rest Area' : type === 'lodging' ? 'Hotel & Lodging' : 'Local Stop'),
                         quality: qualityScore,
                         miles: Number(milesFromStart)
                     });
@@ -122,9 +125,9 @@ async function getRecommendations(routeSegments) {
             segmentCandidates.sort((a, b) => b.quality - a.quality);
 
             // Take top results PER CATEGORY to ensure variety
-            const categoryCounts = { food: 0, gas: 0, charging: 0, view: 0, rest: 0 };
+            const categoryCounts = { food: 0, gas: 0, charging: 0, view: 0, rest: 0, lodging: 0 };
             segmentCandidates.forEach(cand => {
-                const limit = ['food', 'gas'].includes(cand.type) ? 3 : 2;
+                const limit = ['food', 'gas', 'lodging'].includes(cand.type) ? 3 : 2;
                 if (categoryCounts[cand.type] < limit) {
                     recommendations.push(cand);
                     categoryCounts[cand.type]++;
@@ -144,26 +147,26 @@ async function getRecommendations(routeSegments) {
             const fallbackTypes = ['food', 'gas', 'charging', 'view', 'rest'];
             const fallbackType = fallbackTypes[i % fallbackTypes.length];
 
-            const fallbackPlaces = {
-                food: ["Local Diner", "Riverside Cafe", "Highway Grill", "Traveler's Bistro"],
-                gas: ["Travel Center", "Express Fuel", "Wayvue Station", "Highway Oasis"],
-                charging: ["Supercharger", "ChargePoint", "EV Plaza", "Electric Station"],
-                rest: ["Rest Area", "Public Waypoint", "Scenic Stop", "Observation Point"],
-                view: ["Scenic Viewpoint", "Nature Trailhead", "Historic Marker", "Lookout Point"]
+            // Use honest labels — don't generate fake business names
+            const fallbackDescriptions = {
+                food: "Dining options nearby",
+                gas: "Fuel station nearby",
+                charging: "EV charging nearby",
+                rest: "Rest area nearby",
+                view: "Scenic area nearby"
             };
 
-            const titles = fallbackPlaces[fallbackType] || ["Local Stop"];
-            const title = titles[Math.floor(Math.random() * titles.length)];
             const displayLocation = `${defaultTownName} • ${milesFromStart} mi`;
 
             recommendations.push({
                 id: `fallback-${i}-${fallbackType}`,
                 type: fallbackType,
                 location: displayLocation,
-                title: `${defaultTownName} ${title}`,
-                description: `A convenient ${fallbackType} stop selected for your journey.`,
+                title: `${defaultTownName} — ${fallbackType === 'food' ? 'Dining' : fallbackType === 'gas' ? 'Fuel' : fallbackType === 'charging' ? 'EV Charging' : fallbackType === 'view' ? 'Scenic Spot' : 'Rest Stop'}`,
+                description: `${fallbackDescriptions[fallbackType]} (Estimated)`,
                 quality: 1,
-                miles: Number(milesFromStart)
+                miles: Number(milesFromStart),
+                isEstimated: true
             });
         }
     });

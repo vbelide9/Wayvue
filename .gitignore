@@ -47,3 +47,16 @@ server_log*.txt
 
 # Firebase
 .firebase/
+
+# AI Design Agents
+.agents/
+.stitch/
+
+# Scrollytelling Raw Assets & Venvs
+Landing\ page\ 4k.mp4
+client/public/road_trip.mp4
+crop_frames.py
+extract.py
+extract_4k.py
+venv/
+wayvue\ zip/

@@ -142,7 +142,7 @@ export function RentalTab({ metrics, weatherData, start, destination, depDate, r
     }, [passengers, luggage, terrain, metrics, weatherData]);
 
     return (
-        <div className="h-full overflow-y-auto custom-scrollbar p-4 space-y-6">
+        <div className="p-4 space-y-6">
             <div className="space-y-2">
                 <h2 className="text-xl font-bold tracking-tight">Vehicle Recommendation</h2>
                 <p className="text-xs text-muted-foreground">

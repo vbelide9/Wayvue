@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock as ClockIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock as ClockIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { CalendarWithTimePresets } from './ui/calendar-with-time-pressets';
 
 interface CustomDatePickerProps {
     value: string;
@@ -7,9 +8,10 @@ interface CustomDatePickerProps {
     min?: string;
     max?: string;
     className?: string;
+    renderTrigger?: (value: string, onClick: () => void) => React.ReactNode;
 }
 
-export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, min, max, className = "" }) => {
+export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, min, max, className = "", renderTrigger }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -76,32 +78,36 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
     for (let i = 1; i <= totalDays; i++) days.push(i);
 
     return (
-        <div className={`relative ${className}`} ref={containerRef}>
-            <div
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group"
-            >
-                <CalendarIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-xs font-semibold text-foreground">
-                    {value ? parseDate(value).toLocaleDateString() : 'Select Date'}
-                </span>
-            </div>
+        <div className={`relative ${className} ${isOpen ? 'z-[9999]' : 'z-0'}`} ref={containerRef}>
+            {renderTrigger ? (
+                renderTrigger(value, () => setIsOpen(!isOpen))
+            ) : (
+                <div
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary border border-border rounded-lg hover:bg-secondary/70 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
+                >
+                    <CalendarIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    <span className="text-[10px] xl:text-xs font-medium text-foreground">
+                        {value ? parseDate(value).toLocaleDateString() : 'Select Date'}
+                    </span>
+                </div>
+            )}
 
             {isOpen && (
-                <div style={{ backgroundColor: '#324422', opacity: 1, minHeight: 'fit-content', display: 'block', zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-4 border border-border rounded-xl shadow-2xl w-64">
+                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-4 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg w-[280px]">
                     <div className="flex items-center justify-between mb-4">
-                        <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-secondary/50 rounded-md transition-colors">
+                        <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronLeft size={16} />
                         </button>
-                        <span className="text-sm font-bold uppercase tracking-wider">{currentMonthName} {viewDate.getFullYear()}</span>
-                        <button onClick={() => changeMonth(1)} className="p-1 hover:bg-secondary/50 rounded-md transition-colors">
+                        <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">{currentMonthName} {viewDate.getFullYear()}</span>
+                        <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                             <ChevronRight size={16} />
                         </button>
                     </div>
 
                     <div className="grid grid-cols-7 gap-1 mb-2">
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                            <span key={d} className="text-[10px] font-bold text-muted-foreground text-center">{d}</span>
+                            <span key={d} className="text-[10px] font-bold text-muted-foreground text-center uppercase">{d}</span>
                         ))}
                     </div>
 
@@ -121,10 +127,10 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                     disabled={isDisabled}
                                     onClick={() => handleDateClick(day)}
                                     className={`
-                    h-8 w-8 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center
-                    ${isSelected ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110' :
-                                            isToday ? 'bg-secondary/50 text-primary border border-primary/30' :
-                                                'hover:bg-secondary/40 text-foreground'}
+                    h-8 w-8 text-[11px] font-medium rounded-lg transition-all flex items-center justify-center
+                    ${isSelected ? 'bg-primary text-primary-foreground shadow-md scale-105' :
+                                            isToday ? 'bg-secondary text-foreground border border-primary/30' :
+                                                'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                     ${isDisabled ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}
                   `}
                                 >
@@ -143,9 +149,10 @@ interface CustomTimePickerProps {
     value: string;
     onChange: (value: string) => void;
     className?: string;
+    renderTrigger?: (value: string, onClick: () => void) => React.ReactNode;
 }
 
-export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onChange, className = "" }) => {
+export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onChange, className = "", renderTrigger }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -174,38 +181,42 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
     };
 
     return (
-        <div className={`relative ${className}`} ref={containerRef}>
-            <div
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-3 h-10 bg-secondary/30 border border-border rounded-lg hover:border-primary/50 transition-all cursor-pointer group"
-            >
-                <ClockIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-xs font-semibold text-foreground">
-                    {value || 'Select Time'}
-                </span>
-            </div>
+        <div className={`relative ${className} ${isOpen ? 'z-[9999]' : 'z-0'}`} ref={containerRef}>
+            {renderTrigger ? (
+                renderTrigger(value, () => setIsOpen(!isOpen))
+            ) : (
+                <div
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="flex items-center gap-1 xl:gap-2 px-2 h-10 bg-secondary border border-border rounded-lg hover:bg-secondary/70 transition-all cursor-pointer group whitespace-nowrap backdrop-blur-md"
+                >
+                    <ClockIcon className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    <span className="text-[10px] xl:text-xs font-medium text-foreground">
+                        {value || 'Time'}
+                    </span>
+                </div>
+            )}
 
             {isOpen && (
-                <div style={{ backgroundColor: '#324422', opacity: 1, minHeight: 'fit-content', display: 'block', zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 border border-border rounded-xl shadow-2xl w-64">
-                    <div className="flex gap-4 p-2 h-48">
-                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1">
-                            <div className="text-[10px] font-bold text-muted-foreground mb-2 px-2 uppercase tracking-tight">Hour</div>
+                <div style={{ zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg w-60">
+                    <div className="flex gap-2 p-2 h-56">
+                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pr-1">
+                            <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Hour</div>
                             {hours.map(h => (
                                 <button
                                     key={h}
                                     onClick={() => handleTimeSelect(h, currentMin)}
                                     className={`
-                    px-2 py-1.5 rounded-lg text-xs font-bold transition-all
-                    ${h === currentHour ? 'bg-primary text-white' : 'hover:bg-secondary/40 text-foreground'}
+                    px-3 py-2 rounded-xl text-xs font-medium transition-all text-left
+                    ${h === currentHour ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                   `}
                                 >
                                     {h}
                                 </button>
                             ))}
                         </div>
-                        <div className="w-px bg-border/50 self-stretch" />
-                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1">
-                            <div className="text-[10px] font-bold text-muted-foreground mb-2 px-2 uppercase tracking-tight">Min</div>
+                        <div className="w-[1px] bg-border self-stretch my-2" />
+                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pl-1">
+                            <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Min</div>
                             {minutes.map(m => (
                                 <button
                                     key={m}
@@ -214,8 +225,8 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
                                         setIsOpen(false);
                                     }}
                                     className={`
-                    px-2 py-1.5 rounded-lg text-xs font-bold transition-all
-                    ${m === currentMin ? 'bg-primary text-white' : 'hover:bg-secondary/40 text-foreground'}
+                    px-3 py-2 rounded-xl text-xs font-medium transition-all text-left
+                    ${m === currentMin ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-secondary text-muted-foreground hover:text-foreground'}
                   `}
                                 >
                                     {m}
@@ -238,6 +249,8 @@ interface CombinedDateTimePickerProps {
     maxDate?: string;
     label?: string;
     className?: string;
+    isActive?: boolean;
+    compact?: boolean; // single-line pill trigger for tight toolbars (results header)
 }
 
 export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
@@ -248,35 +261,134 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
     minDate,
     maxDate,
     label,
-    className = ""
+    className = "",
+    isActive = false,
+    compact = false
 }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element;
+            if (containerRef.current && !containerRef.current.contains(target)) {
+                // Ignore clicks in Radix UI Select portals (which render at the end of the body)
+                if (target.closest('[role="listbox"]') || target.closest('[data-radix-popper-content-wrapper]')) {
+                    return;
+                }
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const formatDisplayDate = (val: string) => {
+        if (!val) return 'Select Date';
+        const [y, m, d] = val.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    const baseCardClass = "relative group flex flex-col rounded-2xl p-3 transition-all duration-300 cursor-pointer";
+    const activeClass = isActive
+        ? "border border-primary/40 bg-primary/[0.06] shadow-[0_0_20px_rgba(232,106,42,0.10)]"
+        : "border border-border bg-secondary/40 hover:bg-secondary";
+
+    // Get a unified Date object from string props
+    let combinedDate: Date | undefined = undefined;
+    if (dateValue) {
+        const [y, m, d] = dateValue.split('-').map(Number);
+        combinedDate = new Date(y, m - 1, d);
+        if (timeValue) {
+            const [hours, mins] = timeValue.split(':').map(Number);
+            combinedDate.setHours(hours, mins, 0, 0);
+        } else {
+            combinedDate.setHours(12, 0, 0, 0); // default noon
+        }
+    }
+
+    const handleCombinedChange = (newDate: Date | undefined) => {
+        if (!newDate) return;
+        
+        // Extract string values for upward props
+        const dateStr = `${newDate.getFullYear()}-${String(newDate.getMonth()+1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+        onDateChange(dateStr);
+
+        const timeStr = `${String(newDate.getHours()).padStart(2, '0')}:${String(newDate.getMinutes()).padStart(2, '0')}`;
+        onTimeChange(timeStr);
+    };
+
+    const formatDisplayTime = (val: string) => {
+        if (!val) return 'Select Time';
+        const [hoursStr, mins] = val.split(':');
+        let hours = parseInt(hoursStr, 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        return `${hours}:${mins} ${ampm}`;
+    };
+
     return (
-        <div className={`relative group ${className}`}>
-            {label && (
-                <div className="absolute -top-2.5 left-2 px-1 bg-[#40513B] text-[9px] font-bold uppercase tracking-widest text-emerald-400/80 z-10 pointer-events-none">
-                    {label}
+        <div className={`relative ${className} ${isOpen ? 'z-[9999]' : 'z-0'}`} ref={containerRef}>
+            {compact ? (
+                /* Compact single-line pill trigger — fits inline in tight toolbars */
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`h-8 flex items-center gap-2 pl-2.5 pr-2 rounded-lg border text-xs font-bold whitespace-nowrap transition-all ${isOpen ? 'border-primary/50 bg-white/[0.08] text-foreground' : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                >
+                    <CalendarIcon strokeWidth={1.5} size={14} className="text-primary flex-shrink-0" />
+                    {label && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>}
+                    <span className="text-foreground">{formatDisplayDate(dateValue)}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="text-muted-foreground">{formatDisplayTime(timeValue)}</span>
+                    <ChevronDown size={12} className={`text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+            ) : (
+                <div
+                    className={`${baseCardClass} ${activeClass} ${isOpen ? 'border-primary/40 bg-primary/[0.06]' : ''} w-full h-full`}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    {label && (
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 pointer-events-none">
+                            {label}
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-1.5 relative mt-1 pointer-events-none">
+                        <div className="flex items-center gap-2 group">
+                            <CalendarIcon strokeWidth={1.25} size={18} className="text-primary transition-colors flex-shrink-0" />
+                            <span className="text-[17px] font-bold text-foreground tracking-tight font-sans">
+                                {formatDisplayDate(dateValue)}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <ClockIcon strokeWidth={1.25} size={15} className="text-muted-foreground transition-colors flex-shrink-0 ml-[1px]" />
+                            <span className="text-[13px] font-medium text-muted-foreground tracking-wide left-[1px] relative font-sans">
+                                {formatDisplayTime(timeValue)}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             )}
-            <div className="flex items-center bg-[#33402F] border border-[#628141] rounded-lg p-0.5 shadow-sm hover:border-[#E67E22]/50 transition-all h-9">
-                {/* Date Section */}
-                <CustomDatePicker
-                    value={dateValue}
-                    onChange={onDateChange}
-                    min={minDate}
-                    max={maxDate}
-                    className="flex-1 min-w-[100px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
-                />
 
-                {/* Divider */}
-                <div className="w-px h-4 bg-[#628141]/50 mx-0.5" />
-
-                {/* Time Section */}
-                <CustomTimePicker
-                    value={timeValue}
-                    onChange={onTimeChange}
-                    className="flex-1 min-w-[70px] [&>div]:border-0 [&>div]:bg-transparent [&>div]:h-8 [&>div]:shadow-none [&>div]:hover:bg-white/5 [&>div]:px-1.5 [&>div]:gap-1.5"
-                />
-            </div>
+            {isOpen && (
+                <div style={{ zIndex: 9999 }} className="absolute top-full left-0 mt-2 p-2 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg md:min-w-[400px]">
+                    <CalendarWithTimePresets 
+                        date={combinedDate}
+                        setDate={handleCombinedChange}
+                        onClose={() => setIsOpen(false)}
+                        disabled={(date: Date) => {
+                            if (!minDate && !maxDate) return false;
+                            const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            if (minDate && dateStr < minDate) return true;
+                            if (maxDate && dateStr > maxDate) return true;
+                            return false;
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 };

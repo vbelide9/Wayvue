@@ -5,6 +5,25 @@ const RealCameraService = require('./realCameraService');
 const { reverseGeocode } = require('./geocodingService');
 const { getRecommendations } = require('./placesService');
 const { generateTripAnalysis, calculateTripScore } = require('./aiService');
+const { getGasPriceForLocation, calculateFuelCosts } = require('./gasPriceService');
+const { getRouteTrafficDelay } = require('./trafficService');
+const { getTollEstimate } = require('./tollService');
+const { getIncidentsAlongRoute } = require('./incidentService');
+
+/**
+ * Human-readable city from a geocoder display name, skipping a leading street-address
+ * segment. e.g. "1063 Olivia Dr, Oakdale, PA, 15071" -> "Oakdale"; "Buffalo, NY" -> "Buffalo".
+ */
+const cityFromDisplay = (displayName) => {
+    if (!displayName) return displayName;
+    const parts = displayName.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return displayName;
+    const looksLikeStreet = parts.length > 1 && (
+        /^\d/.test(parts[0]) ||
+        /\b(st|ave|dr|rd|blvd|ln|ct|way|hwy|pkwy|pike|street|avenue|drive|road|court|lane)\b/i.test(parts[0])
+    );
+    return looksLikeStreet ? parts[1] : parts[0];
+};
 
 /**
  * Processes a single leg of a trip (e.g. Outbound or Return).
@@ -15,7 +34,7 @@ const { generateTripAnalysis, calculateTripScore } = require('./aiService');
  * @param {boolean} isScenic - Whether to request an alternative "scenic" route
  * @returns {Promise<Object>} Enriched route data
  */
-const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false) => {
+const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false, waypoints = []) => {
     // 1. Calculate Base Time
     let baseDepTime = Date.now();
     if (departureDate) {
@@ -30,7 +49,9 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     const routeData = await getRouteFromOSRM(
         startLoc.lon, startLoc.lat,
         endLoc.lon, endLoc.lat,
-        isScenic
+        isScenic,
+        'fastest',
+        waypoints
     );
 
     // 3. Sample
@@ -45,7 +66,6 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     if (intervalMiles < 10) intervalMiles = 10; // Increased min interval from 5 to 10 miles
 
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
-
     // 4. Enrichments
     // Pre-calc values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
@@ -54,7 +74,7 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     const mins = minutes % 60;
     const durationVal = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
 
-    const [weatherData, roadConditions, recommendations] = await Promise.all([
+    const [weatherData, roadConditions, recommendations, incidents] = await Promise.all([
         // A. Weather
         (async () => {
             const totalDurationSeconds = routeData.duration || 0;
@@ -102,17 +122,35 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
                 let city = `Mile ${distMiles}`;
-                if (i === 0) city = startLoc.display_name.split(',')[0];
-                else if (i === weatherResults.length - 1) city = endLoc.display_name.split(',')[0];
+                let fullLocationForGas = city; // Full name with state for gas price lookup
+                if (i === 0) {
+                    city = cityFromDisplay(startLoc.display_name);
+                    fullLocationForGas = startLoc.display_name;
+                }
+                else if (i === weatherResults.length - 1) {
+                    city = cityFromDisplay(endLoc.display_name);
+                    fullLocationForGas = endLoc.display_name;
+                }
                 else {
                     // Try to get real name
                     try {
                         const realName = await reverseGeocode(w.lat, w.lng);
-                        if (realName) city = realName; // Keep full name (City, State)
+                        if (realName) {
+                            city = cityFromDisplay(realName);  // Display: just city
+                            fullLocationForGas = realName;      // Gas lookup: "City, State"
+                        }
                     } catch (e) {
                         console.warn(`Failed to geocode point ${i}: ${e.message}`);
                     }
                     console.log(`[DEBUG] Point ${i} (${w.lat}, ${w.lng}) -> ${city}`);
+                }
+
+                // Fetch real gas price for this location's state
+                let gasPrice = null;
+                try {
+                    gasPrice = await getGasPriceForLocation(fullLocationForGas);
+                } catch (e) {
+                    console.warn(`[GasPrice] Failed for ${city}: ${e.message}`);
                 }
 
                 return {
@@ -122,12 +160,12 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                     lng: w.lng,
                     distanceFromStart: distMiles,
                     eta: `ETA ${eta}`,
-                    gasPrice: (2.90 + Math.random() * 0.7).toFixed(2)
+                    gasPrice: gasPrice ? gasPrice.toFixed(2) : null
                 };
             });
 
             const finalResults = await Promise.all(finalResultsPromise);
-
+            console.log(`[TripProcessor] Weather data returned: ${finalResults.length} points with coords:`, finalResults.map(r => `${r.location}(${r.lat?.toFixed(3)},${r.lng?.toFixed(3)})`).join(' | '));
             return finalResults;
         })(),
 
@@ -195,12 +233,30 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 };
             });
             return getRecommendations(contextPoints);
+        })(),
+
+        // D. Traffic Incidents (accidents, closures, construction, jams)
+        (async () => {
+            try {
+                return await getIncidentsAlongRoute(fullCoordinates);
+            } catch (e) {
+                console.warn(`[Incidents] Failed: ${e.message}`);
+                return [];
+            }
         })()
     ]);
 
     // D. AI Analysis
-    const fuelCostStr = `$${(routeData.distance / 1609.34 * 0.15).toFixed(0)}`;
-    const evCostStr = `$${(routeData.distance / 1609.34 * 0.10).toFixed(0)}`;
+    // Calculate real fuel costs using actual gas prices from the route
+    const gasPrices = weatherData.map(w => w.gasPrice).filter(p => p && !isNaN(parseFloat(p)));
+    const avgGasPrice = gasPrices.length > 0 
+        ? gasPrices.reduce((sum, p) => sum + parseFloat(p), 0) / gasPrices.length 
+        : 3.20; // National avg fallback
+    
+    const fuelCosts = calculateFuelCosts(totalDistanceMiles, avgGasPrice);
+    const fuelCostStr = fuelCosts.gas;
+    const evCostStr = fuelCosts.ev;
+
     const uniqueCities = [...new Set(weatherData.map(w => w.location).filter(l => l && !l.includes("Mile")))];
     const cityList = uniqueCities.length > 2 ? [uniqueCities[0], uniqueCities[Math.floor(uniqueCities.length / 2)], uniqueCities[uniqueCities.length - 1]] : uniqueCities;
 
@@ -208,9 +264,20 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     const minTemp = temps.length ? Math.round((Math.min(...temps) * 9 / 5) + 32) : 0;
     const maxTemp = temps.length ? Math.round((Math.max(...temps) * 9 / 5) + 32) : 0;
 
-    const baselineSpeed = 50 + (Math.random() * 2 - 1);
-    const baseDurationMins = (routeData.distance * 0.000621371) / baselineSpeed * 60;
-    const trafficDelayMins = Math.max(0, Math.round((routeData.duration / 60) - baseDurationMins));
+    // Get REAL traffic delay from TomTom (or fallback to heuristic)
+    const trafficResult = await getRouteTrafficDelay(fullCoordinates, routeData.duration, routeData.distance);
+    const trafficDelayMins = trafficResult.delayMinutes;
+    console.log(`[TripProcessor] Traffic: ${trafficResult.isRealData ? 'TomTom' : 'Heuristic'} delay=${trafficDelayMins}min, level=${trafficResult.congestionLevel}`);
+
+    // Estimate toll costs (TollGuru if configured, else state-based heuristic)
+    // Build region hints from reverse-geocoded road segments + endpoints for state detection.
+    const tollRegionHints = [
+        startLoc.display_name,
+        ...roadConditions.map(rc => rc.segment),
+        endLoc.display_name
+    ].filter(Boolean);
+    const tollResult = await getTollEstimate(fullCoordinates, routeData.distance, tollRegionHints);
+    console.log(`[TripProcessor] Tolls: ${tollResult.source} total=${tollResult.display} (estimated=${tollResult.isEstimated})`);
 
     const maxWindKm = Math.max(...weatherData.map(w => w.windSpeed || 0), 0);
     const maxWind = Math.round(maxWindKm * 0.621371);
@@ -228,10 +295,19 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
         if (distinctStops.length >= 3) break;
     }
 
+    // Summarize incidents for AI context + scoring
+    const incidentCounts = incidents.reduce((acc, inc) => {
+        acc[inc.type] = (acc[inc.type] || 0) + 1;
+        return acc;
+    }, {});
+
     const aiContext = {
         fuelCost: fuelCostStr, evCost: evCostStr, cities: cityList,
         minTemp, maxTemp, trafficDelay: trafficDelayMins, maxWind, precipChance,
-        recommendations: distinctStops, roadConditions, departureDate, departureTime
+        recommendations: distinctStops, roadConditions, departureDate, departureTime,
+        tollCost: tollResult.total, tollDisplay: tollResult.display, tollEstimated: tollResult.isEstimated,
+        incidents, incidentCounts,
+        durationMinutes: minutes, distanceMiles: Number(totalDistanceMiles)
     };
 
     const aiAnalysis = generateTripAnalysis(startLoc.display_name, endLoc.display_name, weatherData, distanceVal, durationVal, roadConditions, aiContext);
@@ -282,13 +358,37 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
 
     return {
         route: routeData.geometry,
-        metrics: { distance: distanceVal, time: durationVal, fuel: fuelCostStr, ev: evCostStr },
+        metrics: {
+            distance: distanceVal,
+            time: durationVal,
+            fuel: fuelCostStr,
+            ev: evCostStr,
+            gasPricePerGallon: `$${avgGasPrice.toFixed(2)}/gal`,
+            trafficSource: trafficResult.isRealData ? 'TomTom' : 'estimated',
+            tollCost: tollResult.display,
+            tollEstimated: tollResult.isEstimated
+        },
         weather: weatherData,
         roadConditions,
         aiAnalysis,
         tripScore: safetyScore,
         departureInsights,
-        recommendations
+        recommendations,
+        traffic: {
+            delayMinutes: trafficDelayMins,
+            congestionLevel: trafficResult.congestionLevel,
+            segments: trafficResult.segments,
+            isRealData: trafficResult.isRealData
+        },
+        incidents,
+        tolls: {
+            total: tollResult.total,
+            currency: tollResult.currency,
+            display: tollResult.display,
+            breakdown: tollResult.breakdown,
+            isEstimated: tollResult.isEstimated,
+            source: tollResult.source
+        }
     };
 };
 

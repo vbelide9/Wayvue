@@ -1,27 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Navigation, ArrowRight, Camera, Zap } from 'lucide-react';
 import MapComponent from './components/MapComponent';
-import { getRoute } from './services/api';
-import { CombinedDateTimePicker } from './components/CustomDateTimePicker';
+import { getRoute, getRoutePreview } from './services/api';
+
 import { LoadingScreen } from './components/LoadingScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Lenis from 'lenis';
 
 // UI Components
-import { Button } from '@/components/ui/button';
-import { LocationInput } from '@/components/LocationInput';
-import { WeatherCard } from '@/components/WeatherCard';
 import { type RoadCondition } from '@/components/RoadConditionCard';
-import { EmptyState } from '@/components/EmptyState';
+
 import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
-import { CommunityIntel } from './components/CommunityIntel';
-import { CustomCursor } from './components/CustomCursor';
+
+import { PlannerCard } from './components/PlannerCard';
 
 export default function App() {
 
+  const containerRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
+    // Respect the OS "reduce motion" setting — skip smooth-scroll hijacking entirely,
+    // which is the biggest motion-sickness / accessibility offender.
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
     // Lenis Smooth Scroll Initialization - Godly Feel
     const lenis = new Lenis({
       duration: 1.5,
@@ -51,6 +56,7 @@ export default function App() {
   const [destination, setDestination] = useState("Buffalo, NY");
   const [startCoords, setStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
   const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
+  const [waypoints, setWaypoints] = useState<{ name: string; lat?: number; lng?: number }[]>([]);
 
   // Trip Data State
   const [route, setRoute] = useState<any>(null);
@@ -58,6 +64,7 @@ export default function App() {
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [returnWeatherData, setReturnWeatherData] = useState<any[]>([]); // New state for return leg weather
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -65,8 +72,10 @@ export default function App() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
-  const [departureTime, setDepartureTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
-
+  const [departureTime, setDepartureTime] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
   // Return Date/Time State
   const [returnDate, setReturnDate] = useState(() => {
     const d = new Date();
@@ -76,6 +85,7 @@ export default function App() {
   const [returnTime, setReturnTime] = useState('10:00');
 
   const [loading, setLoading] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false); // Phase 2 in progress: map shown, cards streaming in
   const [unit, setUnit] = useState<'C' | 'F'>('F');
 
   // Round Trip State
@@ -98,7 +108,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // View Mode State
-  const [viewMode, setViewMode] = useState<'planning' | 'trip'>('planning');
+  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip'>('landing');
 
   // Track Page View, Performance, Location, and Session
   useEffect(() => {
@@ -174,6 +184,7 @@ export default function App() {
     setMetrics(data.metrics);
     setWeatherData(data.weather || []);
     setRoadConditions(data.roadConditions || []);
+    setIncidents(data.incidents || []);
 
     // Merge AI Analysis with top-level insight fields if they exist there (likely structured differently in new backend)
     // In our new backend structure, 'aiAnalysis', 'tripScore', 'departureInsights' are inside the 'data' object.
@@ -336,6 +347,7 @@ export default function App() {
           if (initialData.metrics) setMetrics(initialData.metrics);
           setWeatherData(initialData.weather || []);
           setRoadConditions(initialData.roadConditions || []);
+          setIncidents(initialData.incidents || []);
           const fullAiAnalysis = {
             ...initialData.aiAnalysis,
             tripScore: initialData.tripScore,
@@ -348,6 +360,7 @@ export default function App() {
           // Usually keeping active leg is better for UX when toggling
         }
         setLoading(false);
+        setIsEnriching(false); // cached data is complete — no streaming needed
 
         // Track TTFI for cached switch
         const ttfi = Date.now() - searchStart;
@@ -366,12 +379,47 @@ export default function App() {
     });
 
     setLoading(true);
+    const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
+
+    // PHASE 1 — fast preview: render the map + basic metrics in ~3s, then enrich.
+    let resolvedStart = sCoords;
+    let resolvedEnd = dCoords;
+    try {
+      const preview = await getRoutePreview(s, d, sCoords, dCoords, prefToUse as 'fastest' | 'scenic', activeWaypoints);
+      if (preview && preview.route) {
+        resolvedStart = preview.startCoords || sCoords;
+        resolvedEnd = preview.endCoords || dCoords;
+
+        // Reset enrichment-dependent state and reveal the map immediately
+        setTripData(null);
+        setRoute(preview.route);
+        setMetrics({ distance: preview.metrics.distance, time: preview.metrics.time, fuel: '', ev: '' });
+        setWeatherData([]);
+        setReturnWeatherData([]);
+        setRoadConditions([]);
+        setIncidents([]);
+        setRecommendations([]);
+        setAiAnalysis(null);
+        setActiveLeg('outbound');
+        setViewMode('trip');
+        setLoading(false);      // dismiss the full-screen loader
+        setIsEnriching(true);   // trip view shows skeletons while phase 2 runs
+
+        if (searchStartTime) {
+          AnalyticsService.trackPerformance('time_to_map', Date.now() - searchStartTime, { preference: prefToUse });
+        }
+      }
+    } catch (previewErr) {
+      // Preview failed (e.g. geocoding) — fall through to the full call, which
+      // does its own geocoding + error handling and shows the loader.
+      console.warn('[App] Preview failed, falling back to full load:', previewErr);
+    }
+
+    // PHASE 2 — full enrichment (reuses resolved coords to skip re-geocoding)
     try {
       console.log('[App] handleRouteSubmit params:', { s, d, dateToUse, timeToUse, rtToUse, returnDateToUse, returnTimeToUse });
 
-      // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      // Pass isRoundTrip to API (assuming getRoute is updated or accepts extra params)
-      const response = await getRoute(s, d, sCoords, dCoords, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse);
+      const response = await getRoute(s, d, resolvedStart, resolvedEnd, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse, activeWaypoints);
       if (response) {
         setTripData(response);
 
@@ -399,6 +447,7 @@ export default function App() {
           if (initialData.metrics) setMetrics(initialData.metrics);
           setWeatherData(initialData.weather || []);
           setRoadConditions(initialData.roadConditions || []);
+          setIncidents(initialData.incidents || []);
 
           const fullAiAnalysis = {
             ...initialData.aiAnalysis,
@@ -456,6 +505,7 @@ export default function App() {
       }
     } finally {
       setLoading(false);
+      setIsEnriching(false); // stop skeletons once phase 2 resolves (success or failure)
     }
   };
 
@@ -469,264 +519,183 @@ export default function App() {
 
   // --- RENDER HELPERS ---
 
-  // 1. Planning View (Home)
+  // 1. Landing View (Light, minimal Homie-style hero)
+  const renderLandingView = () => (
+    <main ref={containerRef} className="relative w-full min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Warm ambient hero wash */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -right-32 w-[640px] h-[640px] rounded-full bg-primary/[0.07] blur-[130px]" />
+        <div className="absolute -bottom-48 -left-32 w-[560px] h-[560px] rounded-full bg-amber-300/[0.10] blur-[130px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,106,42,0.05),transparent_55%)]" />
+      </div>
+
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-6">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow">
+            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
+          </div>
+          <span className="text-xl font-display font-bold tracking-tight text-foreground">Wayvue</span>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+          <button
+            onClick={() => setViewMode('planning')}
+            className="rounded-full px-5 py-2.5 text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-orange-glow transition-all hover:-translate-y-0.5"
+          >
+            Start Planning
+          </button>
+        </motion.div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-28 pb-16">
+        {/* Loading Screen Overlay */}
+        {loading && <LoadingScreen />}
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+          className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10"
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-soft">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            Trip intelligence for the open road
+          </span>
+          <h1 className="font-display font-bold tracking-tight text-foreground text-5xl md:text-7xl leading-[0.95]">
+            Every mile,<br />
+            <span className="text-primary">planned to perfection.</span>
+          </h1>
+          <p className="mt-6 text-lg text-muted-foreground max-w-xl">
+            Weather, road conditions, tolls, stops and stays — Wayvue reads the whole
+            journey ahead so you can just drive.
+          </p>
+        </motion.div>
+
+        <PlannerCard
+          start={start}
+          destination={destination}
+          onStartChange={setStart}
+          onDestinationChange={setDestination}
+          onStartSelect={setStartCoords}
+          onDestSelect={setDestCoords}
+          waypoints={waypoints}
+          onWaypointsChange={setWaypoints}
+          departureDate={departureDate}
+          departureTime={departureTime}
+          onDepartureDateChange={setDepartureDate}
+          onDepartureTimeChange={setDepartureTime}
+          returnDate={returnDate}
+          returnTime={returnTime}
+          onReturnDateChange={setReturnDate}
+          onReturnTimeChange={setReturnTime}
+          isRoundTrip={isRoundTrip}
+          onRoundTripToggle={() => {
+            const newValue = !isRoundTrip;
+            setIsRoundTrip(newValue);
+            AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
+          }}
+          routePreference={outboundPref}
+          onPreferenceChange={(pref) => {
+            setOutboundPref(pref);
+            setReturnPref(pref);
+            AnalyticsService.trackClick(`pref_${pref}`);
+          }}
+          loading={loading}
+          onSubmit={() => handleRouteSubmit()}
+          error={error}
+        />
+      </section>
+    </main>
+  );
+
+  // 2. Planning View (Centered light search card)
   const renderPlanningView = () => (
-    <main className="flex flex-col min-h-screen bg-[#05050A] text-foreground font-sans relative selection:bg-primary/30 selection:text-white">
-      {/* Background Map (or similar visual if needed, currently reusing logic but simpler) */}
-      {/* For Planning Mode, we want the "Home Page" feel. The original code had Map + Sidebar + Bottom.
-           The user said "The home page is finalized... do NOT change the home page."
-           So I must preserve the EXACT structure for the 'planning' state.
-        */}
+    <main className="relative flex flex-col min-h-screen bg-background text-foreground font-sans overflow-hidden">
+      {/* Warm ambient wash */}
+      <div className="absolute inset-0 pointer-events-none -z-10">
+        <div className="absolute top-[10%] left-[12%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[120px]" />
+        <div className="absolute bottom-[8%] right-[16%] w-[420px] h-[420px] rounded-full bg-amber-300/[0.10] blur-[110px]" />
+      </div>
 
-      {/* --- ORIGINAL LAYOUT STRUCTURE (Preserved) --- */}
-      <div className="flex-1 flex overflow-hidden relative z-0">
-        {/* LEFT COLUMN: MAP & OVERLAYS */}
-        <div className="flex-1 lg:basis-[65%] flex flex-col relative min-w-0">
+      {/* Loading Screen Overlay */}
+      {loading && <LoadingScreen />}
 
-          {/* Loading Screen Overlay */}
-          {loading && <LoadingScreen />}
-
-          {/* Top Summary Ribbon (This contains the Inputs) */}
-          <div className="absolute top-4 left-4 right-4 z-[400] flex flex-col gap-2 pointer-events-none">
-            {/* 1. Dashboard Controls Row */}
-            <div className="relative z-[410] grid grid-cols-2 md:flex md:items-center gap-2 pointer-events-auto w-full px-2 sm:px-0">
-              {/* Brand / Logo */}
-              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg flex items-center gap-3 order-1 md:order-1 col-span-1 mr-auto md:mr-0">
-                <div className="bg-[#40513B] p-0 rounded-full shadow-md border border-white/5 backdrop-blur-sm overflow-hidden w-12 h-12 flex items-center justify-center shrink-0">
-                  <img src="/logo.svg" alt="Wayvue Logo" className="w-[85%] h-[85%] object-contain" />
-                </div>
-                <div className="block pr-2">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-bold tracking-tight leading-none text-foreground hidden sm:block">Wayvue</h1>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground font-medium hidden sm:block">Trip Intelligence</p>
-                </div>
-              </div>
-
-              {/* Inputs Bar */}
-              <div className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-2 sm:p-2 shadow-lg flex flex-col items-stretch gap-3 h-auto transition-all duration-300 ease-in-out relative order-3 md:order-2 col-span-2 w-full md:flex-1 md:max-w-5xl md:mx-auto">
-                {/* Error Message Toast/Banner */}
-                {error && (
-                  <div className="absolute top-full left-0 right-0 mt-2 z-[500]">
-                    <div className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in fade-in slide-in-from-top-2 text-center border border-destructive/50">
-                      {error}
-                    </div>
-                  </div>
-                )}
-
-                {/* Primary Row: Start -> End */}
-                <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
-                  <div className="flex-1 min-w-0">
-                    <LocationInput
-                      value={start}
-                      onChange={setStart}
-                      onSelect={setStartCoords}
-                      label="Start Location"
-                      variant="minimal"
-                      placeholder="Start"
-                      icon="start"
-                    />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0 hidden sm:block self-center" />
-                  <div className="flex-1 min-w-0">
-                    <LocationInput
-                      value={destination}
-                      onChange={setDestination}
-                      onSelect={setDestCoords}
-                      label="Destination Location"
-                      variant="minimal"
-                      placeholder="End"
-                      icon="destination"
-                    />
-                  </div>
-                </div>
-
-
-
-                {/* Secondary Row: Date/Time (Collapsible on Mobile could be nice, or just compact side-by-side) */}
-                {/* For now, keeping them visible but compact side-by-side on mobile to avoid extra clicks, but styled cleaner */}
-                {/* Secondary Row: Dates & Actions Consolidated */}
-                <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2 border-t border-border/50 pt-2 xl:pt-0">
-
-                  {/* Left: Date Pickers */}
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <CombinedDateTimePicker
-                      dateValue={departureDate}
-                      onDateChange={setDepartureDate}
-                      timeValue={departureTime}
-                      onTimeChange={setDepartureTime}
-                      minDate={new Date().toISOString().split('T')[0]}
-                      maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                    />
-
-                    {/* Return Date/Time (Always Visible) */}
-                    <div
-                      className={`transition-all duration-300 relative ${!isRoundTrip ? 'opacity-60 grayscale hover:opacity-80' : 'opacity-100'} `}
-                      onClick={() => {
-                        if (!isRoundTrip) {
-                          setIsRoundTrip(true);
-                          AnalyticsService.trackClick('add_return_date');
-                        }
-                      }}
-                    >
-                      {!isRoundTrip && (
-                        <div className="absolute inset-0 z-20 cursor-pointer" title="Click to Add Return" />
-                      )}
-
-                      <CombinedDateTimePicker
-                        dateValue={returnDate}
-                        onDateChange={(val) => {
-                          setReturnDate(val);
-                          if (!isRoundTrip) setIsRoundTrip(true);
-                        }}
-                        timeValue={returnTime}
-                        onTimeChange={(val) => {
-                          setReturnTime(val);
-                          if (!isRoundTrip) setIsRoundTrip(true);
-                        }}
-                        minDate={departureDate}
-                        maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                        label={isRoundTrip ? "Return" : "Add Return"}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Divider (Desktop) */}
-                  <div className="w-px h-8 bg-border hidden xl:block mx-1" />
-
-                  {/* Right: Actions (Trip Type, Prefs, Go) */}
-                  <div className="flex items-center gap-2 justify-end">
-
-                    {/* Trip Type Toggle (Compact) */}
-                    <div
-                      onClick={() => {
-                        const newValue = !isRoundTrip;
-                        setIsRoundTrip(newValue);
-                        AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
-                      }}
-                      className={`
-                            cursor-pointer flex items-center justify-center h-9 px-3 rounded-lg border transition-all select-none
-                            ${isRoundTrip
-                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500'
-                          : 'bg-card border-border text-muted-foreground hover:bg-secondary/50'}
-                        `}
-                      title="Toggle Round Trip"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 transition-transform ${isRoundTrip ? 'rotate-180' : ''}`} />
-                      <span className="text-[11px] font-bold uppercase tracking-wider">
-                        {isRoundTrip ? 'Round Trip' : 'One Way'}
-                      </span>
-                    </div>
-
-                    {/* Route Preference (Icons) */}
-                    <div className="flex bg-card border border-border rounded-lg p-0.5 h-9">
-                      <button
-                        onClick={() => {
-                          setOutboundPref('fastest');
-                          setReturnPref('fastest');
-                          AnalyticsService.trackClick('pref_fastest');
-                        }}
-                        title="Fastest Route"
-                        className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'fastest' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setOutboundPref('scenic');
-                          setReturnPref('scenic');
-                          AnalyticsService.trackClick('pref_scenic');
-                        }}
-                        title="Scenic Route"
-                        className={`px-3 rounded-md flex items-center justify-center transition-all ${outboundPref === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <Button
-                      onClick={() => handleRouteSubmit()}
-                      disabled={loading}
-                      className="h-9 px-6 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-bold tracking-wide transition-all hover:scale-105 active:scale-95"
-                    >
-                      {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-2" /> : <Navigation className="w-3.5 h-3.5 mr-2" />}
-                      <span>{loading ? 'Planning...' : 'Go'}</span>
-                    </Button>
-                  </div>
-                </div>
-
-              </div>
-
-
-            </div>
+      {/* Top Nav Bar */}
+      <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
+        <button onClick={() => setViewMode('landing')} className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow shrink-0">
+            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
           </div>
-
-          {/* Map Component (Planning Mode - usually just start/end markers if set, or empty) */}
-          <div className="flex-1 relative z-0">
-            {/* Empty State Overlay */}
-            {!route && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-md">
-                <EmptyState />
-              </div>
-            )}
-
-            <MapComponent
-              routeGeoJSON={route}
-              weatherData={weatherData}
-              unit={unit}
-              selectedLocation={selectedLocation}
-            />
-
-            {/* Map Corner Overlays (Weather) - Stacked on Right */}
-            {weatherData.length > 0 && (
-              <div className="absolute top-36 right-4 z-[400] pointer-events-none flex flex-col gap-4">
-                <WeatherCard
-                  variant="overlay"
-                  unit={unit}
-                  weather={{
-                    location: start,
-                    condition: "clear", // TODO: Real data
-                    temperature: weatherData[0]?.temperature,
-                    humidity: weatherData[0]?.humidity,
-                    windSpeed: weatherData[0]?.windSpeed
-                  }}
-                />
-                <WeatherCard
-                  variant="overlay"
-                  unit={unit}
-                  weather={{
-                    location: destination,
-                    condition: "cloudy",
-                    temperature: weatherData[weatherData.length - 1]?.temperature,
-                    humidity: weatherData[weatherData.length - 1]?.humidity,
-                    windSpeed: weatherData[weatherData.length - 1]?.windSpeed
-                  }}
-                />
-              </div>
-            )}
+          <div className="text-left">
+            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
+            <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
           </div>
-        </div>
+        </button>
+      </nav>
 
-        {/* RIGHT COLUMN: SIDEBAR */}
-        <div className="hidden lg:flex lg:basis-[35%] w-full max-w-md border-l border-border bg-card shadow-2xl z-[500] flex-col h-full overflow-hidden">
-          <CommunityIntel />
-        </div>
+      {/* Centered Card */}
+      <div className="flex-1 flex items-center justify-center px-4 pb-16 relative z-10">
+        <PlannerCard
+          start={start}
+          destination={destination}
+          onStartChange={setStart}
+          onDestinationChange={setDestination}
+          onStartSelect={setStartCoords}
+          onDestSelect={setDestCoords}
+          waypoints={waypoints}
+          onWaypointsChange={setWaypoints}
+          departureDate={departureDate}
+          departureTime={departureTime}
+          onDepartureDateChange={setDepartureDate}
+          onDepartureTimeChange={setDepartureTime}
+          returnDate={returnDate}
+          returnTime={returnTime}
+          onReturnDateChange={setReturnDate}
+          onReturnTimeChange={setReturnTime}
+          isRoundTrip={isRoundTrip}
+          onRoundTripToggle={() => {
+            const newValue = !isRoundTrip;
+            setIsRoundTrip(newValue);
+            AnalyticsService.trackClick('toggle_trip_type', { value: newValue ? 'round_trip' : 'one_way' });
+          }}
+          routePreference={outboundPref}
+          onPreferenceChange={(pref) => {
+            setOutboundPref(pref);
+            setReturnPref(pref);
+            AnalyticsService.trackClick(`pref_${pref}`);
+          }}
+          loading={loading}
+          onSubmit={() => handleRouteSubmit()}
+          error={error}
+        />
       </div>
     </main>
   );
 
   return (
     <>
-      <CustomCursor />
       <AnimatePresence mode="wait">
-        {viewMode === 'planning' ? (
+        {viewMode === 'landing' ? (
+          <motion.div
+            key="landing-view"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
+            className="h-screen w-full relative"
+          >
+            {renderLandingView()}
+          </motion.div>
+        ) : viewMode === 'planning' ? (
           <motion.div
             key="planning-view"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
-            className="h-screen w-full relative"
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
+            className="min-h-screen w-full relative bg-background"
           >
             {renderPlanningView()}
           </motion.div>
@@ -736,17 +705,19 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
-            className="min-h-screen w-full relative bg-[#05050A]"
+            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
+            className="min-h-screen w-full relative bg-background"
           >
             <ErrorBoundary>
               <TripViewLayout
                 isLoading={loading}
+                isEnriching={isEnriching}
                 start={start}
                 destination={destination}
                 metrics={metrics}
                 tripScore={aiAnalysis?.tripScore}
                 roadConditions={roadConditions}
+                incidents={incidents}
                 weatherData={weatherData}
 
                 aiAnalysis={aiAnalysis}
@@ -808,13 +779,16 @@ export default function App() {
                 rawReturnDate={returnDate}
                 rawReturnTime={returnTime}
 
-                map={
+                map={(activeTab) => (
                   <MapComponent
                     routeGeoJSON={tripData?.outbound?.route || route}
                     returnRouteGeoJSON={tripData?.return?.route} // Pass return route
                     weatherData={weatherData}
                     returnWeatherData={returnWeatherData} // Pass return weather
+                    incidents={incidents}
+                    waypoints={waypoints}
                     unit={unit}
+                    activeTab={activeTab}
                     selectedLocation={selectedLocation}
                     activeLeg={activeLeg}
                     alternativeRouteGeoJSON={(() => {
@@ -830,7 +804,7 @@ export default function App() {
                       return null;
                     })()}
                   />
-                }
+                )}
               />
             </ErrorBoundary>
           </motion.div>

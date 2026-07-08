@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
             return (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background text-red-500 p-8 flex-col gap-4">
                     <h1 className="text-2xl font-bold">Something went wrong.</h1>
-                    <pre className="bg-black/10 p-4 rounded text-sm overflow-auto max-w-full">
+                    <pre className="bg-secondary p-4 rounded text-sm overflow-auto max-w-full">
                         {this.state.error?.toString()}
                     </pre>
                     <button

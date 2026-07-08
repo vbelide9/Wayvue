@@ -1,5 +1,5 @@
 import { CombinedDateTimePicker } from '../../components/CustomDateTimePicker';
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check, CircleDollarSign, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -12,6 +12,8 @@ interface TripHeaderProps {
         time: string;
         fuel: string;
         ev: string;
+        tollCost?: string;
+        tollEstimated?: boolean;
     };
     tripScore?: {
         score: number;
@@ -152,13 +154,14 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     };
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-md border-b border-border z-50 relative gap-3 md:gap-4" ref={containerRef}>
+        <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border border-border rounded-3xl shadow-soft z-50 relative gap-3 md:gap-4 mx-4" ref={containerRef}>
 
             {/* Left: Back & Route */}
             <div className="flex items-center gap-3 min-w-0 justify-start">
                 <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Back to trip planning"
                     className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
                     onClick={onBack}
                 >
@@ -315,9 +318,10 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         )}
                     </div>
 
-                    {/* Date/Time Picker - Always visible, context aware */}
-                    <div className="h-8 flex items-center gap-2">
+                    {/* Date/Time Picker - Always visible, context aware (compact inline) */}
+                    <div className="flex items-center gap-2">
                         <CombinedDateTimePicker
+                            compact
                             label={isReturnContext ? "Return" : "Leave"}
                             dateValue={activeDate}
                             onDateChange={handleDateChange}
@@ -325,7 +329,6 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                             onTimeChange={handleTimeChange}
                             minDate={new Date().toISOString().split('T')[0]}
                             maxDate={new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                            className="scale-90 origin-left"
                         />
                         {/* Manual Update Button for Return Leg Changes */}
                         {isReturnContext && (editReturnDate !== rawReturnDate || editReturnTime !== rawReturnTime || /* Initial State Check: If rawReturnDate is undefined (one-way), but we are in return context, we need to show update */ (!rawReturnDate && isRoundTrip)) && (
@@ -344,6 +347,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         <button
                             onClick={() => togglePreference('fastest')}
                             title="Fastest Route"
+                            aria-label="Fastest route"
+                            aria-pressed={localPreference === 'fastest'}
                             className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'fastest' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                         >
                             <Zap className="w-3 h-3" />
@@ -351,6 +356,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         <button
                             onClick={() => togglePreference('scenic')}
                             title="Scenic Route"
+                            aria-label="Scenic route"
+                            aria-pressed={localPreference === 'scenic'}
                             className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                         >
                             <Camera className="w-3 h-3" />
@@ -382,12 +389,12 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
 
             {/* Right: Metrics Chips & Actions */}
             <div className="flex items-center justify-end min-w-0">
-                {/* Scrollable Container with Fade Mask */}
-                <div className="relative flex justify-end min-w-0 mask-linear-fade">
-                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 pl-4 pr-1">
+                {/* Metric chips — wrap on small screens instead of hiding behind a scroll fade */}
+                <div className="relative flex justify-start md:justify-end min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 py-1 md:pl-4 pr-1 justify-start md:justify-end">
 
-                        {/* Metric: Time, Distance, Fuel, EV */}
-                        <div className="flex items-center gap-3 px-3 py-2 bg-secondary/50 rounded-full border border-border/50 shrink-0">
+                        {/* Metric: Time, Distance, Fuel, EV — wraps internally on small screens */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 bg-secondary/50 rounded-2xl sm:rounded-full border border-border/50">
                             <div className="flex items-center gap-1.5">
                                 <Clock className="w-3.5 h-3.5 text-blue-500" />
                                 <span className="text-xs font-bold whitespace-nowrap">{metrics.time}</span>
@@ -401,7 +408,7 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                             {/* Fuel Price */}
                             {metrics.fuel && metrics.fuel !== "0 gal" && (
                                 <>
-                                    <div className="w-px h-3 bg-border" />
+                                    <div className="hidden sm:block w-px h-3 bg-border" />
                                     <div className="flex items-center gap-1.5">
                                         <Fuel className="w-3.5 h-3.5 text-orange-500" />
                                         <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.fuel}</span>
@@ -412,10 +419,38 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                             {/* EV Price */}
                             {metrics.ev && metrics.ev !== "$0" && (
                                 <>
-                                    <div className="w-px h-3 bg-border" />
+                                    <div className="hidden sm:block w-px h-3 bg-border" />
                                     <div className="flex items-center gap-1.5">
                                         <Zap className="w-3.5 h-3.5 text-yellow-500" />
                                         <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.ev}</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Toll Cost */}
+                            {metrics.tollCost && metrics.tollCost !== "$0" && (
+                                <>
+                                    <div className="hidden sm:block w-px h-3 bg-border" />
+                                    <div className="flex items-center gap-1.5">
+                                        <CircleDollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                                            {metrics.tollCost}{metrics.tollEstimated ? ' est.' : ''}
+                                        </span>
+                                        {metrics.tollEstimated && (
+                                            <span className="relative group/toll inline-flex">
+                                                <Info
+                                                    className="w-3 h-3 text-muted-foreground/60 cursor-help outline-none"
+                                                    tabIndex={0}
+                                                    aria-label="How tolls are estimated"
+                                                />
+                                                <span
+                                                    role="tooltip"
+                                                    className="pointer-events-none absolute top-full right-0 mt-2 w-56 opacity-0 group-hover/toll:opacity-100 group-focus-within/toll:opacity-100 transition-opacity duration-200 bg-black/90 text-white text-[10px] leading-relaxed rounded-lg p-2.5 border border-white/10 shadow-xl z-[100] normal-case font-normal tracking-normal"
+                                                >
+                                                    Estimated from typical toll rates for the states your route passes through. Add a toll-pricing API key for exact, live tolls.
+                                                </span>
+                                            </span>
+                                        )}
                                     </div>
                                 </>
                             )}

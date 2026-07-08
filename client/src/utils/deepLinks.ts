@@ -150,3 +150,63 @@ export const generateRentalLinks = (params: DeepLinkParams) => {
         expedia: getExpediaLink(params)
     };
 };
+
+// ---------------------------------------------------------------------------
+// Hotel / Lodging Deep Links (session-less, no API key required)
+// ---------------------------------------------------------------------------
+
+export interface HotelLinkParams {
+    city: string;        // Destination city (e.g. "Buffalo, NY")
+    checkIn: string;     // YYYY-MM-DD
+    checkOut: string;    // YYYY-MM-DD
+    guests?: number;     // Number of adults
+}
+
+/**
+ * Generates a Booking.com search deep link.
+ * Format: https://www.booking.com/searchresults.html?ss=<City>&checkin=<Date>&checkout=<Date>&group_adults=<N>
+ */
+export const getBookingLink = (params: HotelLinkParams): string => {
+    try {
+        const { city, checkIn, checkOut, guests } = params;
+        const url = new URL("https://www.booking.com/searchresults.html");
+        url.searchParams.append("ss", city);
+        if (checkIn) url.searchParams.append("checkin", checkIn);
+        if (checkOut) url.searchParams.append("checkout", checkOut);
+        url.searchParams.append("group_adults", String(guests && guests > 0 ? guests : 2));
+        url.searchParams.append("no_rooms", "1");
+        return url.toString();
+    } catch (e) {
+        console.error("Error generating Booking.com link", e);
+        return "https://www.booking.com";
+    }
+};
+
+/**
+ * Generates a Kayak Hotels search deep link.
+ * Format: https://www.kayak.com/hotels/<City>/<CheckIn>/<CheckOut>/<N>adults
+ */
+export const getKayakHotelLink = (params: HotelLinkParams): string => {
+    try {
+        const { city, checkIn, checkOut, guests } = params;
+        const cityPart = encodeURIComponent(city);
+        const adults = guests && guests > 0 ? guests : 2;
+        if (checkIn && checkOut) {
+            return `https://www.kayak.com/hotels/${cityPart}/${checkIn}/${checkOut}/${adults}adults?sort=price_a`;
+        }
+        return `https://www.kayak.com/hotels/${cityPart}`;
+    } catch (e) {
+        console.error("Error generating Kayak Hotels link", e);
+        return "https://www.kayak.com/hotels";
+    }
+};
+
+/**
+ * Returns hotel booking links for all supported providers.
+ */
+export const generateHotelLinks = (params: HotelLinkParams) => {
+    return {
+        booking: getBookingLink(params),
+        kayak: getKayakHotelLink(params)
+    };
+};

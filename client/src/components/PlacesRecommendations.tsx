@@ -47,13 +47,13 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0f]/80 backdrop-blur-3xl border border-white/[0.05] rounded-3xl p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.8)] relative overflow-hidden group/container">
+        <div className="flex flex-col h-full bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-soft relative overflow-hidden group/container">
             {/* Ambient background glow */}
             <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none opacity-50 group-hover/container:opacity-80 transition-opacity duration-1000" />
 
             {/* Header & Filters */}
-            <div className="flex flex-col gap-5 py-2 shrink-0 border-b border-white/5 pb-6 mb-4 relative z-10">
-                <h3 className="text-xs font-black text-white/90 uppercase tracking-[0.2em] flex items-center gap-3 px-1">
+            <div className="flex flex-col gap-5 py-2 shrink-0 border-b border-border pb-6 mb-4 relative z-10">
+                <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3 px-1">
                     <div className="p-1.5 bg-primary/20 rounded-lg border border-primary/30">
                         <MapPin className="w-4 h-4 text-primary drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
                     </div>
@@ -70,7 +70,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                 relative flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 flex-none snap-start overflow-hidden outline-none
                                 ${activeCategory === cat.id
                                     ? "text-primary shadow-[0_0_20px_rgba(59,130,246,0.2)]"
-                                    : "bg-[#FFFFFF]/[0.02] border border-white/5 text-muted-foreground hover:border-primary/40 hover:text-white"
+                                    : "bg-secondary/50 border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                                 }
                             `}
                         >
@@ -116,23 +116,23 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                     transition={{ duration: 0.8, delay: i * 0.05, ease: [0.76, 0, 0.24, 1] }}
                                     key={place.id}
                                     onClick={() => setSelectedPlace(place)}
-                                    className={`w-full bg-[#FFFFFF]/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-2xl p-5 transition-all duration-300 cursor-pointer group relative overflow-hidden flex items-start gap-4 shadow-sm hover:bg-[#FFFFFF]/[0.05] hover:border-primary/40 hover:-translate-y-1 ${ringClass}`}
+                                    className={`w-full bg-secondary/50 backdrop-blur-3xl border border-border rounded-2xl p-5 transition-all duration-300 cursor-pointer group relative overflow-hidden flex items-start gap-4 shadow-sm hover:bg-secondary hover:border-primary/40 hover:-translate-y-1 ${ringClass}`}
                                 >
                                     {/* Subtle hover glow background */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                                     {/* Icon Box */}
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${bgClass} border border-white/10 shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500 relative z-10`}>
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${bgClass} border border-border shadow-none group-hover:scale-110 transition-transform duration-500 relative z-10`}>
                                         {getIcon(place.type, "w-6 h-6 drop-shadow-md")}
                                     </div>
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0 pr-8 relative z-10">
-                                        <h4 className="font-bold text-lg text-white leading-tight group-hover:text-primary transition-colors truncate mb-2 tracking-tight">
+                                        <h4 className="font-bold text-lg text-foreground leading-tight group-hover:text-primary transition-colors truncate mb-2 tracking-tight">
                                             {place.title}
                                         </h4>
-                                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium bg-black/30 w-fit px-3 py-1.5 rounded-full border border-white/5">
-                                            <span className="text-white/80">{place.location}</span>
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium bg-secondary/70 w-fit px-3 py-1.5 rounded-full border border-border">
+                                            <span className="text-foreground/80">{place.location}</span>
                                             <span className="w-1 h-1 rounded-full bg-border" />
                                             <span className="text-primary font-bold">37 mi</span>
                                         </div>
@@ -157,7 +157,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="w-full h-40 flex flex-col items-center justify-center text-center opacity-70 bg-secondary/10 rounded-2xl border border-dashed border-white/10 mt-4"
+                            className="w-full h-40 flex flex-col items-center justify-center text-center opacity-70 bg-secondary/10 rounded-2xl border border-dashed border-border mt-4"
                         >
                             <Filter className="w-8 h-8 mb-3 text-muted-foreground" />
                             <p className="text-sm font-medium text-muted-foreground">No stops found in this category</p>
@@ -180,7 +180,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             initial={{ scale: 0.95, y: 20, opacity: 0 }}
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                            className="bg-card/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-sm w-full overflow-hidden"
+                            className="bg-card/90 backdrop-blur-2xl border border-border rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-sm w-full overflow-hidden"
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="h-40 bg-gradient-to-br from-primary/20 via-background to-background flex items-center justify-center relative border-b border-border/50">
@@ -188,7 +188,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                 {getIcon(selectedPlace.type, "w-16 h-16 relative z-10 drop-shadow-2xl")}
                                 <button
                                     onClick={() => setSelectedPlace(null)}
-                                    className="absolute top-4 right-4 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all backdrop-blur-xl border border-white/10"
+                                    className="absolute top-4 right-4 p-2 rounded-full bg-black/40 hover:bg-black/60 text-foreground transition-all backdrop-blur-xl border border-border"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -206,11 +206,11 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-foreground/80 leading-relaxed mb-8 bg-black/20 p-5 rounded-2xl border border-white/5 shadow-inner">
+                                <p className="text-sm text-foreground/80 leading-relaxed mb-8 bg-secondary/60 p-5 rounded-2xl border border-border shadow-inner">
                                     {selectedPlace.description}
                                 </p>
 
-                                <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+                                <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route
                                 </button>
                             </div>

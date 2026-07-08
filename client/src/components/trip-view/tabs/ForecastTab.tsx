@@ -16,7 +16,7 @@ export function ForecastTab({ weatherData, unit }: ForecastTabProps) {
     }
 
     return (
-        <div className="h-full flex flex-col p-4 overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col p-4">
             <h3 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wider py-2 border-b border-border/50">
                 Weather Context
             </h3>

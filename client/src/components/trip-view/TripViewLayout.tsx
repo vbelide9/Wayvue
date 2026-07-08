@@ -1,5 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TripHeader } from './TripHeader';
+import { VerdictBar } from './VerdictBar';
 import { type RoadCondition } from '@/components/RoadConditionCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { OverviewTab } from './tabs/OverviewTab';
@@ -7,16 +9,20 @@ import { ForecastTab } from './tabs/ForecastTab';
 import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
+import { StayTab } from './tabs/StayTab';
 import { TopCategoryNav } from '../TopCategoryNav';
-import { ThreeGlobeBackground } from '../ThreeGlobeBackground';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
 
 interface TripViewLayoutProps {
     isLoading?: boolean;
+    isEnriching?: boolean;
     start: string;
     destination: string;
-    metrics: { distance: string; time: string; fuel: string; ev: string; };
+    metrics: { distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean; };
     tripScore?: { score: number; label: string; };
     roadConditions: RoadCondition[];
+    incidents?: any[];
     weatherData: any[];
     aiAnalysis: any;
     recommendations: any[];
@@ -36,16 +42,36 @@ interface TripViewLayoutProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     isRoundTrip?: boolean;
-    map: React.ReactNode;
+    map: (activeTab: string) => React.ReactNode;
+}
+
+// Streaming placeholders shown while phase-2 enrichment is in flight
+function CardSkeleton({ rows = 3 }: { rows?: number }) {
+    const widths = ['w-11/12', 'w-4/5', 'w-3/4', 'w-5/6'];
+    return (
+        <div className="p-6 md:p-8 space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            {Array.from({ length: rows }).map((_, i) => (
+                <Skeleton key={i} className={`h-4 ${widths[i % widths.length]}`} />
+            ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-2xl" />
+                ))}
+            </div>
+        </div>
+    );
 }
 
 export function TripViewLayout({
     isLoading,
+    isEnriching,
     start,
     destination,
     metrics,
     tripScore,
     roadConditions,
+    incidents,
     weatherData,
     aiAnalysis,
     recommendations,
@@ -66,67 +92,86 @@ export function TripViewLayout({
     isRoundTrip,
     rawReturnDate,
 }: TripViewLayoutProps) {
-    const [activeSection, setActiveSection] = useState('experiences');
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [activeTab, setActiveTab] = useState('overview');
 
-    // Provide scroll spy functionality
-    useEffect(() => {
-        const handleScroll = () => {
-            if (!scrollContainerRef.current) return;
-            const sections = ['hotels', 'rentals', 'experiences', 'destinations'];
-            let current = 'experiences'; // default top visible initially below hero
+    // Reset scroll to top on mount
+    useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
-            for (const section of sections) {
-                const element = document.getElementById(section);
-                if (element) {
-                    const rect = element.getBoundingClientRect();
-                    // If the top of the section is near the top of the viewport
-                    if (rect.top <= 300) {
-                        current = section;
-                    }
-                }
-            }
-            setActiveSection(current);
-        };
+    const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
-        const container = scrollContainerRef.current;
-        if (container) {
-            container.addEventListener('scroll', handleScroll);
-        }
-        return () => {
-            if (container) container.removeEventListener('scroll', handleScroll);
-        };
-    }, []);
+    const TABS: { id: string; title: string; subtitle: string }[] = [
+        { id: 'overview', title: 'Overview', subtitle: 'AI journey confidence and insights' },
+        { id: 'weather', title: 'Weather forecast', subtitle: 'Local forecasts along your route' },
+        { id: 'stops', title: 'Stops', subtitle: 'Dining, fuel, and rest stops along the way' },
+        { id: 'road', title: 'Road conditions', subtitle: 'Live alerts and driving logistics' },
+        { id: 'rentals', title: 'Rental vehicles', subtitle: 'Smart vehicle matches for your trip' },
+        { id: 'stay', title: 'Hotels', subtitle: 'Overnight stays matched to your route' },
+    ];
+    const active = TABS.find(t => t.id === activeTab) || TABS[0];
 
-    const scrollToSection = (id: string) => {
-        const element = document.getElementById(id);
-        if (element && scrollContainerRef.current) {
-            const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-            const elementTop = element.getBoundingClientRect().top;
-            const offset = elementTop - containerTop + scrollContainerRef.current.scrollTop - 100; // 100px fixed offset for floating nav
-
-            scrollContainerRef.current.scrollTo({
-                top: offset,
-                behavior: 'smooth'
-            });
-            setActiveSection(id);
+    const renderPanel = () => {
+        switch (activeTab) {
+            case 'weather':
+                return isEnriching && weatherData.length === 0
+                    ? <CardSkeleton rows={2} />
+                    : <ForecastTab weatherData={weatherData} unit={unit} />;
+            case 'stops':
+                return isEnriching && recommendations.length === 0
+                    ? <CardSkeleton rows={2} />
+                    : <StopsTab recommendations={recommendations} />;
+            case 'road':
+                return isEnriching && roadConditions.length === 0 && (!incidents || incidents.length === 0)
+                    ? <CardSkeleton rows={2} />
+                    : <RoadTab
+                        roadConditions={roadConditions}
+                        incidents={incidents}
+                        onSegmentSelect={(condition) => { if (condition.location) onSegmentSelect(condition.location.lat, condition.location.lon); }}
+                        onIncidentSelect={(incident) => { if (incident.location) onSegmentSelect(incident.location.lat, incident.location.lng); }}
+                    />;
+            case 'rentals':
+                return <RentalTab
+                    metrics={metrics}
+                    weatherData={weatherData}
+                    start={start}
+                    destination={destination}
+                    depDate={depDate}
+                    returnDate={rawReturnDate || returnDate}
+                    depTime={depTime}
+                    returnTime={rawReturnTime}
+                />;
+            case 'stay':
+                return <StayTab
+                    metrics={metrics}
+                    start={start}
+                    destination={destination}
+                    depDate={depDate}
+                    returnDate={rawReturnDate || returnDate}
+                />;
+            case 'overview':
+            default:
+                return isEnriching && !aiAnalysis
+                    ? <CardSkeleton rows={2} />
+                    : <OverviewTab
+                        tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
+                        aiAnalysis={aiAnalysis}
+                        metrics={metrics}
+                        alertCount={alertCount}
+                    />;
         }
     };
 
-    const alertCount = roadConditions.filter(c => c.status !== 'good').length;
-
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans relative">
+        <div className="min-h-screen overflow-x-hidden bg-background text-foreground font-sans relative">
             {isLoading && <LoadingScreen title="Updating your journey" />}
 
-            {/* Main scrollable container */}
-            <div ref={scrollContainerRef} className={`flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
+            <div className={`relative ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
 
-                {/* 1. Hero Section */}
-                <div className="relative min-h-[70vh] flex flex-col items-center pt-12 pb-32 w-full">
-                    <ThreeGlobeBackground />
-
-                    {/* Header Controls */}
+                {/* 1. Header toolbar */}
+                <div className="relative pt-8 pb-4 w-full">
+                    <div className="absolute inset-0 pointer-events-none z-[1]">
+                        <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[150px]" />
+                        <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-amber-300/[0.10] blur-[130px]" />
+                    </div>
                     <div className="w-full relative z-20">
                         <TripHeader
                             start={start}
@@ -149,93 +194,61 @@ export function TripViewLayout({
                             onSetRoundTrip={onSetRoundTrip}
                         />
                     </div>
-
-                    {/* Premium Glass Map Container */}
-                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 mt-8 h-[40vh] md:h-[50vh]">
-                        <div className="w-full h-full rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-card/40 backdrop-blur-xl">
-                            {map}
-                        </div>
-                    </div>
                 </div>
 
-                {/* 2. Top-Center Floating Category Navigation */}
-                <div className="sticky top-4 z-[500] pointer-events-none w-full flex justify-center mt-[-2rem] mb-8">
+                {/* 2. Answer-first verdict */}
+                <div className="relative z-10">
+                    <VerdictBar tripScore={tripScore} aiAnalysis={aiAnalysis} metrics={metrics} alertCount={alertCount} isEnriching={isEnriching} />
+                </div>
+
+                {/* 3. Tabs */}
+                <div className="sticky top-4 z-[500] pointer-events-none w-full flex justify-center mb-6">
                     <div className="pointer-events-auto shadow-2xl rounded-full">
-                        <TopCategoryNav activeSection={activeSection} onNavigate={scrollToSection} />
+                        <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
                     </div>
                 </div>
 
-                {/* 3. Vertical Sections Container */}
-                <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-64 flex flex-col gap-40 relative z-10">
-
-                    {/* Experiences Section (AI Insights & Weather) */}
-                    <section id="experiences" className="scroll-mt-32">
-                        <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Experiences & Insights</h2>
-                            <p className="text-muted-foreground mt-2">AI-powered journey confidence and local forecasts</p>
+                {isEnriching && (
+                    <div className="w-full flex justify-center mb-6 px-4" role="status" aria-live="polite">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-medium backdrop-blur-md">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Gathering live weather, traffic &amp; insights…
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <OverviewTab
-                                    tripScore={aiAnalysis?.tripScore?.score ?? aiAnalysis?.tripScore ?? 0}
-                                    aiAnalysis={aiAnalysis}
-                                />
+                    </div>
+                )}
+
+                {/* 4. Master-detail: persistent map + single active panel */}
+                <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-20 relative z-10 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-8 lg:items-start">
+
+                    {/* Map — the spatial anchor, sticky on desktop, reacts to active tab */}
+                    <div className="mb-6 lg:mb-0 lg:sticky lg:top-24 h-[40vh] lg:h-[calc(100vh-8rem)]">
+                        <div className="w-full h-full glass-surface overflow-hidden">
+                            {map(activeTab)}
+                        </div>
+                    </div>
+
+                    {/* Active panel */}
+                    <div className="lg:min-h-[calc(100vh-8rem)]">
+                        <div className="mb-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
+                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">{active.title}</h2>
                             </div>
-                            <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                                <ForecastTab weatherData={weatherData} unit={unit} />
-                            </div>
+                            <p className="text-muted-foreground ml-[19px]">{active.subtitle}</p>
                         </div>
-                    </section>
-
-                    {/* Rental Cars Section */}
-                    <section id="rentals" className="scroll-mt-32">
-                        <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Rental Cars</h2>
-                            <p className="text-muted-foreground mt-2">Smart vehicle recommendations for your trip profile</p>
-                        </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-4 md:p-8">
-                            <RentalTab
-                                metrics={metrics}
-                                weatherData={weatherData}
-                                start={start}
-                                destination={destination}
-                                depDate={depDate}
-                                returnDate={rawReturnDate || returnDate}
-                                depTime={depTime}
-                                returnTime={rawReturnTime}
-                            />
-                        </div>
-                    </section>
-
-                    {/* Hotels & Stops Section */}
-                    <section id="hotels" className="scroll-mt-32">
-                        <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Hotels & Places</h2>
-                            <p className="text-muted-foreground mt-2">Recommended stops, dining, and accommodations along the route</p>
-                        </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl min-h-[400px]">
-                            <StopsTab recommendations={recommendations} />
-                        </div>
-                    </section>
-
-                    {/* Destinations & Road Info Section */}
-                    <section id="destinations" className="scroll-mt-32">
-                        <div className="mb-8">
-                            <h2 className="text-4xl font-display font-medium text-foreground">Route & Road Conditions</h2>
-                            <p className="text-muted-foreground mt-2">Alerts and driving logistics for your destination</p>
-                        </div>
-                        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                            <RoadTab
-                                roadConditions={roadConditions}
-                                onSegmentSelect={(condition) => {
-                                    if (condition.location) {
-                                        onSegmentSelect(condition.location.lat, condition.location.lon);
-                                    }
-                                }}
-                            />
-                        </div>
-                    </section>
-
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
+                                className="glass-surface overflow-hidden"
+                            >
+                                {renderPanel()}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>

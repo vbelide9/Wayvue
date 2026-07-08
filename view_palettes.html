@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palette Review</title>
+    <style>
+        body {
+            background-color: #111;
+            color: white;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 40px;
+            text-align: center;
+        }
+        h1 { margin-bottom: 40px; }
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+        .palette-container {
+            background: #222;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h2 { margin-top: 0; }
+        .swatches {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .swatch {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .preview {
+            width: 100%;
+            height: 200px;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <h1>Palette Selection Review</h1>
+    <p>Review the colors for each palette. The 4 circles are the corner colors.</p>
+
+    <div class="palette-grid" id="grid">
+    </div>
+
+    <script>
+        const palettes = [
+          ['#E87F24', '#FFC81E', '#FEFDDF', '#73A5CA'],
+          ['#A98B76', '#BFA28C', '#F3E4C9', '#BABF94'],
+          ['#9AB17A', '#C3CC9B', '#E4DFB5', '#FBE8CE'],
+          ['#FAE251', '#D75656', '#BD114A', '#EEEEEE'],
+          ['#DB1A1A', '#FFF6F6', '#8CC7C4', '#2C687B'],
+          ['#FFC570', '#EFD2B0', '#547792', '#1A3263'],
+          ['#FFF8F0', '#C08552', '#8C5A3C', '#4B2E2B'],
+          ['#81A6C6', '#AACDDC', '#F3E3D0', '#D2C4B4'],
+          ['#F3F4F4', '#853953', '#612D53', '#2C2C2C'],
+          ['#87B6BC', '#BED4CB', '#F6F09F', '#B35656'],
+          ['#8A7650', '#8E977D', '#ECE7D1', '#DBCEA5'],
+          ['#355872', '#7AAACE', '#9CD5FF', '#F7F8F0'],
+          ['#F4F0E4', '#44A194', '#537D96', '#EC8F8D'],
+          ['#F26076', '#FF9760', '#FFD150', '#458B73'],
+          ['#09637E', '#088395', '#7AB2B2', '#EBF4F6'],
+          ['#1A3263', '#547792', '#FAB95B', '#E8E2DB'],
+          ['#30364F', '#ACBAC4', '#E1D9BC', '#F0F0DB'],
+          ['#0C2C55', '#296374', '#629FAD', '#EDEDCE'],
+          ['#F63049', '#D02752', '#8A244B', '#111F35'],
+          ['#574964', '#9F8383', '#C8AAAA', '#FFDAB3'],
+          ['#0F2854', '#1C4D8D', '#4988C4', '#BDE8F5'],
+          ['#EBF4DD', '#90AB8B', '#5A7863', '#3B4953'],
+          ['#213448', '#547792', '#94B4C1', '#EAE0CF'],
+          ['#1B3C53', '#234C6A', '#456882', '#E3E3E3'],
+          ['#F1F3E0', '#D2DCB6', '#A1BC98', '#778873']
+        ];
+
+        const grid = document.getElementById('grid');
+        
+        palettes.forEach((p, i) => {
+            const hueAvg = p.join(',');
+            const html = `
+                <div class="palette-container">
+                    <h2>Palette ${i}</h2>
+                    <div class="swatches">
+                        <div class="swatch" style="background-color: ${p[0]}" title="Top Left"></div>
+                        <div class="swatch" style="background-color: ${p[1]}" title="Top Right"></div>
+                        <div class="swatch" style="background-color: ${p[2]}" title="Bottom Left"></div>
+                        <div class="swatch" style="background-color: ${p[3]}" title="Bottom Right"></div>
+                    </div>
+                    <div class="preview" style="
+                        background: radial-gradient(circle at top left, ${p[0]}, transparent 60%),
+                                    radial-gradient(circle at top right, ${p[1]}, transparent 60%),
+                                    radial-gradient(circle at bottom left, ${p[2]}, transparent 60%),
+                                    radial-gradient(circle at bottom right, ${p[3]}, transparent 60%);
+                        background-color: black;
+                    "></div>
+                </div>
+            `;
+            grid.innerHTML += html;
+        });
+    </script>
+</body>
+</html>

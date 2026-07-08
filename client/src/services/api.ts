@@ -22,12 +22,13 @@ export const getRoute = async (
     roundTrip?: boolean,
     preference?: 'fastest' | 'scenic',
     returnDate?: string,
-    returnTime?: string
+    returnTime?: string,
+    waypoints?: { name: string; lat?: number; lng?: number }[]
 ) => {
     console.log(`[API] Fetching route from ${start} to ${end}...`);
     const startTime = performance.now();
     try {
-        const payload = { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime };
+        const payload = { start, end, startCoords, endCoords, departureDate, departureTime, roundTrip, preference, returnDate, returnTime, waypoints };
         const response = await api.post('/route', payload);
         const endTime = performance.now();
         AnalyticsService.trackPerformance('api_latency', endTime - startTime, { endpoint: '/route' });
@@ -40,6 +41,22 @@ export const getRoute = async (
         console.error('[API] Error fetching route:', error);
         throw error;
     }
+};
+
+// Phase 1 of streaming: fast route geometry + basic metrics (map renders in ~3s)
+export const getRoutePreview = async (
+    start: string,
+    end: string,
+    startCoords?: { lat: number; lng: number },
+    endCoords?: { lat: number; lng: number },
+    preference?: 'fastest' | 'scenic',
+    waypoints?: { name: string; lat?: number; lng?: number }[]
+) => {
+    const startTime = performance.now();
+    const payload = { start, end, startCoords, endCoords, preference, waypoints };
+    const response = await api.post('/route/preview', payload);
+    AnalyticsService.trackPerformance('api_latency', performance.now() - startTime, { endpoint: '/route/preview' });
+    return response.data;
 };
 
 export const getPlaceDetails = async (lat: number, lon: number) => {
