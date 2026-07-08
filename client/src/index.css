@@ -158,20 +158,16 @@
     }
 }
 
-/* Custom Popup Overrides */
-.leaflet-popup-content-wrapper {
-    background-color: transparent !important;
+/* MapLibre popup overrides (mapcn) — content is styled by our own JSX */
+.maplibregl-popup-content {
+    background: transparent !important;
     box-shadow: none !important;
     padding: 0 !important;
-    border: none !important;
+    border-radius: 0 !important;
 }
 
-.leaflet-popup-tip {
-    background-color: #FFFFFF !important;
-}
-
-.custom-popup-overrides .leaflet-popup-content {
-    margin: 0 !important;
+.maplibregl-popup-tip {
+    display: none !important;
 }
 
 /* Custom Minimal Scrollbar — warm tinted */
