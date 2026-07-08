@@ -1,4 +1,4 @@
-import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, Wind, CloudRain, Thermometer } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, Wind, CloudRain, Thermometer, Moon, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Deduction {
@@ -91,14 +91,17 @@ export function TripConfidenceCard({ score, label, deductions }: TripConfidenceC
                         >
                             <div className="flex items-center gap-3 text-foreground font-medium">
                                 <div className="p-1.5 bg-background/50 rounded-lg shadow-inner">
-                                    {d.type.includes('Rain') ? <CloudRain className="w-4 h-4 text-blue-400" /> :
+                                    {d.type.includes('Rain') || d.type.includes('Snow') ? <CloudRain className="w-4 h-4 text-blue-400" /> :
                                         d.type.includes('Wind') ? <Wind className="w-4 h-4 text-slate-400" /> :
                                             d.type.includes('Cold') ? <Thermometer className="w-4 h-4 text-cyan-400" /> :
-                                                <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                                                d.type.includes('Heat') ? <Thermometer className="w-4 h-4 text-orange-400" /> :
+                                                    d.type.includes('Night') ? <Moon className="w-4 h-4 text-indigo-300" /> :
+                                                        d.type.includes('Fatigue') || d.type.includes('Drive') ? <Clock className="w-4 h-4 text-amber-400" /> :
+                                                            <AlertTriangle className="w-4 h-4 text-amber-400" />}
                                 </div>
                                 <span>{d.type}</span>
                             </div>
-                            <span className="font-mono font-black text-red-500 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">-{d.val}</span>
+                            <span className="font-mono font-black text-red-500 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">{d.val}</span>
                         </motion.div>
                     ))
                 )}

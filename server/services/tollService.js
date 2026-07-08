@@ -1,6 +1,7 @@
 const axios = require('axios');
 const polyline = require('@mapbox/polyline');
 const { extractState } = require('./gasPriceService');
+const { reverseGeocode } = require('./geocodingService');
 
 /**
  * Toll Service — estimates toll costs for a driving route.
@@ -26,14 +27,18 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (toll rates change rarely)
  * major corridors. Toll-heavy states (NY Thruway, NJ Turnpike, PA Turnpike, IL, etc.)
  * rate higher; mostly-free states rate near zero.
  */
+// Recalibrated (2026): rate ≈ (typical fraction of the state's interstate miles that are
+// tolled) × (avg toll rate). Toll-heavy corridors (NY Thruway, NJ TP, DE, IL) stay higher;
+// pass-through Southern/Western states where interstates are largely free drop near zero.
+// Tuned so long low-toll routes (e.g. PGH→Tampa via I-75) land near real-world ~$10-15.
 const STATE_TOLL_PER_MILE = {
-    NY: 0.065, NJ: 0.120, PA: 0.055, IL: 0.050, IN: 0.045, OH: 0.045,
-    MA: 0.040, MD: 0.030, DE: 0.150, FL: 0.060, OK: 0.050, KS: 0.045,
-    WV: 0.050, ME: 0.035, NH: 0.020, CO: 0.020, CA: 0.010, TX: 0.030,
-    VA: 0.020, NC: 0.010, GA: 0.008, MN: 0.005, WA: 0.010, RI: 0.015,
-    CT: 0.005, MI: 0.005
+    NY: 0.060, NJ: 0.060, DE: 0.100, IL: 0.035, PA: 0.030, OH: 0.025, IN: 0.025,
+    MA: 0.030, MD: 0.020, FL: 0.025, OK: 0.030, KS: 0.025, WV: 0.030, ME: 0.025,
+    NH: 0.015, CO: 0.012, RI: 0.012, CA: 0.008, WA: 0.008, TX: 0.020,
+    VA: 0.005, NC: 0.004, SC: 0.003, GA: 0.004, MN: 0.004, CT: 0.004, MI: 0.004,
+    TN: 0.003, KY: 0.004, AL: 0.002, MS: 0.002
 };
-const DEFAULT_TOLL_PER_MILE = 0.004; // Mostly-free states
+const DEFAULT_TOLL_PER_MILE = 0.003; // Mostly-free states
 
 /**
  * Estimate tolls for a route.
@@ -55,7 +60,35 @@ async function getTollEstimate(routeCoordinates, routeDistanceMeters, regionHint
         console.log('[Toll] TollGuru unavailable — using heuristic fallback.');
     }
 
-    return getHeuristicToll(distanceMiles, regionHints);
+    return await getHeuristicToll(distanceMiles, regionHints, routeCoordinates);
+}
+
+/**
+ * Detect every state the route passes through by reverse-geocoding evenly-spaced points
+ * along the geometry (cached), combined with any caller-provided hints. Complete coverage
+ * is what keeps the even-mileage split honest — missing states over-weight the ones found.
+ */
+async function detectStates(regionHints, routeCoordinates) {
+    const states = [];
+    const add = (st) => { if (st && !states.includes(st)) states.push(st); };
+
+    for (const hint of regionHints || []) add(safeExtractState(hint));
+
+    if (Array.isArray(routeCoordinates) && routeCoordinates.length >= 2) {
+        const SAMPLES = 8;
+        const idxs = [];
+        for (let i = 0; i <= SAMPLES; i++) {
+            idxs.push(Math.floor((i / SAMPLES) * (routeCoordinates.length - 1)));
+        }
+        const results = await Promise.allSettled(idxs.map(idx => {
+            const [lng, lat] = routeCoordinates[idx];
+            return reverseGeocode(lat, lng);
+        }));
+        for (const r of results) {
+            if (r.status === 'fulfilled' && r.value) add(safeExtractState(r.value));
+        }
+    }
+    return states;
 }
 
 /**
@@ -108,17 +141,13 @@ async function getTollGuruEstimate(apiKey, routeCoordinates) {
  * Heuristic toll estimate: distribute route mileage across the detected states and
  * apply each state's blended per-mile toll rate.
  */
-function getHeuristicToll(distanceMiles, regionHints) {
-    // Detect unique states from the location hints
-    const states = [];
-    for (const hint of regionHints || []) {
-        const st = safeExtractState(hint);
-        if (st && !states.includes(st)) states.push(st);
-    }
+async function getHeuristicToll(distanceMiles, regionHints, routeCoordinates) {
+    // Detect every state the route crosses (hints + reverse-geocoded route samples)
+    const states = await detectStates(regionHints, routeCoordinates);
 
     // No usable state info — apply a conservative national blended rate
     if (states.length === 0) {
-        const total = Math.round(distanceMiles * 0.02 * 100) / 100;
+        const total = Math.round(distanceMiles * 0.008 * 100) / 100;
         return {
             total,
             currency: 'USD',

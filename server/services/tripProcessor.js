@@ -291,7 +291,8 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
         minTemp, maxTemp, trafficDelay: trafficDelayMins, maxWind, precipChance,
         recommendations: distinctStops, roadConditions, departureDate, departureTime,
         tollCost: tollResult.total, tollDisplay: tollResult.display, tollEstimated: tollResult.isEstimated,
-        incidents, incidentCounts
+        incidents, incidentCounts,
+        durationMinutes: minutes, distanceMiles: Number(totalDistanceMiles)
     };
 
     const aiAnalysis = generateTripAnalysis(startLoc.display_name, endLoc.display_name, weatherData, distanceVal, durationVal, roadConditions, aiContext);

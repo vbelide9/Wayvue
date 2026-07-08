@@ -89,9 +89,12 @@ function bboxToString(b) {
 }
 
 // Keep incidents essentially on the route line (km). Corridor tiles are wide and
-// TomTom reports many minor side-road closures, so this must be tight.
-const ON_ROUTE_THRESHOLD_KM = 0.5;
-const MAX_RESULTS = 15;
+// TomTom reports many minor side-road closures, so this must be tight — 0.3km keeps
+// things genuinely on your path and cuts noise from parallel/crossing roads.
+const ON_ROUTE_THRESHOLD_KM = 0.3;
+// Marker/list cap. Raised from 15 so the reported count reflects the real on-route
+// density and varies by route instead of always pinning at the cap.
+const MAX_RESULTS = 30;
 
 function haversineKm(lat1, lng1, lat2, lng2) {
     const R = 6371;
@@ -209,21 +212,30 @@ async function getIncidentsAlongRoute(routeCoordinates) {
         if (t < tiles.length - 1) await new Promise(r => setTimeout(r, 100));
     }
 
-    // Prioritize the most impactful incidents (closures/accidents first, then severity)
-    const TYPE_PRIORITY = { closure: 3, accident: 3, construction: 2, jam: 1, hazard: 0 };
-    incidents.sort((a, b) => {
-        const tp = (TYPE_PRIORITY[b.type] || 0) - (TYPE_PRIORITY[a.type] || 0);
-        if (tp !== 0) return tp;
-        return (b.severity || 0) - (a.severity || 0);
-    });
-    const trimmed = incidents.slice(0, MAX_RESULTS);
+    // TomTom's feed is dominated by "road closed" items, so a plain priority slice would
+    // show only closures. Instead cap PER CATEGORY so the map reflects the real mix
+    // (accidents, jams, construction, hazards) with their correct icons. Within each
+    // category, keep the highest-severity first.
+    incidents.sort((a, b) => (b.severity || 0) - (a.severity || 0));
+    const PER_TYPE_CAP = { accident: 15, closure: 10, construction: 8, jam: 8, hazard: 6 };
+    const typeCounts = {};
+    const trimmed = [];
+    for (const inc of incidents) {
+        if (trimmed.length >= MAX_RESULTS) break;
+        const cap = PER_TYPE_CAP[inc.type] ?? 6;
+        typeCounts[inc.type] = typeCounts[inc.type] || 0;
+        if (typeCounts[inc.type] < cap) {
+            trimmed.push(inc);
+            typeCounts[inc.type]++;
+        }
+    }
 
     incidentCache.set(cacheKey, { data: trimmed, timestamp: Date.now() });
     if (incidentCache.size > 200) {
         incidentCache.delete(incidentCache.keys().next().value);
     }
 
-    console.log(`[Incidents] TomTom: ${incidents.length} on-route incidents across ${tiles.length} tiles, returning top ${trimmed.length}`);
+    console.log(`[Incidents] TomTom: ${incidents.length} on-route incidents across ${tiles.length} tiles, returning ${trimmed.length} (mix: ${JSON.stringify(typeCounts)})`);
     return trimmed;
 }
 
