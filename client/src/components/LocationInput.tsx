@@ -164,7 +164,7 @@ export function LocationInput({ label, placeholder, value, onChange, onSelect, i
                 )}
 
                 {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute top-full left-0 right-0 z-50 mt-2 bg-card border border-border rounded-xl shadow-soft-lg max-h-60 overflow-y-auto no-scrollbar">
+                    <ul data-lenis-prevent className="absolute top-full left-0 right-0 z-50 mt-2 bg-card border border-border rounded-xl shadow-soft-lg max-h-60 overflow-y-auto no-scrollbar">
                         {suggestions.map((s) => (
                             <li
                                 key={s.place_id}

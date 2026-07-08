@@ -49,7 +49,7 @@ export function RoadConditionCard({ conditions, onSegmentSelect }: RoadCondition
                 </span>
             </div>
 
-            <div className="divide-y divide-border overflow-y-auto flex-1 custom-scrollbar min-h-0">
+            <div data-lenis-prevent className="divide-y divide-border overflow-y-auto flex-1 custom-scrollbar min-h-0">
                 {conditions.map((condition, idx) => {
                     return (
                         <div
