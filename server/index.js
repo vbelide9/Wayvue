@@ -20,6 +20,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Wayvue API is running' });
 });
 
+// ── AI Trip Planner chat ──
+const { runChatTurn } = require('./services/aiChatService');
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages, tripContext } = req.body || {};
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages array is required' });
+    }
+    const result = await runChatTurn(messages, tripContext || {});
+    res.json(result);
+  } catch (err) {
+    console.error('[chat] error:', err.message);
+    res.status(err.status || 500).json({ error: err.message || 'Chat failed' });
+  }
+});
+
 const logDebug = require('./fileLogger');
 
 app.post('/api/route', async (req, res) => {

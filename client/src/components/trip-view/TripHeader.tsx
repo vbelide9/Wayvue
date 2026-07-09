@@ -1,5 +1,5 @@
 import { CombinedDateTimePicker } from '../../components/CustomDateTimePicker';
-import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check, CircleDollarSign, Info } from 'lucide-react';
+import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, Fuel, Zap, RefreshCw, Camera, ChevronDown, Check, CircleDollarSign, Info, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
@@ -48,9 +48,10 @@ interface TripHeaderProps {
     activeLeg?: 'outbound' | 'return';
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
+    onExportPdf?: () => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
@@ -474,6 +475,19 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                 </div>
 
                 <div className="hidden lg:block h-6 w-px bg-border/50 mx-2 shrink-0" />
+
+                {/* Export itinerary PDF */}
+                {onExportPdf && (
+                    <button
+                        onClick={onExportPdf}
+                        title="Download itinerary as PDF"
+                        aria-label="Download itinerary as PDF"
+                        className="flex items-center gap-1.5 h-8 px-3 mr-2 rounded-lg text-xs font-bold bg-secondary/50 border border-border/50 text-foreground hover:bg-secondary hover:border-primary/40 transition-colors shrink-0"
+                    >
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">PDF</span>
+                    </button>
+                )}
 
                 {/* Unit Toggle - Larger Touch Targets */}
                 <div className="flex items-center bg-secondary/30 rounded-lg p-1 border border-border/50 shrink-0">

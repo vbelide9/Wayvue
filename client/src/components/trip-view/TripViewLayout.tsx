@@ -29,6 +29,7 @@ interface TripViewLayoutProps {
     unit: 'C' | 'F';
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
+    onExportPdf?: () => void;
     onSearch: (start?: string, end?: string, depDate?: string, depTime?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic', returnDate?: string, returnTime?: string) => void;
     onSegmentSelect: (lat: number, lng: number) => void;
     depDate?: string;
@@ -78,6 +79,7 @@ export function TripViewLayout({
     unit,
     onUnitChange,
     onBack,
+    onExportPdf,
     onSearch,
     onSegmentSelect,
     map,
@@ -182,6 +184,7 @@ export function TripViewLayout({
                             unit={unit}
                             onUnitChange={onUnitChange}
                             onBack={onBack}
+                            onExportPdf={onExportPdf}
                             onSearch={onSearch}
                             isRoundTrip={isRoundTrip}
                             routePreference={routePreference}

@@ -15,6 +15,8 @@ import { AnalyticsService } from './services/analytics';
 
 import { PlannerCard } from './components/PlannerCard';
 import { WayvueBrand } from './components/WayvueBrand';
+import { AiAssistant } from './components/AiAssistant';
+import { generateItineraryPdf } from './utils/itineraryPdf';
 
 export default function App() {
 
@@ -66,7 +68,7 @@ export default function App() {
   const [returnWeatherData, setReturnWeatherData] = useState<any[]>([]); // New state for return leg weather
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
+  const [metrics, setMetrics] = useState<{ distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean }>({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [departureDate, setDepartureDate] = useState(() => {
@@ -211,7 +213,8 @@ export default function App() {
     overrideRoundTrip?: boolean,
     overridePreference?: 'fastest' | 'scenic',
     returnDateOverride?: string,
-    returnTimeOverride?: string
+    returnTimeOverride?: string,
+    waypointsOverride?: { name: string; lat?: number; lng?: number }[]
   ) => {
     setError(null); // Clear previous errors
     const searchStart = Date.now();
@@ -222,8 +225,11 @@ export default function App() {
     const d = destLoc || destination;
     const dateToUse = depDate || departureDate;
     const timeToUse = depTime || departureTime;
-    const sCoords = startCoordsOverride || startCoords;
-    const dCoords = destCoordsOverride || destCoords;
+    // When a new location NAME is supplied (e.g. the AI changed the origin), any
+    // cached coords are stale — only reuse coords that came with this call, else
+    // let the backend geocode the new name.
+    const sCoords = startLoc ? startCoordsOverride : (startCoordsOverride || startCoords);
+    const dCoords = destLoc ? destCoordsOverride : (destCoordsOverride || destCoords);
 
     // Return overrides
     const returnDateToUse = returnDateOverride || returnDate;
@@ -380,7 +386,8 @@ export default function App() {
     });
 
     setLoading(true);
-    const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
+    // AI-driven updates can pass a fresh waypoint list (state may be stale in this closure).
+    const activeWaypoints = (waypointsOverride ?? waypoints).filter(w => w.name && w.name.trim());
 
     // PHASE 1 — fast preview: render the map + basic metrics in ~3s, then enrich.
     let resolvedStart = sCoords;
@@ -515,7 +522,144 @@ export default function App() {
   const handleBackToPlanning = () => {
     setViewMode('planning');
     // Optional: Clear route or keep it? Keeping it facilitates toggle behavior, but let's stick to simple "Back" for now.
-    // setRoute(null); 
+    // setRoute(null);
+  };
+
+  // ── AI Assistant plumbing ──
+  // Refs so applyPlan can read the freshest values after an async re-plan.
+  const latestMetricsRef = useRef(metrics);
+  useEffect(() => { latestMetricsRef.current = metrics; }, [metrics]);
+  const startRef = useRef(start);
+  const destRef = useRef(destination);
+  useEffect(() => { startRef.current = start; }, [start]);
+  useEffect(() => { destRef.current = destination; }, [destination]);
+
+  // Compact live snapshot of the trip sent to Claude as context each turn.
+  const buildTripContext = () => {
+    if (viewMode !== 'trip' || !route) {
+      return {
+        status: 'planning',
+        start,
+        destination,
+        departureDate,
+        departureTime,
+        isRoundTrip,
+        returnDate: isRoundTrip ? returnDate : undefined,
+        preference: outboundPref,
+        stops: waypoints.map(w => w.name).filter(Boolean),
+      };
+    }
+    return {
+      status: 'planned',
+      start,
+      destination,
+      isRoundTrip,
+      departureDate,
+      departureTime,
+      returnDate: isRoundTrip ? returnDate : undefined,
+      returnTime: isRoundTrip ? returnTime : undefined,
+      preference: routePreference,
+      stops: waypoints.map(w => w.name).filter(Boolean),
+      metrics: {
+        distance: metrics.distance,
+        driveTime: metrics.time,
+        fuel: metrics.fuel || undefined,
+        tolls: metrics.tollCost && metrics.tollCost !== '$0' ? metrics.tollCost : undefined,
+      },
+      tripScore: aiAnalysis?.tripScore,
+      bestDeparture: (aiAnalysis?.departureInsights || [])
+        .slice()
+        .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))[0]?.time,
+      alerts: roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0),
+      weather: (weatherData || []).slice(0, 6).map((w: any) => ({
+        location: w.location,
+        temp: unit === 'F' ? Math.round((w.temperature * 9) / 5 + 32) : Math.round(w.temperature),
+        unit,
+      })),
+      suggestedStops: (recommendations || []).slice(0, 6).map((r: any) => ({
+        city: r.city,
+        reason: (r.reason || '').replace(/_/g, ' '),
+      })),
+    };
+  };
+
+  // Executes an AI-requested change: apply the fields, re-run the route, report back.
+  const applyPlanFromAI = async (u: {
+    start?: string; destination?: string; departureDate?: string; departureTime?: string;
+    returnDate?: string; returnTime?: string; roundTrip?: boolean;
+    preference?: 'fastest' | 'scenic'; waypoints?: string[];
+  }): Promise<string> => {
+    if (u.start !== undefined) { setStart(u.start); setStartCoords(undefined); }
+    if (u.destination !== undefined) { setDestination(u.destination); setDestCoords(undefined); }
+    if (u.departureDate) setDepartureDate(u.departureDate);
+    if (u.departureTime) setDepartureTime(u.departureTime);
+    if (u.returnDate) setReturnDate(u.returnDate);
+    if (u.returnTime) setReturnTime(u.returnTime);
+    if (u.roundTrip !== undefined) setIsRoundTrip(u.roundTrip);
+    if (u.preference) { setOutboundPref(u.preference); setReturnPref(u.preference); }
+    let wpOverride: { name: string }[] | undefined;
+    if (u.waypoints !== undefined) {
+      wpOverride = u.waypoints.map(name => ({ name }));
+      setWaypoints(wpOverride);
+    }
+
+    await handleRouteSubmit(
+      u.start, u.destination, u.departureDate, u.departureTime,
+      undefined, undefined,
+      u.roundTrip, u.preference, u.returnDate, u.returnTime, wpOverride,
+    );
+    // Let React flush the metrics from the re-plan before reading them back.
+    await new Promise(r => setTimeout(r, 60));
+
+    const m = latestMetricsRef.current;
+    const rt = u.roundTrip ?? isRoundTrip;
+    const parts = [
+      `Trip updated: ${startRef.current} → ${destRef.current} (${rt ? 'round trip' : 'one-way'})`,
+      m.time && `drive time ${m.time}`,
+      m.distance && `distance ${m.distance}`,
+      m.fuel && `fuel ~${m.fuel}`,
+      m.tollCost && m.tollCost !== '$0' && `tolls ~${m.tollCost}`,
+    ].filter(Boolean);
+    return `${parts.join(', ')}. The updated route and details are now displayed in the app.`;
+  };
+
+  // Export the full itinerary as a PDF (client-side).
+  const handleExportPdf = () => {
+    const bestDeparture = [...(aiAnalysis?.departureInsights || [])]
+      .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))[0]?.time;
+    generateItineraryPdf({
+      start,
+      destination,
+      isRoundTrip,
+      departureDate,
+      departureTime,
+      returnDate: isRoundTrip ? returnDate : undefined,
+      returnTime: isRoundTrip ? returnTime : undefined,
+      preference: routePreference,
+      stops: waypoints.map(w => w.name).filter(Boolean),
+      metrics,
+      tripScore: aiAnalysis?.tripScore,
+      bestDeparture,
+      alertCount: roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0),
+      aiInsights: aiAnalysis?.insights?.bullets || [],
+      aiSummary: aiAnalysis?.structured?.roads?.details || aiAnalysis?.structured?.tip || undefined,
+      weather: (weatherData || []).map((w: any) => ({
+        location: w.location,
+        temp: unit === 'F' ? Math.round((w.temperature * 9) / 5 + 32) : Math.round(w.temperature),
+        unit,
+      })),
+      stopsList: (recommendations || []).map((r: any) => ({
+        title: r.city,
+        detail: (r.reason || '').replace(/_/g, ' '),
+      })),
+      roadAlerts: [
+        ...roadConditions.filter(c => c.status !== 'good').map(c => ({
+          label: c.segment || 'Route segment',
+          detail: c.description || c.status,
+        })),
+        ...(incidents || []).map((i: any) => ({ label: i.type || 'Incident', detail: i.description })),
+      ],
+    });
   };
 
   // --- RENDER HELPERS ---
@@ -744,6 +888,7 @@ export default function App() {
                 unit={unit}
                 onUnitChange={setUnit}
                 onBack={handleBackToPlanning}
+                onExportPdf={handleExportPdf}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
                   if (newStart) setStart(newStart);
@@ -828,6 +973,9 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AI trip planner — available across landing, planning, and trip views */}
+      <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
     </>
   );
 }
