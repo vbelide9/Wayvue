@@ -555,12 +555,16 @@ export default function App() {
             alt=""
             aria-hidden="true"
             fetchPriority="high"
-            className="absolute inset-0 w-full h-full object-cover object-[62%_42%] animate-kenburns"
+            className="absolute inset-0 w-full h-full object-cover object-[62%_42%] animate-kenburns [filter:saturate(1.32)_contrast(1.12)_brightness(0.82)]"
           />
-          {/* Premium legibility scrims: warm dark at the top for the headline, warm fade to the page at the bottom for the card */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2a1c0d]/45 via-[#2a1c0d]/8 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/65 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_28%,transparent_45%,rgba(30,20,10,0.28))]" />
+          {/* Warm depth tint — richens the hazy image and kills the washed-out highlights */}
+          <div className="absolute inset-0 mix-blend-multiply bg-[radial-gradient(130%_120%_at_68%_45%,rgba(60,38,16,0.15),rgba(38,24,10,0.5))]" />
+          {/* Premium legibility scrims: warm dark at the top for the headline */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#22160a]/55 via-[#22160a]/12 to-transparent" />
+          {/* Tame the bright left edge */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#22160a]/35 via-transparent to-transparent" />
+          {/* Warm fade to the page at the bottom for the card */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/45 to-transparent" />
         </div>
 
         {/* Loading Screen Overlay */}
