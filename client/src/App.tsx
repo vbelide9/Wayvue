@@ -14,6 +14,7 @@ import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 
 import { PlannerCard } from './components/PlannerCard';
+import { WayvueBrand } from './components/WayvueBrand';
 
 export default function App() {
 
@@ -530,12 +531,9 @@ export default function App() {
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-6">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow">
-            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
-          </div>
-          <span className="text-xl font-display font-bold tracking-tight text-foreground">Wayvue</span>
+      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-4 bg-background/70 backdrop-blur-md border-b border-border/50">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <WayvueBrand size="md" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -560,7 +558,7 @@ export default function App() {
           className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10"
         >
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-soft">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <img src="/logo.svg" alt="" aria-hidden="true" className="w-4 h-4" />
             Trip intelligence for the open road
           </span>
           <h1 className="font-display font-bold tracking-tight text-foreground text-5xl md:text-7xl leading-[0.95]">
@@ -607,6 +605,19 @@ export default function App() {
           error={error}
         />
       </section>
+
+      {/* Branded footer */}
+      <footer className="relative z-[50] border-t border-border bg-card/60 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <WayvueBrand size="md" tagline />
+          <p className="text-sm text-muted-foreground max-w-sm text-center md:text-right">
+            Weather, traffic, tolls and stays — one glance before every drive.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} Wayvue
+          </p>
+        </div>
+      </footer>
     </main>
   );
 
@@ -624,15 +635,7 @@ export default function App() {
 
       {/* Top Nav Bar */}
       <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
-        <button onClick={() => setViewMode('landing')} className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow shrink-0">
-            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
-          </div>
-          <div className="text-left">
-            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
-            <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
-          </div>
-        </button>
+        <WayvueBrand size="md" tagline onClick={() => setViewMode('landing')} />
       </nav>
 
       {/* Centered Card */}

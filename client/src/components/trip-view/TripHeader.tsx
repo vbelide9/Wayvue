@@ -3,6 +3,7 @@ import { ChevronLeft, Navigation, Clock, AlertTriangle, ArrowRight, Search, X, F
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
+import { WayvueBrand } from '../WayvueBrand';
 
 interface TripHeaderProps {
     start: string;
@@ -156,8 +157,8 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     return (
         <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border border-border rounded-3xl shadow-soft z-50 relative gap-3 md:gap-4 mx-4" ref={containerRef}>
 
-            {/* Left: Back & Route */}
-            <div className="flex items-center gap-3 min-w-0 justify-start">
+            {/* Left: Back, Brand & Route */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0 justify-start">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -168,15 +169,21 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     <ChevronLeft className="w-5 h-5" />
                 </Button>
 
+                {/* Brand mark — logo only; the toolbar is too dense for the full lockup */}
+                <div className="hidden sm:block shrink-0">
+                    <WayvueBrand size="sm" markOnly onClick={onBack} />
+                </div>
+
                 <div className="flex flex-col min-w-0 relative group">
                     <button
                         onClick={() => setIsEditing(!isEditing)}
-                        className="flex items-center gap-2 text-sm font-bold text-secondary-foreground bg-secondary hover:bg-secondary/90 px-4 py-2 rounded-full transition-all shadow-sm"
+                        className="flex items-center gap-2 text-sm font-bold text-secondary-foreground bg-secondary hover:bg-secondary/90 px-4 py-2 rounded-full transition-all shadow-sm shrink-0"
                     >
-                        <span className="truncate max-w-[100px] sm:max-w-none">{start}</span>
-                        <span className="text-secondary-foreground/70">to</span>
-                        <span className="truncate max-w-[100px] sm:max-w-none">{destination}</span>
-                        <Search className="w-4 h-4 text-secondary-foreground ml-2" />
+                        {/* Fixed truncation caps so flex shrink can't crush the names to a letter */}
+                        <span className="truncate max-w-[110px] lg:max-w-[150px]">{start}</span>
+                        <span className="text-secondary-foreground/70 shrink-0">to</span>
+                        <span className="truncate max-w-[110px] lg:max-w-[150px]">{destination}</span>
+                        <Search className="w-4 h-4 text-secondary-foreground ml-2 shrink-0" />
                     </button>
 
                     {/* Search Overlay Popover */}

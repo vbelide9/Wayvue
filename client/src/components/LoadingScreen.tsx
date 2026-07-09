@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Route, CloudSun, TriangleAlert, Fuel, Gauge } from 'lucide-react';
+import { WayvueBrand } from './WayvueBrand';
 
 interface LoadingScreenProps {
     title?: string;
@@ -46,6 +47,9 @@ export function LoadingScreen({ title = "Planning your trip" }: LoadingScreenPro
             aria-label={`${title}. ${STEPS[currentStep].label}`}
         >
             <div className="bg-card border border-border/50 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full mx-4">
+
+                {/* Brand lockup */}
+                <WayvueBrand size="sm" tagline />
 
                 {/* Animated Icon Container */}
                 <div className="relative w-20 h-20 flex items-center justify-center">
