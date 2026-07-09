@@ -220,6 +220,17 @@ input[type="time"] {
   text-transform: uppercase;
 }
 
+/* Cinematic hero Ken Burns — slow zoom + pan on the road-trip still */
+@keyframes kenburns {
+  0%   { transform: scale(1.06) translate3d(0, 0, 0); }
+  100% { transform: scale(1.18) translate3d(-1.6%, -1.2%, 0); }
+}
+.animate-kenburns {
+  animation: kenburns 26s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-origin: 60% 45%;
+}
+
 /* Premium CTA shimmer animation — warm amber sweep */
 @keyframes shimmer-sweep {
   0% { background-position: -200% center; }

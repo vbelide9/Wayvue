@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MapComponent from './components/MapComponent';
 import { getRoute, getRoutePreview } from './services/api';
@@ -15,9 +15,6 @@ import { AnalyticsService } from './services/analytics';
 
 import { PlannerCard } from './components/PlannerCard';
 import { WayvueBrand } from './components/WayvueBrand';
-
-// Heavy WebGL hero scene — lazy so it never blocks first paint.
-const RoadTripScene = lazy(() => import('./components/RoadTripScene'));
 
 export default function App() {
 
@@ -523,7 +520,7 @@ export default function App() {
 
   // --- RENDER HELPERS ---
 
-  // 1. Landing View (Light, minimal Homie-style hero)
+  // 1. Landing View (cinematic photographic hero)
   const renderLandingView = () => (
     <main ref={containerRef} className="relative w-full min-h-screen bg-background text-foreground overflow-hidden">
       {/* Warm ambient hero wash */}
@@ -550,13 +547,21 @@ export default function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-24 pb-16 overflow-hidden">
-        {/* 3D road-trip scene — full-bleed background */}
-        <Suspense fallback={null}>
-          <RoadTripScene className="absolute inset-0 -z-10 pointer-events-none" />
-        </Suspense>
-        {/* Fade the scene into the page so the card & copy stay crisp */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 -z-10 bg-gradient-to-b from-transparent via-background/60 to-background pointer-events-none" />
+      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-28 pb-16 overflow-hidden">
+        {/* Cinematic road-trip photograph — full-bleed background with a slow Ken Burns move */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <img
+            src="/sequence/ezgif-frame-030.jpg"
+            alt=""
+            aria-hidden="true"
+            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover object-[62%_42%] animate-kenburns"
+          />
+          {/* Premium legibility scrims: warm dark at the top for the headline, warm fade to the page at the bottom for the card */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2a1c0d]/45 via-[#2a1c0d]/8 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/65 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_28%,transparent_45%,rgba(30,20,10,0.28))]" />
+        </div>
 
         {/* Loading Screen Overlay */}
         {loading && <LoadingScreen />}
@@ -567,13 +572,13 @@ export default function App() {
           transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
           className="flex flex-col items-center text-center max-w-2xl mx-auto mb-9"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-soft">
-            <img src="/logo.svg" alt="" aria-hidden="true" className="w-4 h-4" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-semibold text-white/90 mb-6 shadow-lg">
+            <img src="/logo.svg" alt="" aria-hidden="true" className="w-4 h-4 brightness-0 invert" />
             Trip intelligence for the open road
           </span>
-          <h1 className="font-display font-bold tracking-tight text-foreground text-6xl md:text-8xl leading-[0.92] [text-shadow:0_2px_24px_rgba(251,246,238,0.9)]">
+          <h1 className="font-display font-bold tracking-tight text-white text-6xl md:text-8xl leading-[0.92] [text-shadow:0_4px_30px_rgba(0,0,0,0.5)]">
             Every mile,<br />
-            <span className="text-primary">planned.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-primary [text-shadow:none]">planned.</span>
           </h1>
         </motion.div>
 
