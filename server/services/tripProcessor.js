@@ -32,9 +32,13 @@ const cityFromDisplay = (displayName) => {
  * @param {string} departureDate - YYYY-MM-DD
  * @param {string} departureTime - HH:MM
  * @param {boolean} isScenic - Whether to request an alternative "scenic" route
+ * @param {Array} waypoints - Ordered intermediate stops
+ * @param {Object|null} prefetchedRoute - Pre-selected { geometry, duration, distance }.
+ *   When provided (from a shared candidate set), the leg is enriched against this exact
+ *   geometry instead of making its own OSRM call — this is what keeps fastest ≤ scenic.
  * @returns {Promise<Object>} Enriched route data
  */
-const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false, waypoints = []) => {
+const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false, waypoints = [], prefetchedRoute = null) => {
     // 1. Calculate Base Time
     let baseDepTime = Date.now();
     if (departureDate) {
@@ -45,14 +49,17 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     }
 
     // 2. Route (OSRM)
-    // Pass 'isScenic' as the 'alternatives' flag
-    const routeData = await getRouteFromOSRM(
-        startLoc.lon, startLoc.lat,
-        endLoc.lon, endLoc.lat,
-        isScenic,
-        'fastest',
-        waypoints
-    );
+    // Prefer a route pre-selected from the shared candidate set (guarantees fastest ≤ scenic).
+    // Fall back to a direct OSRM call only if none was supplied (e.g. candidate fetch failed).
+    const routeData = prefetchedRoute && prefetchedRoute.geometry
+        ? prefetchedRoute
+        : await getRouteFromOSRM(
+            startLoc.lon, startLoc.lat,
+            endLoc.lon, endLoc.lat,
+            isScenic,
+            'fastest',
+            waypoints
+        );
 
     // 3. Sample
     // 3. Sample

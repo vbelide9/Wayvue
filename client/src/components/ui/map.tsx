@@ -314,7 +314,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     map.on("move", handleMove);
     setMapInstance(map);
 
+    // Keep the canvas sized to its container. MapLibre only auto-resizes on window
+    // resize; when the container itself changes (e.g. entering a full-screen layout
+    // or a panel collapsing), we must call resize() ourselves or tiles paint at a
+    // stale size and clip.
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       clearStyleTimeout();
       map.off("load", loadHandler);
       map.off("styledata", styleDataHandler);

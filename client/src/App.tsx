@@ -942,8 +942,9 @@ export default function App() {
                 rawReturnDate={returnDate}
                 rawReturnTime={returnTime}
 
-                map={(activeTab) => (
+                map={(activeTab, rightInset) => (
                   <MapComponent
+                    rightInset={rightInset}
                     routeGeoJSON={tripData?.outbound?.route || route}
                     returnRouteGeoJSON={tripData?.return?.route} // Pass return route
                     weatherData={weatherData}

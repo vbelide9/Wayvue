@@ -148,10 +148,11 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
     const togglePreference = (pref: 'fastest' | 'scenic') => {
         if (pref === localPreference) return;
         setLocalPreference(pref);
-        // Pass undefined for start/dest to signal "use current trip context" for instant switching
-        onSearch(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-        // Actually, logic for instant switch in App.tsx relies on preference override.
-        // We can pass just the override preference.
+        // Single call carrying the preference override. This lets App.tsx take the
+        // instant-switch path (reusing cached variants) instead of a full re-fetch.
+        // A prior stray onSearch() with all-undefined args used to trigger a spurious
+        // full reload, which briefly dropped tripData.variants and made the alternate
+        // route line disappear on every switch.
         onSearch(undefined, undefined, undefined, undefined, undefined, undefined, localRoundTrip, pref);
     };
 

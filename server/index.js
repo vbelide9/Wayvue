@@ -100,13 +100,25 @@ app.post('/api/route', async (req, res) => {
     // 2. Process Routes (Parallel: Fastest & Scenic)
     // We compute both to allow instant switching on frontend
     const { processLeg } = require('./services/tripProcessor');
+    const { getRouteCandidates } = require('./services/routeService');
 
     // Define helper to get both variants for a leg
-    // Define helper to get both variants for a leg
     const getLegVariants = async (s, d, date, time, legWaypoints = []) => {
+      // One routing call → derive both variants from the SAME candidate set so the
+      // fastest is always ≤ scenic, and the scenic geometry is genuinely distinct
+      // (which is what makes the light "alternate route" line appear on the map).
+      let candidates = [];
+      try {
+        candidates = await getRouteCandidates(s.lon, s.lat, d.lon, d.lat, legWaypoints);
+      } catch (e) {
+        logDebug(`[WARN] Route candidate fetch failed: ${e.message}`);
+      }
+      const fastestRoute = candidates[0] || null;                 // shortest duration
+      const scenicRoute = candidates.length > 1 ? candidates[1] : fastestRoute; // slower alternate
+
       const results = await Promise.allSettled([
-        processLeg(s, d, date, time, false, legWaypoints),
-        processLeg(s, d, date, time, true, legWaypoints)
+        processLeg(s, d, date, time, false, legWaypoints, fastestRoute),
+        processLeg(s, d, date, time, true, legWaypoints, scenicRoute)
       ]);
 
       const fastest = results[0].status === 'fulfilled' ? results[0].value : null;

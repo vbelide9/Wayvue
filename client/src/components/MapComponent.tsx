@@ -86,6 +86,7 @@ interface MapComponentProps {
     alternativeRouteGeoJSON?: FeatureCollection | Geometry | null;
     routeColor?: string;
     activeTab?: string; // Results-page tab — emphasize the relevant marker layer
+    rightInset?: number; // Extra right padding for fitBounds so the route clears an overlay panel
 }
 
 type LngLat = [number, number];
@@ -106,8 +107,9 @@ const extractCoords = (geoJSON: any): LngLat[] | null => {
 
 // ── In-map helper components (need the map instance via useMap) ──
 
-// Auto-zoom to the active route
-function FitBounds({ coordinates }: { coordinates: LngLat[] }) {
+// Auto-zoom to the active route. `rightInset` reserves space on the right so the
+// route isn't hidden behind the overlay insights panel.
+function FitBounds({ coordinates, rightInset = 0 }: { coordinates: LngLat[]; rightInset?: number }) {
     const { map, isLoaded } = useMap();
     React.useEffect(() => {
         if (!map || !isLoaded || coordinates.length === 0) return;
@@ -115,8 +117,11 @@ function FitBounds({ coordinates }: { coordinates: LngLat[] }) {
             (b, c) => b.extend(c),
             new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
         );
-        map.fitBounds(bounds, { padding: 50, duration: 800 });
-    }, [map, isLoaded, coordinates]);
+        map.fitBounds(bounds, {
+            padding: { top: 60, bottom: 60, left: 60, right: 60 + rightInset },
+            duration: 800,
+        });
+    }, [map, isLoaded, coordinates, rightInset]);
     return null;
 }
 
@@ -320,7 +325,7 @@ const sampleWeatherPoints = (points: WeatherPoint[]) =>
         return idx % stride === 0;
     });
 
-const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON, activeTab }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGeoJSON, weatherData, returnWeatherData, incidents, waypoints, unit, selectedLocation, activeLeg = 'outbound', alternativeRouteGeoJSON, activeTab, rightInset = 0 }) => {
     // Map ↔ tab sync: weather is the default layer — visible on every tab EXCEPT Road,
     // where incident markers take over to avoid clutter. Incidents show on overview/road.
     const showWeatherLayer = activeTab !== 'road';
@@ -375,15 +380,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
             >
                 <MapControls position="bottom-right" showZoom />
 
-                {/* Alternative route (dashed gray, behind the active route) */}
+                {/* Alternative route (light dashed line, behind the active route) */}
                 {altRoutePositions && (
                     <MapRoute
                         id="alt-route"
                         coordinates={altRoutePositions}
                         color="#64748b"
-                        width={4}
-                        opacity={0.5}
-                        dashArray={[2.5, 2.5]}
+                        width={5}
+                        opacity={0.65}
+                        dashArray={[2, 2]}
                         interactive={false}
                     />
                 )}
@@ -402,7 +407,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                     </>
                 )}
 
-                <FitBounds coordinates={activePositions} />
+                <FitBounds coordinates={activePositions} rightInset={rightInset} />
                 <MoveTracker />
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
 

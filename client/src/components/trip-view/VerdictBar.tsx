@@ -6,6 +6,7 @@ interface VerdictBarProps {
     metrics: { distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean };
     alertCount: number;
     isEnriching?: boolean;
+    compact?: boolean; // Slim, wrapper-free layout for the side panel
 }
 
 // Parse a leading dollar amount from strings like "$62", "$34.92 est."
@@ -21,12 +22,20 @@ function scoreColor(score: number) {
     return { text: 'text-red-600', ring: '#DC2626', chip: 'bg-red-500/10 text-red-700 border-red-500/20' };
 }
 
-export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnriching }: VerdictBarProps) {
+export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnriching, compact }: VerdictBarProps) {
     const score = tripScore?.score ?? aiAnalysis?.tripScore?.score;
     const label = tripScore?.label ?? aiAnalysis?.tripScore?.label ?? 'Good';
 
     // Still computing — compact placeholder
     if (score === undefined || (isEnriching && !aiAnalysis)) {
+        if (compact) {
+            return (
+                <div className="glass-surface px-4 py-3 flex items-center gap-3 text-muted-foreground">
+                    <Sparkles className="w-4 h-4 text-primary animate-pulse shrink-0" />
+                    <span className="text-sm font-medium">Analyzing your trip…</span>
+                </div>
+            );
+        }
         return (
             <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 mb-6">
                 <div className="glass-surface px-5 py-4 flex items-center gap-3 text-muted-foreground">
@@ -56,6 +65,33 @@ export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnric
     // Best departure = highest-scoring streamed option
     const insights = aiAnalysis?.departureInsights as { time: string; score: number }[] | undefined;
     const best = insights && insights.length > 0 ? [...insights].sort((a, b) => b.score - a.score)[0] : null;
+
+    // Compact: slim strip for the side panel (score + verdict + est cost, stacked-friendly)
+    if (compact) {
+        return (
+            <div className="glass-surface px-4 py-3 flex items-center gap-3">
+                <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-secondary/50 border border-border shrink-0`}>
+                    <span className={`text-xl font-display font-bold ${c.text}`}>{score}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Trip verdict</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full border ${c.chip}`}>{label}</span>
+                    </div>
+                    <p className="text-sm font-medium text-foreground leading-snug truncate">{verdict}</p>
+                </div>
+                {totalStr && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-secondary/50 border border-border shrink-0">
+                        <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                        <div className="leading-tight">
+                            <div className="text-[8px] uppercase tracking-widest text-muted-foreground">Est. cost</div>
+                            <div className="text-xs font-bold text-foreground">{totalStr}</div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 mb-6">
