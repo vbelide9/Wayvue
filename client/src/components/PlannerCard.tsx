@@ -1,8 +1,9 @@
-import { MapPin, Search, Zap, Camera, Plus, X } from 'lucide-react';
+import { MapPin, Search, Zap, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LocationInput } from '@/components/LocationInput';
 import { CombinedDateTimePicker } from './CustomDateTimePicker';
 import { TopographyBackground } from './TopographyBackground';
+import { WaypointsEditor, type Waypoint } from './WaypointsEditor';
 
 interface PlannerCardProps {
   start: string;
@@ -12,8 +13,8 @@ interface PlannerCardProps {
   onStartSelect: (coords: { lat: number; lng: number; display_name: string }) => void;
   onDestSelect: (coords: { lat: number; lng: number; display_name: string }) => void;
 
-  waypoints: { name: string; lat?: number; lng?: number }[];
-  onWaypointsChange: (waypoints: { name: string; lat?: number; lng?: number }[]) => void;
+  waypoints: Waypoint[];
+  onWaypointsChange: (waypoints: Waypoint[]) => void;
 
   departureDate: string;
   departureTime: string;
@@ -123,18 +124,6 @@ export function PlannerCard({
   // ── Handle Search — triggers the real API call and navigates to the trip view ──
   const handleSearchClick = () => {
     onSubmit();
-  };
-
-  // ── Waypoint (multi-stop) handlers ──
-  const addWaypoint = () => {
-    onWaypointsChange([...waypoints, { name: '' }]);
-  };
-  const updateWaypoint = (index: number, patch: Partial<{ name: string; lat: number; lng: number }>) => {
-    const next = waypoints.map((wp, i) => (i === index ? { ...wp, ...patch } : wp));
-    onWaypointsChange(next);
-  };
-  const removeWaypoint = (index: number) => {
-    onWaypointsChange(waypoints.filter((_, i) => i !== index));
   };
 
   return (
@@ -274,54 +263,7 @@ export function PlannerCard({
 
                         {/* ═══ Multi-Stop Waypoints ═══ */}
                         <div className="px-4">
-                          <AnimatePresence initial={false}>
-                            {waypoints.map((wp, i) => (
-                              <motion.div
-                                key={i}
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="overflow-visible mb-3"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase w-14 shrink-0">
-                                    Stop {i + 1}
-                                  </div>
-                                  <div className="flex-1 min-w-0 relative z-30">
-                                    <LocationInput
-                                      value={wp.name}
-                                      onChange={(val) => updateWaypoint(i, { name: val })}
-                                      onSelect={(coords) => updateWaypoint(i, { name: coords.display_name, lat: coords.lat, lng: coords.lng })}
-                                      label={`Stop ${i + 1}`}
-                                      variant="minimal"
-                                      placeholder="Add a stop along the way"
-                                      icon="destination"
-                                    />
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeWaypoint(i)}
-                                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-                                    title="Remove stop"
-                                    aria-label={`Remove stop ${i + 1}`}
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-
-                          <button
-                            type="button"
-                            onClick={addWaypoint}
-                            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors mt-1"
-                          >
-                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-secondary">
-                              <Plus size={13} />
-                            </span>
-                            Add stop
-                          </button>
+                          <WaypointsEditor waypoints={waypoints} onWaypointsChange={onWaypointsChange} />
                         </div>
                       </motion.div>
                   </AnimatePresence>

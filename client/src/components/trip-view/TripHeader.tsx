@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
 import { WayvueBrand } from '../WayvueBrand';
+import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
 
 interface TripHeaderProps {
     start: string;
@@ -50,9 +51,11 @@ interface TripHeaderProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     onExportPdf?: () => void;
+    waypoints?: Waypoint[];
+    onWaypointsChange?: (waypoints: Waypoint[]) => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
@@ -254,6 +257,13 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                         variant="minimal"
                                     />
                                 </div>
+
+                                {/* Multi-Stop Waypoints */}
+                                {onWaypointsChange && (
+                                    <div className="pt-2 border-t border-border/50">
+                                        <WaypointsEditor waypoints={waypoints} onWaypointsChange={onWaypointsChange} />
+                                    </div>
+                                )}
 
                                 {/* Return Date Picker (Conditional) */}
                                 {localRoundTrip && (

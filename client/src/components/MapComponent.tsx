@@ -190,14 +190,23 @@ function FlowingDash({ id, coordinates }: { id: string; coordinates: LngLat[] })
         let frame = 0;
         let raf = 0;
         let last = 0;
+        let stopped = false;
         const reduced = typeof window !== 'undefined'
             && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
         const tick = (t: number) => {
+            if (stopped) return;
             if (t - last > 80) {
                 last = t;
                 frame = (frame + 1) % DASH_SEQUENCE.length;
-                if (map.getLayer(layerId)) {
-                    map.setPaintProperty(layerId, 'line-dasharray', DASH_SEQUENCE[frame]);
+                try {
+                    if (map.getLayer(layerId)) {
+                        map.setPaintProperty(layerId, 'line-dasharray', DASH_SEQUENCE[frame]);
+                    }
+                } catch {
+                    // Map instance was torn down mid-animation-frame (e.g. navigating
+                    // away) — stop quietly instead of throwing past React's control.
+                    stopped = true;
+                    return;
                 }
             }
             raf = requestAnimationFrame(tick);
@@ -205,9 +214,14 @@ function FlowingDash({ id, coordinates }: { id: string; coordinates: LngLat[] })
         if (!reduced) raf = requestAnimationFrame(tick);
 
         return () => {
+            stopped = true;
             cancelAnimationFrame(raf);
-            if (map.getLayer(layerId)) map.removeLayer(layerId);
-            if (map.getSource(sourceId)) map.removeSource(sourceId);
+            try {
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+                if (map.getSource(sourceId)) map.removeSource(sourceId);
+            } catch {
+                // Already removed along with the map instance — nothing to clean up.
+            }
         };
     }, [map, isLoaded, id, coordinates]);
     return null;

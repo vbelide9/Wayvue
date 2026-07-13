@@ -162,7 +162,7 @@ async function getRecommendations(routeSegments) {
                 id: `fallback-${i}-${fallbackType}`,
                 type: fallbackType,
                 location: displayLocation,
-                title: `${defaultTownName} — ${fallbackType === 'food' ? 'Dining' : fallbackType === 'gas' ? 'Fuel' : fallbackType === 'charging' ? 'EV Charging' : fallbackType === 'view' ? 'Scenic Spot' : 'Rest Stop'}`,
+                title: `${defaultTownName} - ${fallbackType === 'food' ? 'Dining' : fallbackType === 'gas' ? 'Fuel' : fallbackType === 'charging' ? 'EV Charging' : fallbackType === 'view' ? 'Scenic Spot' : 'Rest Stop'}`,
                 description: `${fallbackDescriptions[fallbackType]} (Estimated)`,
                 quality: 1,
                 miles: Number(milesFromStart),

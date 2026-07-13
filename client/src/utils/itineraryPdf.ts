@@ -123,7 +123,7 @@ export function generateItineraryPdf(data: ItineraryData) {
     // ── Trip verdict + key metrics ──
     sectionTitle('Trip Summary');
     if (data.tripScore) {
-        keyValueRow('Trip score', `${data.tripScore.score}/100 — ${data.tripScore.label}`);
+        keyValueRow('Trip score', `${data.tripScore.score}/100 - ${data.tripScore.label}`);
     }
     if (data.metrics.time) keyValueRow('Drive time', data.metrics.time);
     if (data.metrics.distance) keyValueRow('Distance', data.metrics.distance);
@@ -161,7 +161,7 @@ export function generateItineraryPdf(data: ItineraryData) {
     if (data.stopsList && data.stopsList.length) {
         sectionTitle('Suggested Stops');
         data.stopsList.forEach(s => {
-            bodyLine(`• ${s.title}${s.detail ? ` — ${s.detail}` : ''}`);
+            bodyLine(`• ${s.title}${s.detail ? ` - ${s.detail}` : ''}`);
         });
     }
 
@@ -169,15 +169,15 @@ export function generateItineraryPdf(data: ItineraryData) {
     if (data.roadAlerts && data.roadAlerts.length) {
         sectionTitle('Road Alerts');
         data.roadAlerts.forEach(a => {
-            bodyLine(`• ${a.label}${a.detail ? ` — ${a.detail}` : ''}`);
+            bodyLine(`• ${a.label}${a.detail ? ` - ${a.detail}` : ''}`);
         });
     }
 
     // ── Stays & rentals ──
     if ((data.hotels && data.hotels.length) || (data.rentals && data.rentals.length)) {
         sectionTitle('Stays & Rentals');
-        (data.hotels || []).forEach(h => bodyLine(`Hotel — ${h.name}${h.detail ? ` (${h.detail})` : ''}`));
-        (data.rentals || []).forEach(r => bodyLine(`Rental — ${r.name}${r.detail ? ` (${r.detail})` : ''}`));
+        (data.hotels || []).forEach(h => bodyLine(`Hotel - ${h.name}${h.detail ? ` (${h.detail})` : ''}`));
+        (data.rentals || []).forEach(r => bodyLine(`Rental - ${r.name}${r.detail ? ` (${r.detail})` : ''}`));
     }
 
     // ── Footer on every page ──

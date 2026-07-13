@@ -60,14 +60,16 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                     Suggested Stops
                 </h3>
 
-                {/* Category Filter Chips - Horizontal Scroll */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none px-1 -mx-1 snap-x">
+                {/* Category Filter Chips — wraps onto multiple lines so every category
+                    stays visible at once, instead of hiding behind an undiscoverable
+                    horizontal scroll in the narrow docked panel. */}
+                <div className="flex flex-wrap items-center gap-2 px-1">
                     {categories.map((cat) => (
                         <button
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
                             className={`
-                                relative flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 flex-none snap-start overflow-hidden outline-none
+                                relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 overflow-hidden outline-none
                                 ${activeCategory === cat.id
                                     ? "text-primary shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                                     : "bg-secondary/50 border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -128,13 +130,11 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0 pr-8 relative z-10">
-                                        <h4 className="font-bold text-lg text-foreground leading-tight group-hover:text-primary transition-colors truncate mb-2 tracking-tight">
+                                        <h4 className="font-bold text-lg text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-2 mb-2 tracking-tight">
                                             {place.title}
                                         </h4>
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium bg-secondary/70 w-fit px-3 py-1.5 rounded-full border border-border">
                                             <span className="text-foreground/80">{place.location}</span>
-                                            <span className="w-1 h-1 rounded-full bg-border" />
-                                            <span className="text-primary font-bold">37 mi</span>
                                         </div>
 
                                         {/* Action Link */}

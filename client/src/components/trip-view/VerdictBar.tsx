@@ -56,7 +56,7 @@ export function VerdictBar({ tripScore, aiAnalysis, metrics, alertCount, isEnric
     const alertPhrase = alertCount === 0
         ? 'no major alerts'
         : `${alertCount} alert${alertCount > 1 ? 's' : ''} to review`;
-    const verdict = `${label} trip — ${weatherPhrase}, ${alertPhrase}.`;
+    const verdict = `${label} trip: ${weatherPhrase}, ${alertPhrase}.`;
 
     // Total estimated cost = fuel + tolls
     const total = Math.round(parseDollars(metrics.fuel) + parseDollars(metrics.tollCost));

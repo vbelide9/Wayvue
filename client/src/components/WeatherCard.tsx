@@ -51,6 +51,10 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
         ? `${weather.location}, ${weather.state}`
         : weather.location;
 
+    // weather.eta already arrives pre-labeled (e.g. "ETA 12:58 PM") — strip any
+    // existing prefix so our own "ETA" label is never duplicated.
+    const etaTime = weather.eta?.replace(/^ETA\s*/i, '');
+
     // Icon Helper
     const getIcon = (cond: string, sizeClass: string) => {
         switch (cond) {
@@ -203,88 +207,63 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
         )
     }
 
-    // --- VARIANT: CARD (Default) ---
+    // --- VARIANT: CARD (Default) — compact single-row layout so a full route's
+    // worth of stops fits without excessive scrolling, while keeping every metric.
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            className="bg-card border border-border rounded-[2rem] p-6 sm:p-8 flex flex-col gap-6 shadow-soft transition-all duration-500 group relative overflow-hidden hover:border-primary/30 hover:shadow-soft-lg"
+            className="bg-card border border-border rounded-2xl px-4 py-3 flex flex-col gap-2.5 shadow-soft transition-colors duration-300 hover:border-primary/30"
         >
-            {/* Ambient background glow */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-secondary/50 rounded-xl border border-border shrink-0">
+                    {getIcon(condition, "w-6 h-6")}
+                </div>
 
-            <div className="flex justify-between items-start relative z-10">
-                <div className="flex flex-col gap-1">
-                    <h3 className="font-bold text-foreground text-2xl tracking-tight max-w-[200px] truncate" title={locationLabel}>
-                        {locationLabel}
-                    </h3>
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] opacity-80 mt-1">
-                        {type === 'start' ? 'Start Point' : type === 'destination' ? 'Destination' : 'Real-time Forecast'}
-                    </p>
-
-                    {/* ETA & Distance Context */}
-                    {(weather.eta || weather.distanceFromStart !== undefined) && (
-                        <div className="flex items-center gap-3 mt-4">
-                            {weather.eta && (
-                                <span className="text-[11px] font-bold text-foreground font-mono bg-secondary px-3 py-1.5 rounded-xl border border-border shadow-inner">
-                                    <span className="text-primary mr-2">ETA</span>{weather.eta}
-                                </span>
-                            )}
-                            {weather.distanceFromStart !== undefined && (
-                                <span className="text-[11px] font-bold text-muted-foreground font-mono uppercase tracking-wider bg-secondary/60 px-3 py-1.5 rounded-xl border border-border">
-                                    {weather.distanceFromStart} mi away
-                                </span>
-                            )}
-                        </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                        <h3 className="font-bold text-foreground text-sm truncate" title={locationLabel}>
+                            {locationLabel}
+                        </h3>
+                        <span className="text-[9px] font-black text-primary uppercase tracking-wider opacity-80 shrink-0">
+                            {type === 'start' ? 'Start' : type === 'destination' ? 'Dest' : 'Stop'}
+                        </span>
+                    </div>
+                    {(etaTime || weather.distanceFromStart !== undefined) && (
+                        <p className="text-[10px] font-mono text-muted-foreground truncate">
+                            {etaTime && <span><span className="text-primary">ETA</span> {etaTime}</span>}
+                            {etaTime && weather.distanceFromStart !== undefined && ' · '}
+                            {weather.distanceFromStart !== undefined && `${weather.distanceFromStart} mi`}
+                        </p>
                     )}
                 </div>
 
-                <div className="p-4 bg-secondary/50 rounded-2xl shadow-none border border-border group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out">
-                    {getIcon(condition, "w-12 h-12 drop-shadow-xl")}
+                <div className="flex items-baseline gap-0.5 shrink-0">
+                    <span className="font-black text-foreground text-2xl leading-none tracking-tighter">
+                        {displayTemp}{hasTemp ? "°" : ""}
+                    </span>
+                    <span className="text-xs font-bold text-muted-foreground">{unit.toUpperCase()}</span>
                 </div>
             </div>
 
-            <div className="flex items-end gap-3 mt-2 relative z-10">
-                <span className="font-black text-foreground text-[4rem] leading-none tracking-tighter drop-shadow-md">
-                    {displayTemp}{hasTemp ? "°" : ""}
+            {/* Compact metrics row */}
+            <div className="flex items-center gap-3 pt-2 border-t border-border/60 text-xs font-semibold text-foreground/80">
+                <span className="flex items-center gap-1.5" title="Wind speed">
+                    <Wind className="w-3.5 h-3.5 text-blue-600" />
+                    {weather.windSpeed || 0}<span className="text-[10px] text-muted-foreground font-normal">mph</span>
                 </span>
-                <span className="text-xl font-bold text-muted-foreground mb-2">{unit.toUpperCase()}</span>
+                <span className="flex items-center gap-1.5" title="Humidity">
+                    <Droplets className="w-3.5 h-3.5 text-cyan-600" />
+                    {weather.humidity || 0}<span className="text-[10px] text-muted-foreground font-normal">%</span>
+                </span>
+                {weather.gasPrice && (
+                    <span className="flex items-center gap-1.5" title="Est. gas price">
+                        <Fuel className="w-3.5 h-3.5 text-orange-600" />
+                        ${weather.gasPrice}
+                    </span>
+                )}
             </div>
-
-            {/* Bento Grid Metrics */}
-            <div className="grid grid-cols-2 gap-3 pt-6 mt-2 relative z-10">
-                <div className="flex items-center gap-3 text-sm font-medium text-foreground/80 bg-secondary/50 p-3 rounded-2xl border border-border shadow-inner hover:bg-secondary transition-colors">
-                    <div className="p-2 bg-blue-500/10 rounded-lg">
-                        <Wind className="w-5 h-5 text-blue-600 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
-                    </div>
-                    <span className="tracking-wide text-lg font-semibold">{weather.windSpeed || 0} <span className="text-xs text-muted-foreground uppercase opacity-70">mph</span></span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm font-medium text-foreground/80 bg-secondary/50 p-3 rounded-2xl border border-border shadow-inner hover:bg-secondary transition-colors">
-                    <div className="p-2 bg-cyan-500/10 rounded-lg">
-                        <Droplets className="w-5 h-5 text-cyan-600 drop-shadow-[0_0_8px_rgba(34,212,238,0.5)]" />
-                    </div>
-                    <span className="tracking-wide text-lg font-semibold">{weather.humidity || 0} <span className="text-xs text-muted-foreground uppercase opacity-70">%</span></span>
-                </div>
-            </div>
-
-            {/* Prices Block (Gas Only) - Integrated as another bento cell */}
-            {weather.gasPrice && (
-                <div className="mt-1 relative z-10">
-                    <div className="flex justify-between items-center bg-gradient-to-r from-[#FFFFFF]/[0.02] to-transparent p-4 rounded-2xl border border-border hover:border-primary/20 hover:bg-secondary transition-all" title="Est. Gas Price">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-orange-500/10 rounded-lg">
-                                <Fuel className="w-5 h-5 text-orange-600 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
-                            </div>
-                            <span className="text-sm font-bold text-muted-foreground tracking-wide">Avg Gas Price</span>
-                        </div>
-                        <span className="font-black text-xl text-foreground tracking-tight drop-shadow-md">
-                            ${weather.gasPrice}
-                        </span>
-                    </div>
-                </div>
-            )}
         </motion.div>
     )
 }

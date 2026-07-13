@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { TripHeader } from './TripHeader';
 import { VerdictBar } from './VerdictBar';
 import { type RoadCondition } from '@/components/RoadConditionCard';
@@ -10,7 +9,8 @@ import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
-import { TopCategoryNav } from '../TopCategoryNav';
+import { InsightsAccordion } from './InsightsAccordion';
+import { type Waypoint } from '@/components/WaypointsEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -44,6 +44,8 @@ interface TripViewLayoutProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     isRoundTrip?: boolean;
+    waypoints?: Waypoint[];
+    onWaypointsChange?: (waypoints: Waypoint[]) => void;
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
@@ -103,6 +105,8 @@ export function TripViewLayout({
     onSetRoundTrip,
     isRoundTrip,
     rawReturnDate,
+    waypoints,
+    onWaypointsChange,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Insights panel — open by default, collapsible to reveal the full-screen map.
@@ -172,10 +176,8 @@ export function TripViewLayout({
         { id: 'rentals', title: 'Rental vehicles', subtitle: 'Smart vehicle matches for your trip' },
         { id: 'stay', title: 'Hotels', subtitle: 'Overnight stays matched to your route' },
     ];
-    const active = TABS.find(t => t.id === activeTab) || TABS[0];
-
-    const renderPanel = () => {
-        switch (activeTab) {
+    const renderPanel = (id: string) => {
+        switch (id) {
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />
@@ -266,6 +268,8 @@ export function TripViewLayout({
                         depTime={depTime}
                         rawReturnTime={rawReturnTime}
                         onSetRoundTrip={onSetRoundTrip}
+                        waypoints={waypoints}
+                        onWaypointsChange={onWaypointsChange}
                     />
                 </div>
 
@@ -324,33 +328,20 @@ export function TripViewLayout({
                             )}
                         </div>
 
-                        {/* Tabs */}
-                        <div className="shrink-0 px-2 pb-2">
-                            <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
-                        </div>
-
-                        {/* Scrollable active panel — data-lenis-prevent so Lenis smooth-scroll
-                            doesn't swallow wheel events over this nested scroll area */}
-                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-6">
-                            <div className="mb-4 mt-1">
-                                <div className="flex items-center gap-2.5 mb-1">
-                                    <div className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
-                                    <h2 className="text-xl font-display font-medium text-foreground">{active.title}</h2>
-                                </div>
-                                <p className="text-muted-foreground text-sm ml-[15px]">{active.subtitle}</p>
-                            </div>
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={activeTab}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
-                                    className="glass-surface overflow-hidden"
-                                >
-                                    {renderPanel()}
-                                </motion.div>
-                            </AnimatePresence>
+                        {/* Insights sections — stacked collapsible accordions, always visible
+                            without horizontal scrolling. Overview is expanded by default;
+                            data-lenis-prevent so Lenis smooth-scroll doesn't swallow wheel
+                            events over this nested scroll area. */}
+                        {/* pb-24 clears the fixed "Ask Wayvue AI" button (bottom-6, ~56px tall)
+                            so it never covers the last card's content. */}
+                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-24 pt-1">
+                            <InsightsAccordion
+                                categories={TABS}
+                                activeId={activeTab}
+                                onToggle={setActiveTab}
+                                badges={{ road: alertCount }}
+                                renderContent={renderPanel}
+                            />
                         </div>
                     </div>
                 </aside>
