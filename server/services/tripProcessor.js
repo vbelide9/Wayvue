@@ -25,6 +25,43 @@ const cityFromDisplay = (displayName) => {
     return looksLikeStreet ? parts[1] : parts[0];
 };
 
+// Full US state name -> 2-letter abbreviation, used to normalize whatever the
+// geocoder hands back ("Pennsylvania" or "PA") to a compact display abbreviation.
+const US_STATES = {
+    alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+    colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+    hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+    kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+    massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
+    montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+    'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH',
+    oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+    'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+    virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY',
+    'district of columbia': 'DC',
+};
+const US_ABBRS = new Set(Object.values(US_STATES));
+
+/**
+ * Extract a US state abbreviation from a geocoder display name.
+ * e.g. "Oakdale, PA" -> "PA"; "Buffalo, New York" -> "NY";
+ * "1063 Olivia Dr, Oakdale, PA, 15071" -> "PA". Returns null when none is found.
+ */
+const stateFromDisplay = (displayName) => {
+    if (!displayName) return null;
+    const parts = displayName.split(',').map(s => s.trim()).filter(Boolean);
+    // Scan from the end (state sits near the end, before ZIP/country).
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        const lower = p.toLowerCase();
+        if (US_STATES[lower]) return US_STATES[lower];
+        // Match a bare or embedded 2-letter abbreviation ("PA" or "PA 15071").
+        const m = p.toUpperCase().match(/\b([A-Z]{2})\b/);
+        if (m && US_ABBRS.has(m[1])) return m[1];
+    }
+    return null;
+};
+
 /**
  * Processes a single leg of a trip (e.g. Outbound or Return).
  * @param {Object} startLoc - { lat, lon, display_name }
@@ -163,6 +200,7 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 return {
                     ...w.weather,
                     location: city,
+                    state: stateFromDisplay(fullLocationForGas),
                     lat: w.lat,
                     lng: w.lng,
                     distanceFromStart: distMiles,

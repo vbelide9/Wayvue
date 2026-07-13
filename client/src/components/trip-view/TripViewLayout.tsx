@@ -265,8 +265,9 @@ export function TripViewLayout({
                             <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
                         </div>
 
-                        {/* Scrollable active panel */}
-                        <div className="flex-1 overflow-y-auto px-3 pb-6">
+                        {/* Scrollable active panel — data-lenis-prevent so Lenis smooth-scroll
+                            doesn't swallow wheel events over this nested scroll area */}
+                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-6">
                             <div className="mb-4 mt-1">
                                 <div className="flex items-center gap-2.5 mb-1">
                                     <div className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />

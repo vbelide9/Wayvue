@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 
 interface WeatherData {
     location: string
+    state?: string | null
     condition?: "clear" | "cloudy" | "rain" | "snow" | "fog"
     weathercode?: number
     temperature: number
@@ -43,6 +44,12 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
         : "--";
 
     const condition = weather.condition || mapCodeToCondition(weather.weathercode);
+
+    // Show "City, ST" when we have a state; avoid duplicating it if the location
+    // string already ends with the abbreviation (e.g. "Oakdale, PA").
+    const locationLabel = weather.state && !new RegExp(`,\\s*${weather.state}$`, 'i').test(weather.location)
+        ? `${weather.location}, ${weather.state}`
+        : weather.location;
 
     // Icon Helper
     const getIcon = (cond: string, sizeClass: string) => {
@@ -122,8 +129,8 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                             <span className="text-3xl font-black text-foreground tracking-tighter">
                                 {displayTemp}{hasTemp ? "°" : ""}
                             </span>
-                            <span className="text-xs font-semibold text-muted-foreground truncate max-w-[90px] mt-0.5" title={weather.location}>
-                                {weather.location}
+                            <span className="text-xs font-semibold text-muted-foreground truncate max-w-[90px] mt-0.5" title={locationLabel}>
+                                {locationLabel}
                             </span>
                         </div>
                     </div>
@@ -184,7 +191,7 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
                     <div className="flex items-center gap-1.5 mb-1">
                         <MapPin className="w-3.5 h-3.5 text-primary" />
                         <span className="text-xs font-bold text-foreground truncate max-w-[120px] block tracking-wide">
-                            {weather.location}
+                            {locationLabel}
                         </span>
                     </div>
                     <div className="flex items-baseline gap-2">
@@ -209,8 +216,8 @@ export function WeatherCard({ weather, variant = "card", unit, type }: WeatherCa
 
             <div className="flex justify-between items-start relative z-10">
                 <div className="flex flex-col gap-1">
-                    <h3 className="font-bold text-foreground text-2xl tracking-tight max-w-[200px] truncate" title={weather.location}>
-                        {weather.location}
+                    <h3 className="font-bold text-foreground text-2xl tracking-tight max-w-[200px] truncate" title={locationLabel}>
+                        {locationLabel}
                     </h3>
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] opacity-80 mt-1">
                         {type === 'start' ? 'Start Point' : type === 'destination' ? 'Destination' : 'Real-time Forecast'}
