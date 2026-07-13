@@ -1,6 +1,8 @@
 import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, Filter, TreePine, Info, Zap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RatingStars } from "@/components/RatingStars";
+import { type RateablePlace } from "@/lib/useRating";
 
 interface Place {
     id: string;
@@ -9,6 +11,11 @@ interface Place {
     title: string;
     description: string;
 }
+
+// Only real OSM points of interest are rateable — generic "fallback-*" stops aren't
+// actual businesses, so they never get a place_key.
+const toRateable = (p: Place): RateablePlace | null =>
+    p.id.startsWith("osm-") ? { placeKey: p.id, name: p.title, type: p.type } : null;
 
 interface PlacesRecommendationsProps {
     places: Place[] | null;
@@ -137,6 +144,13 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                             <span className="text-foreground/80">{place.location}</span>
                                         </div>
 
+                                        {/* Community rating — real OSM stops only */}
+                                        {toRateable(place) && (
+                                            <div className="mt-3">
+                                                <RatingStars place={toRateable(place)} />
+                                            </div>
+                                        )}
+
                                         {/* Action Link */}
                                         <div className="mt-4 flex items-center gap-1.5 text-[10px] text-primary font-bold uppercase tracking-widest opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                             <Info className="w-3.5 h-3.5" />
@@ -206,9 +220,17 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-foreground/80 leading-relaxed mb-8 bg-secondary/60 p-5 rounded-2xl border border-border shadow-inner">
+                                <p className="text-sm text-foreground/80 leading-relaxed mb-6 bg-secondary/60 p-5 rounded-2xl border border-border shadow-inner">
                                     {selectedPlace.description}
                                 </p>
+
+                                {/* Community rating — real OSM stops only */}
+                                {toRateable(selectedPlace) && (
+                                    <div className="mb-8 flex items-center justify-between gap-3">
+                                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your rating</span>
+                                        <RatingStars place={toRateable(selectedPlace)} size="md" />
+                                    </div>
+                                )}
 
                                 <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route

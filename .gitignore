@@ -17,6 +17,10 @@ out/
 .env.test.local
 .env.production.local
 
+# Local secrets (never commit) — e.g. OAuth client secrets kept for reference
+*.secret.md
+secrets/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

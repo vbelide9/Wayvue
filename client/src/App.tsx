@@ -549,6 +549,61 @@ export default function App() {
   useEffect(() => { startRef.current = start; }, [start]);
   useEffect(() => { destRef.current = destination; }, [destination]);
 
+  // ── Restore the trip after a sign-in redirect ─────────────────────────────
+  // Google OAuth fully reloads the app, which would otherwise drop the user on the
+  // landing page. While viewing a trip we snapshot its request; on reload right after
+  // an auth redirect (flag set in AuthContext.signInWithGoogle) we rebuild that trip.
+  const handleRouteSubmitRef = useRef(handleRouteSubmit);
+  handleRouteSubmitRef.current = handleRouteSubmit;
+
+  useEffect(() => {
+    if (viewMode !== 'trip') return;
+    try {
+      sessionStorage.setItem('wayvue.tripSnapshot', JSON.stringify({
+        savedAt: Date.now(),
+        start, destination, startCoords, destCoords,
+        departureDate, departureTime, returnDate, returnTime,
+        isRoundTrip, preference: outboundPref, waypoints,
+      }));
+    } catch { /* ignore */ }
+  }, [viewMode, start, destination, startCoords, destCoords, departureDate, departureTime, returnDate, returnTime, isRoundTrip, outboundPref, waypoints]);
+
+  useEffect(() => {
+    let returning = false;
+    try { returning = sessionStorage.getItem('wayvue.authRedirect') === '1'; } catch { /* ignore */ }
+    if (!returning) return;
+    try { sessionStorage.removeItem('wayvue.authRedirect'); } catch { /* ignore */ }
+
+    let snap: any = null;
+    try {
+      const raw = sessionStorage.getItem('wayvue.tripSnapshot');
+      if (raw) snap = JSON.parse(raw);
+    } catch { /* ignore */ }
+    // Only restore a fresh snapshot (guards against jumping into a long-stale trip).
+    if (!snap || !snap.start || !snap.destination) return;
+    if (typeof snap.savedAt === 'number' && Date.now() - snap.savedAt > 10 * 60 * 1000) return;
+
+    setStart(snap.start);
+    setDestination(snap.destination);
+    if (snap.startCoords) setStartCoords(snap.startCoords);
+    if (snap.destCoords) setDestCoords(snap.destCoords);
+    if (snap.departureDate) setDepartureDate(snap.departureDate);
+    if (snap.departureTime) setDepartureTime(snap.departureTime);
+    if (snap.returnDate) setReturnDate(snap.returnDate);
+    if (snap.returnTime) setReturnTime(snap.returnTime);
+    if (typeof snap.isRoundTrip === 'boolean') setIsRoundTrip(snap.isRoundTrip);
+    if (snap.preference) { setOutboundPref(snap.preference); setReturnPref(snap.preference); }
+    if (Array.isArray(snap.waypoints)) setWaypoints(snap.waypoints);
+
+    handleRouteSubmitRef.current(
+      snap.start, snap.destination, snap.departureDate, snap.departureTime,
+      snap.startCoords, snap.destCoords, snap.isRoundTrip, snap.preference,
+      snap.returnDate, snap.returnTime, snap.waypoints,
+    );
+    // Run once on mount — the ref keeps handleRouteSubmit current.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Compact live snapshot of the trip sent to Claude as context each turn.
   const buildTripContext = () => {
     if (viewMode !== 'trip' || !route) {

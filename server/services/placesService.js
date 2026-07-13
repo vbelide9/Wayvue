@@ -50,7 +50,7 @@ async function getRecommendations(routeSegments) {
         const highwayRegex = "rest_area";
 
         const query = `
-            [out:json][timeout:15];
+            [out:json][timeout:25];
             (
               node["amenity"~"${commonAmenity}"](around:5000, ${lat}, ${lon});
             );
@@ -65,7 +65,9 @@ async function getRecommendations(routeSegments) {
             out center 100;
         `;
 
-        const mirror = i % 2 === 0 ? 'overpass-api.de' : 'overpass.kumi.systems';
+        // overpass.kumi.systems went offline (connection timeouts) — maps.mail.ru is a
+        // live mirror. Alternating spreads load across the two working endpoints.
+        const mirror = i % 2 === 0 ? 'overpass-api.de' : 'maps.mail.ru/osm/tools/overpass';
 
         try {
             // Jitter to avoid rate limiting
@@ -75,7 +77,7 @@ async function getRecommendations(routeSegments) {
 
             const response = await axios.get(url, {
                 headers: { 'User-Agent': 'WayvueApp/3.0' },
-                timeout: 15000
+                timeout: 25000 // heavier around+regex query on public mirrors can take ~20s
             });
             const nodes = response.data.elements || [];
 

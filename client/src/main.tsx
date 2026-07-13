@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import AdminDashboard from './pages/AdminDashboard.tsx'
+import { AuthProvider } from './lib/AuthContext.tsx'
 
 const Root = () => {
   const path = window.location.pathname;
@@ -14,6 +15,8 @@ const Root = () => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Root />
+    <AuthProvider>
+      <Root />
+    </AuthProvider>
   </StrictMode>
 )

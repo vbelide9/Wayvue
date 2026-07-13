@@ -4,6 +4,7 @@ const { getWeatherForPoints, getWeather } = require('./weatherService');
 const RealCameraService = require('./realCameraService');
 const { reverseGeocode } = require('./geocodingService');
 const { getRecommendations } = require('./placesService');
+const { buildRouteKey, getCachedRecommendations, saveCachedRecommendations } = require('./recommendationCache');
 const { generateTripAnalysis, calculateTripScore } = require('./aiService');
 const { getGasPriceForLocation, calculateFuelCosts } = require('./gasPriceService');
 const { getRouteTrafficDelay } = require('./trafficService');
@@ -265,6 +266,13 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
 
         // C. Places
         (async () => {
+            // Serve a stable, cached set per route when available — Overpass is flaky, so
+            // re-fetching live returns a different mix every time (breaks ratings, which
+            // need the same stop to reappear). Cache the first good result and reuse it.
+            const routeKey = buildRouteKey(startLoc, endLoc, isScenic, waypoints);
+            const cached = await getCachedRecommendations(routeKey);
+            if (cached) return cached;
+
             let samplePoints = [0.1, 0.5, 0.9];
             if (totalDistanceMiles > 100) samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
 
@@ -277,7 +285,9 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                     miles: Number(currentDist)
                 };
             });
-            return getRecommendations(contextPoints);
+            const fresh = await getRecommendations(contextPoints);
+            await saveCachedRecommendations(routeKey, fresh);
+            return fresh;
         })(),
 
         // D. Traffic Incidents (accidents, closures, construction, jams)
