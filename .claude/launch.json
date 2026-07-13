@@ -5,8 +5,9 @@
       "name": "wayvue-client",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 5173,
-      "cwd": "client"
+      "port": 5176,
+      "cwd": "client",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5176"]
     }
   ]
 }

@@ -28,6 +28,7 @@ interface TripViewLayoutProps {
     recommendations: any[];
     unit: 'C' | 'F';
     onBack: () => void;
+    onHome?: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
     onExportPdf?: () => void;
     onSearch: (start?: string, end?: string, depDate?: string, depTime?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic', returnDate?: string, returnTime?: string) => void;
@@ -46,9 +47,13 @@ interface TripViewLayoutProps {
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
-// Width of the docked insights panel on desktop (px). The map reserves this much
-// on its right edge so the route never hides behind the panel.
-const PANEL_WIDTH = 440;
+// Docked insights panel width (px). The map reserves this much on its right edge so
+// the route never hides behind the panel. The width is user-resizable within these
+// bounds and persisted to localStorage.
+const DEFAULT_PANEL_WIDTH = 440;
+const MIN_PANEL_WIDTH = 340;
+const MAX_PANEL_WIDTH = 720;
+const PANEL_WIDTH_KEY = 'wayvue.insightsPanelWidth';
 
 // Streaming placeholders shown while phase-2 enrichment is in flight
 function CardSkeleton({ rows = 3 }: { rows?: number }) {
@@ -83,6 +88,7 @@ export function TripViewLayout({
     unit,
     onUnitChange,
     onBack,
+    onHome,
     onExportPdf,
     onSearch,
     onSegmentSelect,
@@ -104,9 +110,46 @@ export function TripViewLayout({
     // Only reserve map space / offset the toolbar when the panel docks (sm+); on
     // small screens the panel is a full-width overlay instead.
     const [isDocked, setIsDocked] = useState(false);
+    // User-resizable docked width (persisted). Drag the panel's left edge to change it.
+    const [panelWidth, setPanelWidth] = useState<number>(() => {
+        if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH;
+        const saved = Number(window.localStorage.getItem(PANEL_WIDTH_KEY));
+        return saved >= MIN_PANEL_WIDTH && saved <= MAX_PANEL_WIDTH ? saved : DEFAULT_PANEL_WIDTH;
+    });
+    const [isResizing, setIsResizing] = useState(false);
 
     // Reset scroll to top on mount
     useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+
+    // Drag-to-resize: while active, translate the pointer's X into a panel width
+    // measured from the right edge, clamped to the allowed bounds.
+    useEffect(() => {
+        if (!isResizing) return;
+        const onMove = (e: PointerEvent) => {
+            const next = window.innerWidth - e.clientX;
+            setPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, next)));
+        };
+        const stop = () => setIsResizing(false);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+        const prevCursor = document.body.style.cursor;
+        const prevSelect = document.body.style.userSelect;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        return () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', stop);
+            window.removeEventListener('pointercancel', stop);
+            document.body.style.cursor = prevCursor;
+            document.body.style.userSelect = prevSelect;
+        };
+    }, [isResizing]);
+
+    // Persist the chosen width.
+    useEffect(() => {
+        window.localStorage.setItem(PANEL_WIDTH_KEY, String(panelWidth));
+    }, [panelWidth]);
 
     // Track whether the viewport is wide enough for the panel to dock beside the map.
     useEffect(() => {
@@ -117,7 +160,7 @@ export function TripViewLayout({
         return () => mq.removeEventListener('change', update);
     }, []);
 
-    const mapRightInset = panelOpen && isDocked ? PANEL_WIDTH : 0;
+    const mapRightInset = panelOpen && isDocked ? panelWidth : 0;
 
     const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
@@ -193,10 +236,14 @@ export function TripViewLayout({
                     {map(activeTab, mapRightInset)}
                 </div>
 
+                {/* Transparent capture layer during resize so the map canvas doesn't
+                    eat pointer events or flash hover states while dragging. */}
+                {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
+
                 {/* Floating toolbar over the map; stops short of the docked panel */}
                 <div
-                    className="absolute top-0 left-0 z-30 pt-3 transition-[right] duration-300 ease-out"
-                    style={{ right: panelOpen && isDocked ? PANEL_WIDTH : 0 }}
+                    className={`absolute top-0 left-0 z-30 pt-3 ${isResizing ? '' : 'transition-[right] duration-300 ease-out'}`}
+                    style={{ right: panelOpen && isDocked ? panelWidth : 0 }}
                 >
                     <TripHeader
                         start={start}
@@ -207,6 +254,7 @@ export function TripViewLayout({
                         unit={unit}
                         onUnitChange={onUnitChange}
                         onBack={onBack}
+                        onHome={onHome}
                         onExportPdf={onExportPdf}
                         onSearch={onSearch}
                         isRoundTrip={isRoundTrip}
@@ -233,18 +281,34 @@ export function TripViewLayout({
                     </button>
                 )}
 
-                {/* Docked insights panel — collapsible */}
+                {/* Docked insights panel — collapsible + drag-to-resize */}
                 <aside
-                    className={`absolute top-0 right-0 h-full z-40 w-full sm:w-[440px] transition-transform duration-300 ease-out ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    className={`absolute top-0 right-0 h-full z-40 w-full transition-transform duration-300 ease-out ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    style={isDocked ? { width: panelWidth } : undefined}
                     aria-hidden={!panelOpen}
                 >
                     <div className="relative h-full flex flex-col bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl">
+
+                        {/* Resize handle on the panel's leading edge (docked only) */}
+                        {isDocked && panelOpen && (
+                            <div
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label="Resize insights panel"
+                                onPointerDown={(e) => { e.preventDefault(); setIsResizing(true); }}
+                                onDoubleClick={() => setPanelWidth(DEFAULT_PANEL_WIDTH)}
+                                title="Drag to resize · double-click to reset"
+                                className="group/resize absolute left-0 top-0 h-full w-3 -translate-x-1/2 z-20 cursor-col-resize"
+                            >
+                                <div className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizing ? 'bg-primary w-0.5' : 'bg-transparent group-hover/resize:bg-primary/50'}`} />
+                            </div>
+                        )}
 
                         {/* Collapse handle on the panel's leading edge */}
                         <button
                             onClick={() => setPanelOpen(false)}
                             aria-label="Collapse insights panel"
-                            className="absolute -left-3.5 top-24 z-10 w-7 h-11 flex items-center justify-center rounded-l-xl bg-card border border-r-0 border-border shadow-soft text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute -left-3.5 top-24 z-30 w-7 h-11 flex items-center justify-center rounded-l-xl bg-card border border-r-0 border-border shadow-soft text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>

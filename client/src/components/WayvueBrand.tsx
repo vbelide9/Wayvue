@@ -8,6 +8,8 @@ interface WayvueBrandProps {
     tagline?: boolean;
     /** Hide the wordmark and render the logo mark only */
     markOnly?: boolean;
+    /** Solid amber disc with a white mark — high contrast for dense light toolbars */
+    filled?: boolean;
     onClick?: () => void;
     className?: string;
 }
@@ -18,12 +20,18 @@ const SIZES = {
     lg: { box: 'w-12 h-12', word: 'text-2xl', tag: 'text-[11px]' },
 };
 
-export function WayvueBrand({ size = 'md', tagline = false, markOnly = false, onClick, className = '' }: WayvueBrandProps) {
+export function WayvueBrand({ size = 'md', tagline = false, markOnly = false, filled = false, onClick, className = '' }: WayvueBrandProps) {
     const s = SIZES[size];
     const content = (
         <>
-            <div className={`${s.box} rounded-full bg-card border border-primary/25 shadow-amber-soft overflow-hidden flex items-center justify-center shrink-0`}>
-                <img src="/logo.svg" alt="Wayvue logo" className="w-[78%] h-[78%] object-contain" />
+            <div className={`${s.box} rounded-full overflow-hidden flex items-center justify-center shrink-0 border ${filled
+                ? 'bg-gradient-to-br from-primary to-amber-600 border-primary/50 shadow-amber-soft'
+                : 'bg-card border-primary/25 shadow-amber-soft'}`}>
+                <img
+                    src="/logo.svg"
+                    alt="Wayvue logo"
+                    className={`object-contain ${filled ? 'w-[66%] h-[66%] brightness-0 invert' : 'w-[78%] h-[78%]'}`}
+                />
             </div>
             {!markOnly && (
                 <div className="text-left leading-none">

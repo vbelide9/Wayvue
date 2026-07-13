@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import MapComponent from './components/MapComponent';
 import { getRoute, getRoutePreview } from './services/api';
 
@@ -838,39 +838,10 @@ export default function App() {
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {viewMode === 'landing' ? (
-          <motion.div
-            key="landing-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="h-screen w-full relative"
-          >
-            {renderLandingView()}
-          </motion.div>
-        ) : viewMode === 'planning' ? (
-          <motion.div
-            key="planning-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-background"
-          >
-            {renderPlanningView()}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="trip-view"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-background"
-          >
-            <ErrorBoundary>
+      {viewMode === 'landing' && renderLandingView()}
+      {viewMode === 'planning' && renderPlanningView()}
+      {viewMode === 'trip' && (
+        <ErrorBoundary>
               <TripViewLayout
                 isLoading={loading}
                 isEnriching={isEnriching}
@@ -888,6 +859,7 @@ export default function App() {
                 unit={unit}
                 onUnitChange={setUnit}
                 onBack={handleBackToPlanning}
+                onHome={() => setViewMode('landing')}
                 onExportPdf={handleExportPdf}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
@@ -970,10 +942,8 @@ export default function App() {
                   />
                 )}
               />
-            </ErrorBoundary>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </ErrorBoundary>
+      )}
 
       {/* AI trip planner — available across landing, planning, and trip views */}
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
