@@ -158,20 +158,16 @@
     }
 }
 
-/* Custom Popup Overrides */
-.leaflet-popup-content-wrapper {
-    background-color: transparent !important;
+/* MapLibre popup overrides (mapcn) — content is styled by our own JSX */
+.maplibregl-popup-content {
+    background: transparent !important;
     box-shadow: none !important;
     padding: 0 !important;
-    border: none !important;
+    border-radius: 0 !important;
 }
 
-.leaflet-popup-tip {
-    background-color: #FFFFFF !important;
-}
-
-.custom-popup-overrides .leaflet-popup-content {
-    margin: 0 !important;
+.maplibregl-popup-tip {
+    display: none !important;
 }
 
 /* Custom Minimal Scrollbar — warm tinted */
@@ -222,6 +218,17 @@ input[type="time"] {
   font-size: 0.65rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+}
+
+/* Cinematic hero Ken Burns — slow zoom + pan on the road-trip still */
+@keyframes kenburns {
+  0%   { transform: scale(1.06) translate3d(0, 0, 0); }
+  100% { transform: scale(1.18) translate3d(-1.6%, -1.2%, 0); }
+}
+.animate-kenburns {
+  animation: kenburns 26s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-origin: 60% 45%;
 }
 
 /* Premium CTA shimmer animation — warm amber sweep */

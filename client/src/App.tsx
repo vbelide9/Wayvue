@@ -14,6 +14,9 @@ import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 
 import { PlannerCard } from './components/PlannerCard';
+import { WayvueBrand } from './components/WayvueBrand';
+import { AiAssistant } from './components/AiAssistant';
+import { generateItineraryPdf } from './utils/itineraryPdf';
 
 export default function App() {
 
@@ -65,7 +68,7 @@ export default function App() {
   const [returnWeatherData, setReturnWeatherData] = useState<any[]>([]); // New state for return leg weather
   const [roadConditions, setRoadConditions] = useState<RoadCondition[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
+  const [metrics, setMetrics] = useState<{ distance: string; time: string; fuel: string; ev: string; tollCost?: string; tollEstimated?: boolean }>({ distance: "0 mi", time: "0 min", fuel: "0 gal", ev: "$0" });
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [departureDate, setDepartureDate] = useState(() => {
@@ -210,7 +213,8 @@ export default function App() {
     overrideRoundTrip?: boolean,
     overridePreference?: 'fastest' | 'scenic',
     returnDateOverride?: string,
-    returnTimeOverride?: string
+    returnTimeOverride?: string,
+    waypointsOverride?: { name: string; lat?: number; lng?: number }[]
   ) => {
     setError(null); // Clear previous errors
     const searchStart = Date.now();
@@ -221,8 +225,11 @@ export default function App() {
     const d = destLoc || destination;
     const dateToUse = depDate || departureDate;
     const timeToUse = depTime || departureTime;
-    const sCoords = startCoordsOverride || startCoords;
-    const dCoords = destCoordsOverride || destCoords;
+    // When a new location NAME is supplied (e.g. the AI changed the origin), any
+    // cached coords are stale — only reuse coords that came with this call, else
+    // let the backend geocode the new name.
+    const sCoords = startLoc ? startCoordsOverride : (startCoordsOverride || startCoords);
+    const dCoords = destLoc ? destCoordsOverride : (destCoordsOverride || destCoords);
 
     // Return overrides
     const returnDateToUse = returnDateOverride || returnDate;
@@ -379,7 +386,8 @@ export default function App() {
     });
 
     setLoading(true);
-    const activeWaypoints = waypoints.filter(w => w.name && w.name.trim());
+    // AI-driven updates can pass a fresh waypoint list (state may be stale in this closure).
+    const activeWaypoints = (waypointsOverride ?? waypoints).filter(w => w.name && w.name.trim());
 
     // PHASE 1 — fast preview: render the map + basic metrics in ~3s, then enrich.
     let resolvedStart = sCoords;
@@ -514,12 +522,149 @@ export default function App() {
   const handleBackToPlanning = () => {
     setViewMode('planning');
     // Optional: Clear route or keep it? Keeping it facilitates toggle behavior, but let's stick to simple "Back" for now.
-    // setRoute(null); 
+    // setRoute(null);
+  };
+
+  // ── AI Assistant plumbing ──
+  // Refs so applyPlan can read the freshest values after an async re-plan.
+  const latestMetricsRef = useRef(metrics);
+  useEffect(() => { latestMetricsRef.current = metrics; }, [metrics]);
+  const startRef = useRef(start);
+  const destRef = useRef(destination);
+  useEffect(() => { startRef.current = start; }, [start]);
+  useEffect(() => { destRef.current = destination; }, [destination]);
+
+  // Compact live snapshot of the trip sent to Claude as context each turn.
+  const buildTripContext = () => {
+    if (viewMode !== 'trip' || !route) {
+      return {
+        status: 'planning',
+        start,
+        destination,
+        departureDate,
+        departureTime,
+        isRoundTrip,
+        returnDate: isRoundTrip ? returnDate : undefined,
+        preference: outboundPref,
+        stops: waypoints.map(w => w.name).filter(Boolean),
+      };
+    }
+    return {
+      status: 'planned',
+      start,
+      destination,
+      isRoundTrip,
+      departureDate,
+      departureTime,
+      returnDate: isRoundTrip ? returnDate : undefined,
+      returnTime: isRoundTrip ? returnTime : undefined,
+      preference: routePreference,
+      stops: waypoints.map(w => w.name).filter(Boolean),
+      metrics: {
+        distance: metrics.distance,
+        driveTime: metrics.time,
+        fuel: metrics.fuel || undefined,
+        tolls: metrics.tollCost && metrics.tollCost !== '$0' ? metrics.tollCost : undefined,
+      },
+      tripScore: aiAnalysis?.tripScore,
+      bestDeparture: (aiAnalysis?.departureInsights || [])
+        .slice()
+        .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))[0]?.time,
+      alerts: roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0),
+      weather: (weatherData || []).slice(0, 6).map((w: any) => ({
+        location: w.location,
+        temp: unit === 'F' ? Math.round((w.temperature * 9) / 5 + 32) : Math.round(w.temperature),
+        unit,
+      })),
+      suggestedStops: (recommendations || []).slice(0, 6).map((r: any) => ({
+        city: r.city,
+        reason: (r.reason || '').replace(/_/g, ' '),
+      })),
+    };
+  };
+
+  // Executes an AI-requested change: apply the fields, re-run the route, report back.
+  const applyPlanFromAI = async (u: {
+    start?: string; destination?: string; departureDate?: string; departureTime?: string;
+    returnDate?: string; returnTime?: string; roundTrip?: boolean;
+    preference?: 'fastest' | 'scenic'; waypoints?: string[];
+  }): Promise<string> => {
+    if (u.start !== undefined) { setStart(u.start); setStartCoords(undefined); }
+    if (u.destination !== undefined) { setDestination(u.destination); setDestCoords(undefined); }
+    if (u.departureDate) setDepartureDate(u.departureDate);
+    if (u.departureTime) setDepartureTime(u.departureTime);
+    if (u.returnDate) setReturnDate(u.returnDate);
+    if (u.returnTime) setReturnTime(u.returnTime);
+    if (u.roundTrip !== undefined) setIsRoundTrip(u.roundTrip);
+    if (u.preference) { setOutboundPref(u.preference); setReturnPref(u.preference); }
+    let wpOverride: { name: string }[] | undefined;
+    if (u.waypoints !== undefined) {
+      wpOverride = u.waypoints.map(name => ({ name }));
+      setWaypoints(wpOverride);
+    }
+
+    await handleRouteSubmit(
+      u.start, u.destination, u.departureDate, u.departureTime,
+      undefined, undefined,
+      u.roundTrip, u.preference, u.returnDate, u.returnTime, wpOverride,
+    );
+    // Let React flush the metrics from the re-plan before reading them back.
+    await new Promise(r => setTimeout(r, 60));
+
+    const m = latestMetricsRef.current;
+    const rt = u.roundTrip ?? isRoundTrip;
+    const parts = [
+      `Trip updated: ${startRef.current} → ${destRef.current} (${rt ? 'round trip' : 'one-way'})`,
+      m.time && `drive time ${m.time}`,
+      m.distance && `distance ${m.distance}`,
+      m.fuel && `fuel ~${m.fuel}`,
+      m.tollCost && m.tollCost !== '$0' && `tolls ~${m.tollCost}`,
+    ].filter(Boolean);
+    return `${parts.join(', ')}. The updated route and details are now displayed in the app.`;
+  };
+
+  // Export the full itinerary as a PDF (client-side).
+  const handleExportPdf = () => {
+    const bestDeparture = [...(aiAnalysis?.departureInsights || [])]
+      .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))[0]?.time;
+    generateItineraryPdf({
+      start,
+      destination,
+      isRoundTrip,
+      departureDate,
+      departureTime,
+      returnDate: isRoundTrip ? returnDate : undefined,
+      returnTime: isRoundTrip ? returnTime : undefined,
+      preference: routePreference,
+      stops: waypoints.map(w => w.name).filter(Boolean),
+      metrics,
+      tripScore: aiAnalysis?.tripScore,
+      bestDeparture,
+      alertCount: roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0),
+      aiInsights: aiAnalysis?.insights?.bullets || [],
+      aiSummary: aiAnalysis?.structured?.roads?.details || aiAnalysis?.structured?.tip || undefined,
+      weather: (weatherData || []).map((w: any) => ({
+        location: w.location,
+        temp: unit === 'F' ? Math.round((w.temperature * 9) / 5 + 32) : Math.round(w.temperature),
+        unit,
+      })),
+      stopsList: (recommendations || []).map((r: any) => ({
+        title: r.city,
+        detail: (r.reason || '').replace(/_/g, ' '),
+      })),
+      roadAlerts: [
+        ...roadConditions.filter(c => c.status !== 'good').map(c => ({
+          label: c.segment || 'Route segment',
+          detail: c.description || c.status,
+        })),
+        ...(incidents || []).map((i: any) => ({ label: i.type || 'Incident', detail: i.description })),
+      ],
+    });
   };
 
   // --- RENDER HELPERS ---
 
-  // 1. Landing View (Light, minimal Homie-style hero)
+  // 1. Landing View (cinematic photographic hero)
   const renderLandingView = () => (
     <main ref={containerRef} className="relative w-full min-h-screen bg-background text-foreground overflow-hidden">
       {/* Warm ambient hero wash */}
@@ -530,12 +675,9 @@ export default function App() {
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-6">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow">
-            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
-          </div>
-          <span className="text-xl font-display font-bold tracking-tight text-foreground">Wayvue</span>
+      <nav className="fixed top-0 left-0 w-full z-[800] flex justify-between items-center px-6 md:px-12 py-4 bg-background/70 backdrop-blur-md border-b border-border/50">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <WayvueBrand size="md" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -549,7 +691,26 @@ export default function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-28 pb-16">
+      <section className="relative z-[50] flex flex-col items-center justify-center min-h-screen px-4 pt-28 pb-16 overflow-hidden">
+        {/* Cinematic road-trip photograph — full-bleed background with a slow Ken Burns move */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <img
+            src="/sequence/ezgif-frame-030.jpg"
+            alt=""
+            aria-hidden="true"
+            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover object-[62%_42%] animate-kenburns [filter:saturate(1.35)_contrast(1.14)_brightness(0.62)]"
+          />
+          {/* Warm depth tint — richens the hazy image and kills the washed-out highlights */}
+          <div className="absolute inset-0 mix-blend-multiply bg-[radial-gradient(130%_120%_at_68%_45%,rgba(45,28,12,0.35),rgba(26,16,7,0.7))]" />
+          {/* Premium legibility scrims: warm dark at the top for the headline */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#160e05]/70 via-[#160e05]/25 to-transparent" />
+          {/* Tame the bright left edge */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#160e05]/55 via-[#160e05]/10 to-transparent" />
+          {/* Warm fade to the page at the bottom for the card */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        </div>
+
         {/* Loading Screen Overlay */}
         {loading && <LoadingScreen />}
 
@@ -557,20 +718,16 @@ export default function App() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-          className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10"
+          className="flex flex-col items-center text-center max-w-2xl mx-auto mb-9"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-semibold text-muted-foreground mb-6 shadow-soft">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-semibold text-white/90 mb-6 shadow-lg">
+            <img src="/logo.svg" alt="" aria-hidden="true" className="w-4 h-4 brightness-0 invert" />
             Trip intelligence for the open road
           </span>
-          <h1 className="font-display font-bold tracking-tight text-foreground text-5xl md:text-7xl leading-[0.95]">
+          <h1 className="font-display font-bold tracking-tight text-white text-6xl md:text-8xl leading-[0.92] [text-shadow:0_4px_30px_rgba(0,0,0,0.5)]">
             Every mile,<br />
-            <span className="text-primary">planned to perfection.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-primary [text-shadow:none]">planned.</span>
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-xl">
-            Weather, road conditions, tolls, stops and stays — Wayvue reads the whole
-            journey ahead so you can just drive.
-          </p>
         </motion.div>
 
         <PlannerCard
@@ -607,6 +764,19 @@ export default function App() {
           error={error}
         />
       </section>
+
+      {/* Branded footer */}
+      <footer className="relative z-[50] border-t border-border bg-card/60 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <WayvueBrand size="md" tagline />
+          <p className="text-sm text-muted-foreground max-w-sm text-center md:text-right">
+            Weather, traffic, tolls and stays — one glance before every drive.
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            © {new Date().getFullYear()} Wayvue
+          </p>
+        </div>
+      </footer>
     </main>
   );
 
@@ -624,15 +794,7 @@ export default function App() {
 
       {/* Top Nav Bar */}
       <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
-        <button onClick={() => setViewMode('landing')} className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shadow-orange-glow shrink-0">
-            <span className="text-primary-foreground font-display font-bold text-lg leading-none">W</span>
-          </div>
-          <div className="text-left">
-            <h1 className="text-lg font-display font-bold tracking-tight leading-none text-foreground">Wayvue</h1>
-            <p className="text-[10px] text-muted-foreground font-medium">Trip Intelligence</p>
-          </div>
-        </button>
+        <WayvueBrand size="md" tagline onClick={() => setViewMode('landing')} />
       </nav>
 
       {/* Centered Card */}
@@ -726,6 +888,7 @@ export default function App() {
                 unit={unit}
                 onUnitChange={setUnit}
                 onBack={handleBackToPlanning}
+                onExportPdf={handleExportPdf}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
                   if (newStart) setStart(newStart);
@@ -779,8 +942,9 @@ export default function App() {
                 rawReturnDate={returnDate}
                 rawReturnTime={returnTime}
 
-                map={(activeTab) => (
+                map={(activeTab, rightInset) => (
                   <MapComponent
+                    rightInset={rightInset}
                     routeGeoJSON={tripData?.outbound?.route || route}
                     returnRouteGeoJSON={tripData?.return?.route} // Pass return route
                     weatherData={weatherData}
@@ -810,6 +974,9 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AI trip planner — available across landing, planning, and trip views */}
+      <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
     </>
   );
 }

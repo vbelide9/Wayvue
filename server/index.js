@@ -20,6 +20,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Wayvue API is running' });
 });
 
+// ── AI Trip Planner chat ──
+const { runChatTurn } = require('./services/aiChatService');
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages, tripContext } = req.body || {};
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages array is required' });
+    }
+    const result = await runChatTurn(messages, tripContext || {});
+    res.json(result);
+  } catch (err) {
+    console.error('[chat] error:', err.message);
+    res.status(err.status || 500).json({ error: err.message || 'Chat failed' });
+  }
+});
+
 const logDebug = require('./fileLogger');
 
 app.post('/api/route', async (req, res) => {
@@ -84,13 +100,25 @@ app.post('/api/route', async (req, res) => {
     // 2. Process Routes (Parallel: Fastest & Scenic)
     // We compute both to allow instant switching on frontend
     const { processLeg } = require('./services/tripProcessor');
+    const { getRouteCandidates } = require('./services/routeService');
 
     // Define helper to get both variants for a leg
-    // Define helper to get both variants for a leg
     const getLegVariants = async (s, d, date, time, legWaypoints = []) => {
+      // One routing call → derive both variants from the SAME candidate set so the
+      // fastest is always ≤ scenic, and the scenic geometry is genuinely distinct
+      // (which is what makes the light "alternate route" line appear on the map).
+      let candidates = [];
+      try {
+        candidates = await getRouteCandidates(s.lon, s.lat, d.lon, d.lat, legWaypoints);
+      } catch (e) {
+        logDebug(`[WARN] Route candidate fetch failed: ${e.message}`);
+      }
+      const fastestRoute = candidates[0] || null;                 // shortest duration
+      const scenicRoute = candidates.length > 1 ? candidates[1] : fastestRoute; // slower alternate
+
       const results = await Promise.allSettled([
-        processLeg(s, d, date, time, false, legWaypoints),
-        processLeg(s, d, date, time, true, legWaypoints)
+        processLeg(s, d, date, time, false, legWaypoints, fastestRoute),
+        processLeg(s, d, date, time, true, legWaypoints, scenicRoute)
       ]);
 
       const fastest = results[0].status === 'fulfilled' ? results[0].value : null;

@@ -64,7 +64,7 @@ export function WayvueAISummary({ analysis }: WayvueAISummaryProps) {
             {/* Expanded Content */}
             {isOpen && (
                 <div className="animate-in slide-in-from-top-2 fade-in duration-300 flex-1 overflow-hidden flex flex-col min-h-0">
-                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <div data-lenis-prevent className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                         {/* Simplified Header - Always show Sparkles, maybe Alert next to it if caution */}
                         {isCaution && (
                             <div className="mb-4 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">

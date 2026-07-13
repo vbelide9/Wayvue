@@ -12,7 +12,7 @@ import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { TopCategoryNav } from '../TopCategoryNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface TripViewLayoutProps {
     isLoading?: boolean;
@@ -29,6 +29,7 @@ interface TripViewLayoutProps {
     unit: 'C' | 'F';
     onBack: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
+    onExportPdf?: () => void;
     onSearch: (start?: string, end?: string, depDate?: string, depTime?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic', returnDate?: string, returnTime?: string) => void;
     onSegmentSelect: (lat: number, lng: number) => void;
     depDate?: string;
@@ -42,8 +43,12 @@ interface TripViewLayoutProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     isRoundTrip?: boolean;
-    map: (activeTab: string) => React.ReactNode;
+    map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
+
+// Width of the docked insights panel on desktop (px). The map reserves this much
+// on its right edge so the route never hides behind the panel.
+const PANEL_WIDTH = 440;
 
 // Streaming placeholders shown while phase-2 enrichment is in flight
 function CardSkeleton({ rows = 3 }: { rows?: number }) {
@@ -78,6 +83,7 @@ export function TripViewLayout({
     unit,
     onUnitChange,
     onBack,
+    onExportPdf,
     onSearch,
     onSegmentSelect,
     map,
@@ -93,9 +99,25 @@ export function TripViewLayout({
     rawReturnDate,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
+    // Insights panel — open by default, collapsible to reveal the full-screen map.
+    const [panelOpen, setPanelOpen] = useState(true);
+    // Only reserve map space / offset the toolbar when the panel docks (sm+); on
+    // small screens the panel is a full-width overlay instead.
+    const [isDocked, setIsDocked] = useState(false);
 
     // Reset scroll to top on mount
     useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+
+    // Track whether the viewport is wide enough for the panel to dock beside the map.
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 640px)');
+        const update = () => setIsDocked(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
+
+    const mapRightInset = panelOpen && isDocked ? PANEL_WIDTH : 0;
 
     const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
@@ -161,95 +183,113 @@ export function TripViewLayout({
     };
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-background text-foreground font-sans relative">
+        <div className="fixed inset-0 overflow-hidden bg-background text-foreground font-sans">
             {isLoading && <LoadingScreen title="Updating your journey" />}
 
-            <div className={`relative ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
+            <div className={`h-full w-full relative ${isLoading ? 'opacity-20 pointer-events-none filter blur-sm transition-all duration-300' : ''}`}>
 
-                {/* 1. Header toolbar */}
-                <div className="relative pt-8 pb-4 w-full">
-                    <div className="absolute inset-0 pointer-events-none z-[1]">
-                        <div className="absolute top-[15%] left-[10%] w-[500px] h-[500px] rounded-full bg-primary/[0.06] blur-[150px]" />
-                        <div className="absolute top-[30%] right-[15%] w-[400px] h-[400px] rounded-full bg-amber-300/[0.10] blur-[130px]" />
-                    </div>
-                    <div className="w-full relative z-20">
-                        <TripHeader
-                            start={start}
-                            destination={destination}
-                            metrics={metrics}
-                            tripScore={tripScore}
-                            alertCount={alertCount}
-                            unit={unit}
-                            onUnitChange={onUnitChange}
-                            onBack={onBack}
-                            onSearch={onSearch}
-                            isRoundTrip={isRoundTrip}
-                            routePreference={routePreference}
-                            returnDate={returnDate}
-                            activeLeg={activeLeg}
-                            onLegChange={onLegChange}
-                            depDate={depDate}
-                            depTime={depTime}
-                            rawReturnTime={rawReturnTime}
-                            onSetRoundTrip={onSetRoundTrip}
-                        />
-                    </div>
+                {/* Full-screen map — the spatial anchor */}
+                <div className="absolute inset-0 z-0">
+                    {map(activeTab, mapRightInset)}
                 </div>
 
-                {/* 2. Answer-first verdict */}
-                <div className="relative z-10">
-                    <VerdictBar tripScore={tripScore} aiAnalysis={aiAnalysis} metrics={metrics} alertCount={alertCount} isEnriching={isEnriching} />
+                {/* Floating toolbar over the map; stops short of the docked panel */}
+                <div
+                    className="absolute top-0 left-0 z-30 pt-3 transition-[right] duration-300 ease-out"
+                    style={{ right: panelOpen && isDocked ? PANEL_WIDTH : 0 }}
+                >
+                    <TripHeader
+                        start={start}
+                        destination={destination}
+                        metrics={metrics}
+                        tripScore={tripScore}
+                        alertCount={alertCount}
+                        unit={unit}
+                        onUnitChange={onUnitChange}
+                        onBack={onBack}
+                        onExportPdf={onExportPdf}
+                        onSearch={onSearch}
+                        isRoundTrip={isRoundTrip}
+                        routePreference={routePreference}
+                        returnDate={returnDate}
+                        activeLeg={activeLeg}
+                        onLegChange={onLegChange}
+                        depDate={depDate}
+                        depTime={depTime}
+                        rawReturnTime={rawReturnTime}
+                        onSetRoundTrip={onSetRoundTrip}
+                    />
                 </div>
 
-                {/* 3. Tabs */}
-                <div className="sticky top-4 z-[500] pointer-events-none w-full flex justify-center mb-6">
-                    <div className="pointer-events-auto shadow-2xl rounded-full">
-                        <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
-                    </div>
-                </div>
-
-                {isEnriching && (
-                    <div className="w-full flex justify-center mb-6 px-4" role="status" aria-live="polite">
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-medium backdrop-blur-md">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Gathering live weather, traffic &amp; insights…
-                        </div>
-                    </div>
+                {/* Reopen tab shown when the panel is collapsed */}
+                {!panelOpen && (
+                    <button
+                        onClick={() => setPanelOpen(true)}
+                        aria-label="Show insights panel"
+                        className="absolute top-1/2 right-0 -translate-y-1/2 z-40 flex items-center gap-1.5 pl-2.5 pr-3.5 py-3 rounded-l-2xl bg-card/95 backdrop-blur-xl border border-r-0 border-border shadow-soft-lg text-sm font-bold text-foreground hover:bg-card transition-colors animate-in slide-in-from-right-4 duration-300"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        Insights
+                    </button>
                 )}
 
-                {/* 4. Master-detail: persistent map + single active panel */}
-                <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 pb-20 relative z-10 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-8 lg:items-start">
+                {/* Docked insights panel — collapsible */}
+                <aside
+                    className={`absolute top-0 right-0 h-full z-40 w-full sm:w-[440px] transition-transform duration-300 ease-out ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    aria-hidden={!panelOpen}
+                >
+                    <div className="relative h-full flex flex-col bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl">
 
-                    {/* Map — the spatial anchor, sticky on desktop, reacts to active tab */}
-                    <div className="mb-6 lg:mb-0 lg:sticky lg:top-24 h-[40vh] lg:h-[calc(100vh-8rem)]">
-                        <div className="w-full h-full glass-surface overflow-hidden">
-                            {map(activeTab)}
+                        {/* Collapse handle on the panel's leading edge */}
+                        <button
+                            onClick={() => setPanelOpen(false)}
+                            aria-label="Collapse insights panel"
+                            className="absolute -left-3.5 top-24 z-10 w-7 h-11 flex items-center justify-center rounded-l-xl bg-card border border-r-0 border-border shadow-soft text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+
+                        {/* Verdict + live-enrichment status */}
+                        <div className="shrink-0 p-3 pt-4 space-y-2.5">
+                            <VerdictBar compact tripScore={tripScore} aiAnalysis={aiAnalysis} metrics={metrics} alertCount={alertCount} isEnriching={isEnriching} />
+                            {isEnriching && (
+                                <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-medium" role="status" aria-live="polite">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                    Gathering live weather, traffic &amp; insights…
+                                </div>
+                            )}
                         </div>
-                    </div>
 
-                    {/* Active panel */}
-                    <div className="lg:min-h-[calc(100vh-8rem)]">
-                        <div className="mb-5">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
-                                <h2 className="text-2xl md:text-3xl font-display font-medium text-foreground">{active.title}</h2>
+                        {/* Tabs */}
+                        <div className="shrink-0 px-2 pb-2">
+                            <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
+                        </div>
+
+                        {/* Scrollable active panel — data-lenis-prevent so Lenis smooth-scroll
+                            doesn't swallow wheel events over this nested scroll area */}
+                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-6">
+                            <div className="mb-4 mt-1">
+                                <div className="flex items-center gap-2.5 mb-1">
+                                    <div className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
+                                    <h2 className="text-xl font-display font-medium text-foreground">{active.title}</h2>
+                                </div>
+                                <p className="text-muted-foreground text-sm ml-[15px]">{active.subtitle}</p>
                             </div>
-                            <p className="text-muted-foreground ml-[19px]">{active.subtitle}</p>
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activeTab}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
+                                    className="glass-surface overflow-hidden"
+                                >
+                                    {renderPanel()}
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTab}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
-                                className="glass-surface overflow-hidden"
-                            >
-                                {renderPanel()}
-                            </motion.div>
-                        </AnimatePresence>
                     </div>
-                </div>
+                </aside>
             </div>
         </div>
     );

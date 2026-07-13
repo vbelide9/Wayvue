@@ -64,7 +64,8 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                                 : `${majorCount} disruption${majorCount !== 1 ? 's' : ''} may affect your route. Review before you go.`}
                         </p>
                     </div>
-                    <div className="divide-y divide-border max-h-[280px] overflow-y-auto custom-scrollbar">
+                    {/* data-lenis-prevent: Lenis smooth-scroll otherwise swallows wheel events over nested scroll areas */}
+                    <div data-lenis-prevent className="divide-y divide-border max-h-[280px] overflow-y-auto custom-scrollbar">
                         {incidents!.map((inc, idx) => {
                             const meta = INCIDENT_META[inc.type] || INCIDENT_META.hazard;
                             const Icon = meta.icon;

@@ -199,7 +199,7 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
             {isOpen && (
                 <div style={{ zIndex: 9999 }} className="absolute top-full right-0 mt-2 p-2 bg-card backdrop-blur-3xl border border-border rounded-2xl shadow-soft-lg w-60">
                     <div className="flex gap-2 p-2 h-56">
-                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pr-1">
+                        <div data-lenis-prevent className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pr-1">
                             <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Hour</div>
                             {hours.map(h => (
                                 <button
@@ -215,7 +215,7 @@ export const CustomTimePicker: React.FC<CustomTimePickerProps> = ({ value, onCha
                             ))}
                         </div>
                         <div className="w-[1px] bg-border self-stretch my-2" />
-                        <div className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pl-1">
+                        <div data-lenis-prevent className="flex-1 overflow-y-auto scrollbar-none flex flex-col gap-1 pl-1">
                             <div className="sticky top-0 bg-card backdrop-blur-md text-[10px] font-bold text-muted-foreground mb-1 py-1 px-2 uppercase tracking-widest z-10">Min</div>
                             {minutes.map(m => (
                                 <button
