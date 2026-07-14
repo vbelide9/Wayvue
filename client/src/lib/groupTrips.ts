@@ -155,6 +155,14 @@ export async function getItemVotes(tripId: string): Promise<Record<string, ItemV
     return out;
 }
 
+/** Raw per-user item votes for a trip (for attributing likes/dislikes in the activity feed). */
+export async function getItemVoteRows(tripId: string): Promise<{ tripItemId: string; userId: string; value: number }[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase.from('trip_item_votes').select('trip_item_id, user_id, value').eq('trip_id', tripId);
+    if (error) { console.error('[group] item vote rows failed:', error); return []; }
+    return (data || []).map(v => ({ tripItemId: v.trip_item_id, userId: v.user_id, value: v.value }));
+}
+
 /**
  * Cast an up (1) or down (-1) vote on an item. Sending the value you already hold clears
  * it (toggle off); a different value replaces it.

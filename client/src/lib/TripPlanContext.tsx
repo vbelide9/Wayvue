@@ -2,7 +2,7 @@
 // the operations to build it (save, add-to-plan, reorder, notes, remove). Centralised
 // so the header's Save button and the recommendation cards' "Add to plan" can share it
 // without prop-drilling. All no-ops / prompts when Supabase is off or the user's out.
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode, type MutableRefObject } from 'react';
 import { useAuth } from './AuthContext';
 import { saveTrip, type SaveTripInput, type SavedTrip } from './trips';
 import {
@@ -28,6 +28,8 @@ interface TripPlanValue {
     moveItem: (id: string, dir: -1 | 1) => Promise<void>;
     /** Re-fetch the itinerary from the server (used to sync collaborators' edits). */
     refreshItems: () => Promise<void>;
+    /** Item ids the current user just removed — lets the activity feed skip self-deletions. */
+    selfRemovedIds: MutableRefObject<Set<string>>;
 }
 
 const Ctx = createContext<TripPlanValue | undefined>(undefined);
@@ -87,7 +89,12 @@ export function TripPlanProvider({ tripId, saveTripData, onTripIdChange, childre
         }
     }, [user, signInWithGoogle, tripId, saveCurrentTrip, items.length]);
 
+    // Ids the current user removed, so the collaborator activity feed doesn't announce
+    // the user's own deletions back to them (delete has no "removed_by" to attribute).
+    const selfRemovedIds = useRef<Set<string>>(new Set());
+
     const removeItem = useCallback(async (id: string) => {
+        selfRemovedIds.current.add(id);
         setItems(prev => prev.filter(i => i.id !== id));
         try { await deleteTripItem(id); } catch (e) { console.error('[plan] delete failed:', e); }
     }, []);
@@ -116,7 +123,7 @@ export function TripPlanProvider({ tripId, saveTripData, onTripIdChange, childre
     return (
         <Ctx.Provider value={{
             enabled, signedIn: !!user, hasTrip: !!saveTripData, tripId, items, busy,
-            saveCurrentTrip, addToPlan, removeItem, updateNotes, moveItem, refreshItems,
+            saveCurrentTrip, addToPlan, removeItem, updateNotes, moveItem, refreshItems, selfRemovedIds,
         }}>
             {children}
         </Ctx.Provider>

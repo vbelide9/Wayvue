@@ -1,32 +1,45 @@
-// Shared group state for the active trip: members, the route-preference vote, and per-stop
-// votes — plus collaborator awareness. Centralised so the trip header and MyPlanTab read
-// one source. It polls the trip while open and notifies the current user when a teammate
-// adds a stop or joins, and keeps the itinerary in sync (via TripPlanContext.refreshItems).
-// No-ops when Supabase is off, signed out, or no trip is open.
+// Shared group state for the active trip: members, votes, and a collaborator ACTIVITY
+// FEED. It polls the open trip and diffs snapshots to detect what teammates did — stops
+// added/removed, likes/dislikes, route votes, members joining — surfacing them as an
+// unread-counted notification list (shown on My Plan) plus toasts for the big events.
+// It also keeps the itinerary in sync (TripPlanContext.refreshItems). No-ops when Supabase
+// is off, signed out, or no trip is open.
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useTripPlan } from './TripPlanContext';
 import { useNotify } from './Notifications';
-import { listTripItems, type TripItem } from './tripItems';
+import { listTripItems } from './tripItems';
 import {
-    listMembers, getRouteVotes, getItemVotes, castRouteVote, castItemVote,
+    listMembers, getRouteVotes, getItemVotes, getItemVoteRows, castRouteVote, castItemVote,
     removeMember, leaveTrip, getInviteToken, inviteLink,
     type TripMember, type ItemVote, type RouteChoice, type RouteVotes,
 } from './groupTrips';
 
 const EMPTY_VOTES: RouteVotes = { fastest: 0, scenic: 0, mine: null, votes: [] };
 const POLL_MS = 10000;
+const MAX_FEED = 40;
+
+export interface GroupNotification {
+    id: number;
+    message: string;
+    detail?: string;
+    avatar?: string | null;
+    ts: number;
+    read: boolean;
+}
 
 interface GroupTripValue {
     members: TripMember[];
-    /** True once more than one person is on the trip (i.e. it's actually shared). */
     isGroup: boolean;
     myRole: 'owner' | 'member' | null;
     isOwner: boolean;
     routeVotes: RouteVotes;
     itemVotes: Record<string, ItemVote>;
-    /** Look up who added something / who voted → their name + avatar. */
     memberById: (userId: string) => TripMember | undefined;
+    /** Collaborator activity feed (newest first) + unread badge count. */
+    notifications: GroupNotification[];
+    unreadCount: number;
+    markNotificationsRead: () => void;
     refresh: () => void;
     getInvite: () => Promise<string | null>;
     voteRoute: (choice: RouteChoice) => Promise<void>;
@@ -43,65 +56,116 @@ export const useGroupTrip = () => {
     return c;
 };
 
+interface Snapshot {
+    itemTitle: Map<string, string>;
+    itemAuthor: Map<string, string>;
+    routeVote: Map<string, RouteChoice>;   // userId -> choice
+    itemVote: Map<string, number>;          // `${itemId}:${userId}` -> value
+    memberIds: Set<string>;
+    primed: boolean;
+}
+const emptySnapshot = (): Snapshot => ({
+    itemTitle: new Map(), itemAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
+    memberIds: new Set(), primed: false,
+});
+
 export function GroupTripProvider({ tripId, children }: { tripId: string | null; children: ReactNode }) {
     const { user } = useAuth();
-    const { refreshItems } = useTripPlan();
-    const notify = useNotify();
+    const { refreshItems, selfRemovedIds } = useTripPlan();
+    const toast = useNotify();
     const [members, setMembers] = useState<TripMember[]>([]);
     const [routeVotes, setRouteVotes] = useState<RouteVotes>(EMPTY_VOTES);
     const [itemVotes, setItemVotes] = useState<Record<string, ItemVote>>({});
+    const [notifications, setNotifications] = useState<GroupNotification[]>([]);
 
-    // Snapshot of the last-seen items + members, to diff for collaborator notifications.
-    const seen = useRef<{ itemIds: Set<string>; memberIds: Set<string>; primed: boolean }>({
-        itemIds: new Set(), memberIds: new Set(), primed: false,
-    });
+    const seen = useRef<Snapshot>(emptySnapshot());
+    const nextNotifId = useRef(1);
 
     const memberById = useCallback((id: string) => members.find(m => m.userId === id), [members]);
+    const markNotificationsRead = useCallback(() => setNotifications(ns => ns.some(n => !n.read) ? ns.map(n => ({ ...n, read: true })) : ns), []);
 
-    // Core fetch. `announce` controls whether teammate changes raise toasts (off on the
-    // very first load / trip switch, on for background polls).
     const load = useCallback(async (announce: boolean) => {
         if (!tripId || !user) {
-            setMembers([]); setRouteVotes(EMPTY_VOTES); setItemVotes({});
-            seen.current = { itemIds: new Set(), memberIds: new Set(), primed: false };
+            setMembers([]); setRouteVotes(EMPTY_VOTES); setItemVotes({}); setNotifications([]);
+            seen.current = emptySnapshot();
             return;
         }
-        const [m, rv, iv, items] = await Promise.all([
-            listMembers(tripId), getRouteVotes(tripId), getItemVotes(tripId), listTripItems(tripId),
+        const [m, rv, iv, items, voteRows] = await Promise.all([
+            listMembers(tripId), getRouteVotes(tripId), getItemVotes(tripId),
+            listTripItems(tripId), getItemVoteRows(tripId),
         ]);
         setMembers(m); setRouteVotes(rv); setItemVotes(iv);
 
         const prev = seen.current;
-        const itemIds = new Set(items.map(i => i.id));
-        const memberIds = new Set(m.map(x => x.userId));
         const nameOf = (uid: string) => m.find(x => x.userId === uid)?.name || 'A teammate';
         const avatarOf = (uid: string) => m.find(x => x.userId === uid)?.avatar ?? null;
 
+        // Build the new snapshot.
+        const next: Snapshot = {
+            itemTitle: new Map(items.map(i => [i.id, i.title])),
+            itemAuthor: new Map(items.map(i => [i.id, i.user_id])),
+            routeVote: new Map(rv.votes.map(v => [v.userId, v.choice])),
+            itemVote: new Map(voteRows.map(v => [`${v.tripItemId}:${v.userId}`, v.value])),
+            memberIds: new Set(m.map(x => x.userId)),
+            primed: true,
+        };
+
         if (announce && prev.primed) {
-            // New stops added by someone else.
-            for (const it of items as TripItem[]) {
-                if (!prev.itemIds.has(it.id) && it.user_id !== user.id) {
-                    notify(`${nameOf(it.user_id)} added a stop`, { detail: it.title, avatar: avatarOf(it.user_id) });
+            const events: { message: string; detail?: string; avatar?: string | null; toast?: boolean }[] = [];
+
+            // Stops added by someone else.
+            for (const it of items) {
+                if (!prev.itemTitle.has(it.id) && it.user_id !== user.id) {
+                    events.push({ message: `${nameOf(it.user_id)} added a stop`, detail: it.title, avatar: avatarOf(it.user_id), toast: true });
                 }
             }
-            // New members who joined.
+            // Stops removed (skip the user's own deletions — no "removed_by" to attribute).
+            for (const [id, title] of prev.itemTitle) {
+                if (!next.itemTitle.has(id)) {
+                    if (selfRemovedIds.current.has(id)) { selfRemovedIds.current.delete(id); continue; }
+                    events.push({ message: 'A stop was removed', detail: title });
+                }
+            }
+            // Route votes cast / changed by others.
+            for (const [uid, choice] of next.routeVote) {
+                if (uid !== user.id && prev.routeVote.get(uid) !== choice) {
+                    events.push({ message: `${nameOf(uid)} voted for the ${choice} route`, avatar: avatarOf(uid) });
+                }
+            }
+            // Likes / dislikes on stops by others.
+            for (const [key, value] of next.itemVote) {
+                if (prev.itemVote.get(key) === value) continue;
+                const [itemId, uid] = key.split(':');
+                if (uid === user.id) continue;
+                const title = next.itemTitle.get(itemId) || 'a stop';
+                events.push({ message: `${nameOf(uid)} ${value > 0 ? 'liked' : 'disliked'} ${title}`, avatar: avatarOf(uid) });
+            }
+            // New members.
             for (const mem of m) {
                 if (!prev.memberIds.has(mem.userId) && mem.userId !== user.id) {
-                    notify(`${mem.name} joined the trip`, { avatar: mem.avatar });
+                    events.push({ message: `${mem.name} joined the trip`, avatar: mem.avatar, toast: true });
                 }
             }
-            // A teammate changed the itinerary → pull it into the editable plan.
-            const added = [...itemIds].some(id => !prev.itemIds.has(id));
-            const removed = [...prev.itemIds].some(id => !itemIds.has(id));
-            if (added || removed) refreshItems();
-        }
-        seen.current = { itemIds, memberIds, primed: true };
-    }, [tripId, user, notify, refreshItems]);
 
-    // Initial load / reset on trip or user change (no toasts for the baseline).
+            if (events.length) {
+                const now = Date.now();
+                const newNotifs = events.map(e => ({ id: nextNotifId.current++, message: e.message, detail: e.detail, avatar: e.avatar, ts: now, read: false }));
+                setNotifications(ns => [...newNotifs.reverse(), ...ns].slice(0, MAX_FEED));
+                for (const e of events) if (e.toast) toast(e.message, { detail: e.detail, avatar: e.avatar });
+            }
+
+            // Pull teammates' item changes into the editable plan.
+            const itemsChanged = items.length !== prev.itemTitle.size
+                || items.some(i => !prev.itemTitle.has(i.id));
+            if (itemsChanged || [...prev.itemTitle.keys()].some(id => !next.itemTitle.has(id))) refreshItems();
+        }
+        seen.current = next;
+    }, [tripId, user, toast, refreshItems, selfRemovedIds]);
+
+    // Baseline load (no toasts/feed) on trip or user change.
     useEffect(() => { load(false); }, [load]);
 
-    // Background poll for collaborator activity while a trip is open.
+    // Background poll for collaborator activity.
     useEffect(() => {
         if (!tripId || !user) return;
         const t = setInterval(() => load(true), POLL_MS);
@@ -109,6 +173,7 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
     }, [tripId, user, load]);
 
     const myRole = members.find(m => m.userId === user?.id)?.role ?? null;
+    const unreadCount = notifications.reduce((n, x) => n + (x.read ? 0 : 1), 0);
 
     const getInvite = useCallback(async () => {
         if (!tripId) return null;
@@ -119,7 +184,9 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
     const voteRoute = useCallback(async (choice: RouteChoice) => {
         if (!tripId) return;
         await castRouteVote(tripId, choice);
-        setRouteVotes(await getRouteVotes(tripId));
+        const rv = await getRouteVotes(tripId);
+        setRouteVotes(rv);
+        seen.current.routeVote = new Map(rv.votes.map(v => [v.userId, v.choice])); // don't self-notify
     }, [tripId]);
 
     const voteItem = useCallback(async (tripItemId: string, value: 1 | -1) => {
@@ -127,6 +194,8 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
         const current = itemVotes[tripItemId]?.mine ?? 0;
         await castItemVote(tripItemId, tripId, value, current);
         setItemVotes(await getItemVotes(tripId));
+        const rows = await getItemVoteRows(tripId);
+        seen.current.itemVote = new Map(rows.map(v => [`${v.tripItemId}:${v.userId}`, v.value])); // don't self-notify
     }, [tripId, itemVotes]);
 
     const kick = useCallback(async (userId: string) => {
@@ -144,8 +213,8 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
     return (
         <Ctx.Provider value={{
             members, isGroup: members.length > 1, myRole, isOwner: myRole === 'owner',
-            routeVotes, itemVotes, memberById, refresh: () => load(false),
-            getInvite, voteRoute, voteItem, kick, leave,
+            routeVotes, itemVotes, memberById, notifications, unreadCount, markNotificationsRead,
+            refresh: () => load(false), getInvite, voteRoute, voteItem, kick, leave,
         }}>
             {children}
         </Ctx.Provider>

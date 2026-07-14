@@ -12,6 +12,7 @@ import { StayTab } from './tabs/StayTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { MyPlanTab } from './tabs/MyPlanTab';
 import { InsightsAccordion } from './InsightsAccordion';
+import { useGroupTrip } from '@/lib/GroupTripContext';
 import { type Waypoint } from '@/components/WaypointsEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -111,6 +112,8 @@ export function TripViewLayout({
     onWaypointsChange,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
+    // Unread collaborator-activity count → badge on the "My Plan" section header.
+    const { unreadCount } = useGroupTrip();
     // Insights panel — open by default, collapsible to reveal the full-screen map.
     const [panelOpen, setPanelOpen] = useState(true);
     // Only reserve map space / offset the toolbar when the panel docks (sm+); on
@@ -379,7 +382,8 @@ export function TripViewLayout({
                                 categories={TABS}
                                 activeId={activeTab}
                                 onToggle={setActiveTab}
-                                badges={{ road: alertCount }}
+                                badges={{ road: alertCount, plan: unreadCount }}
+                                badgeTone={{ plan: 'notify' }}
                                 renderContent={renderPanel}
                             />
                         </div>

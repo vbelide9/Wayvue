@@ -1,10 +1,10 @@
 // "My Plan" — the current saved trip's editable itinerary. Add items from the other
 // sections (stops/hotels/activities); here you reorder, annotate, and remove them.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     MapPin, BedDouble, Ticket, Utensils, StickyNote, Trash2,
     ExternalLink, Bookmark, Plus, Loader2,
-    Users, ThumbsUp, ThumbsDown, Zap, Camera,
+    Users, ThumbsUp, ThumbsDown, Zap, Camera, Bell,
 } from 'lucide-react';
 import type { TripMember } from '@/lib/groupTrips';
 import { useTripPlan } from '@/lib/TripPlanContext';
@@ -31,6 +31,15 @@ const KIND_META: Record<TripItemKind, { icon: any; label: string; plural: string
 
 const KIND_ORDER: TripItemKind[] = ['stop', 'restaurant', 'attraction', 'hotel', 'note'];
 
+// Compact "2m ago" style relative time for the activity feed.
+function ago(ts: number): string {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+}
+
 // Small circular avatar for a trip member (contributor / voter). `size` in px.
 function MemberDot({ member, size = 20, title }: { member?: TripMember; size?: number; title?: string }) {
     const name = member?.name || 'Traveler';
@@ -48,8 +57,11 @@ function MemberDot({ member, size = 20, title }: { member?: TripMember; size?: n
 
 export function MyPlanTab({ start, destination, waypoints = [] }: { start?: string; destination?: string; waypoints?: Waypoint[] }) {
     const { enabled, signedIn, tripId, items, busy, removeItem, updateNotes, addToPlan } = useTripPlan();
-    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem, memberById } = useGroupTrip();
+    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem, memberById, notifications, unreadCount, markNotificationsRead } = useGroupTrip();
     const [showVoteResults, setShowVoteResults] = useState(false);
+
+    // My Plan is the notifications surface — clear the unread badge while it's open.
+    useEffect(() => { if (unreadCount > 0) markNotificationsRead(); }, [unreadCount, markNotificationsRead]);
     // Always show the plan in travel order (by distance from the start).
     const ordered = [...items].sort((a, b) => routeMile(a) - routeMile(b) || a.created_at.localeCompare(b.created_at));
     const counts = items.reduce<Record<string, number>>((acc, it) => { acc[it.kind] = (acc[it.kind] || 0) + 1; return acc; }, {});
@@ -107,6 +119,32 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
 
             {/* Group planning: members + invite (moved here from the top bar) */}
             <GroupMembersBar />
+
+            {/* Collaborator activity feed */}
+            {isGroup && notifications.length > 0 && (
+                <div className="border border-border rounded-2xl overflow-hidden bg-card">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
+                        <Bell className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent activity</span>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto divide-y divide-border/60">
+                        {notifications.map(n => (
+                            <div key={n.id} className={`flex items-start gap-2.5 px-4 py-2.5 ${n.read ? '' : 'bg-primary/5'}`}>
+                                <div className="w-[22px] h-[22px] rounded-full overflow-hidden shrink-0 bg-primary/10 text-primary flex items-center justify-center border border-border/60">
+                                    {n.avatar ? <img src={n.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <Bell className="w-3 h-3" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs text-foreground leading-snug">
+                                        {n.message}{n.detail && <span className="font-semibold"> · {n.detail}</span>}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">{ago(n.ts)}</p>
+                                </div>
+                                {!n.read && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Route backbone: start → destination + any waypoints the route passes through
                 (distinct from the itinerary items below — hence "Via"/"Direct", not "stops"). */}
