@@ -336,7 +336,7 @@ export const CombinedDateTimePicker: React.FC<CombinedDateTimePickerProps> = ({
                 <button
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className={`h-8 flex items-center gap-2 pl-2.5 pr-2 rounded-lg border text-xs font-bold whitespace-nowrap transition-all ${isOpen ? 'border-primary/50 bg-white/[0.08] text-foreground' : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+                    className={`h-9 flex items-center gap-2 pl-3 pr-2.5 rounded-full border text-xs font-bold whitespace-nowrap transition-all ${isOpen ? 'border-primary/50 bg-white/[0.08] text-foreground' : 'bg-secondary/30 border-border/50 text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
                 >
                     <CalendarIcon strokeWidth={1.5} size={14} className="text-primary flex-shrink-0" />
                     {label && <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>}

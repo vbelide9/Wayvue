@@ -1,9 +1,10 @@
 const { getRouteFromOSRM } = require('./routeService');
-const { sampleRoute } = require('../utils/geometry');
+const { sampleRoute, buildDistanceIndex } = require('../utils/geometry');
 const { getWeatherForPoints, getWeather } = require('./weatherService');
 const RealCameraService = require('./realCameraService');
 const { reverseGeocode } = require('./geocodingService');
 const { getRecommendations } = require('./placesService');
+const { buildRouteKey, getCachedRecommendations, saveCachedRecommendations } = require('./recommendationCache');
 const { generateTripAnalysis, calculateTripScore } = require('./aiService');
 const { getGasPriceForLocation, calculateFuelCosts } = require('./gasPriceService');
 const { getRouteTrafficDelay } = require('./trafficService');
@@ -265,19 +266,39 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
 
         // C. Places
         (async () => {
-            let samplePoints = [0.1, 0.5, 0.9];
-            if (totalDistanceMiles > 100) samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
+            // Serve a stable, cached set per route when available — Overpass is flaky, so
+            // re-fetching live returns a different mix every time (breaks ratings, which
+            // need the same stop to reappear). Cache the first good result and reuse it.
+            const routeKey = buildRouteKey(startLoc, endLoc, isScenic, waypoints);
+            const cached = await getCachedRecommendations(routeKey);
+            if (cached) return cached;
 
-            const contextPoints = samplePoints.map(p => {
-                const idx = Math.floor(fullCoordinates.length * 0.999 * p);
-                const currentDist = (p * totalDistanceMiles).toFixed(0);
-                return {
-                    segment: `${currentDist} mi`,
-                    location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] },
-                    miles: Number(currentDist)
-                };
-            });
-            return getRecommendations(contextPoints);
+            // Distance index over the full route — used both to place search points
+            // evenly by DISTANCE and to give each stop its true mileage from the start.
+            const distanceIndex = buildDistanceIndex(fullCoordinates);
+            const totalMiles = distanceIndex.length ? distanceIndex[distanceIndex.length - 1].cumMiles : totalDistanceMiles;
+
+            // One search point roughly every ~50 miles (min 3, max 10) so stops spread
+            // across the whole route instead of clustering around a few fixed fractions.
+            const numPoints = Math.min(10, Math.max(3, Math.round(totalMiles / 50)));
+            const contextPoints = [];
+            for (let k = 1; k <= numPoints; k++) {
+                const targetMiles = (totalMiles * k) / (numPoints + 1); // evenly spaced, excludes exact start/end
+                let best = distanceIndex[0];
+                let bestD = Infinity;
+                for (const e of distanceIndex) {
+                    const dd = Math.abs(e.cumMiles - targetMiles);
+                    if (dd < bestD) { bestD = dd; best = e; }
+                }
+                contextPoints.push({
+                    segment: `${Math.round(targetMiles)} mi`,
+                    location: { lat: best.lat, lon: best.lon },
+                    miles: Math.round(targetMiles)
+                });
+            }
+            const fresh = await getRecommendations(contextPoints, distanceIndex);
+            await saveCachedRecommendations(routeKey, fresh);
+            return fresh;
         })(),
 
         // D. Traffic Incidents (accidents, closures, construction, jams)

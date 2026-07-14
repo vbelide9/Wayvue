@@ -168,7 +168,7 @@ export function AiAssistant({ tripContext, onApplyPlan }: AiAssistantProps) {
                                     <div>
                                         <p className="text-base font-display font-bold text-foreground">Plan smarter, together</p>
                                         <p className="text-sm text-muted-foreground mt-1">
-                                            Ask about your route, or tell me how to change it — I can re-plan the whole trip.
+                                            Ask about your route, or tell me how to change it. I can re-plan the whole trip.
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap justify-center gap-2 mt-1">

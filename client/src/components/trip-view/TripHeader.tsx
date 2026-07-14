@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
 import { WayvueBrand } from '../WayvueBrand';
+import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
 
 interface TripHeaderProps {
     start: string;
@@ -24,6 +25,7 @@ interface TripHeaderProps {
     unit: 'C' | 'F';
     onUnitChange: (unit: 'C' | 'F') => void;
     onBack: () => void;
+    onHome?: () => void;
     onSearch: (
         start?: string,
         end?: string,
@@ -49,9 +51,11 @@ interface TripHeaderProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     onExportPdf?: () => void;
+    waypoints?: Waypoint[];
+    onWaypointsChange?: (waypoints: Waypoint[]) => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
@@ -171,15 +175,16 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     <ChevronLeft className="w-5 h-5" />
                 </Button>
 
-                {/* Brand mark — logo only; the toolbar is too dense for the full lockup */}
+                {/* Brand mark — filled disc for contrast; logo only since the toolbar is dense.
+                    Clicking it returns to the home/landing page (distinct from the back chevron). */}
                 <div className="hidden sm:block shrink-0">
-                    <WayvueBrand size="sm" markOnly onClick={onBack} />
+                    <WayvueBrand size="sm" markOnly filled onClick={onHome ?? onBack} />
                 </div>
 
                 <div className="flex flex-col min-w-0 relative group">
                     <button
                         onClick={() => setIsEditing(!isEditing)}
-                        className="flex items-center gap-2 text-sm font-bold text-secondary-foreground bg-secondary hover:bg-secondary/90 px-4 py-2 rounded-full transition-all shadow-sm shrink-0"
+                        className="flex items-center gap-2 h-9 text-sm font-bold text-secondary-foreground bg-secondary hover:bg-secondary/90 px-4 rounded-full transition-all shadow-sm shrink-0"
                     >
                         {/* Fixed truncation caps so flex shrink can't crush the names to a letter */}
                         <span className="truncate max-w-[110px] lg:max-w-[150px]">{start}</span>
@@ -253,6 +258,13 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                                     />
                                 </div>
 
+                                {/* Multi-Stop Waypoints */}
+                                {onWaypointsChange && (
+                                    <div className="pt-2 border-t border-border/50">
+                                        <WaypointsEditor waypoints={waypoints} onWaypointsChange={onWaypointsChange} />
+                                    </div>
+                                )}
+
                                 {/* Return Date Picker (Conditional) */}
                                 {localRoundTrip && (
                                     <div className="pt-2 border-t border-border/50">
@@ -282,9 +294,9 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         <button
                             onClick={() => setShowTripTypeMenu(!showTripTypeMenu)}
                             title="Select Trip Type"
-                            className={`h-8 px-3 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap min-w-fit ${localRoundTrip
+                            className={`h-9 px-3.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap min-w-fit ${localRoundTrip
                                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
-                                : 'bg-secondary/30 border-transparent text-muted-foreground hover:bg-secondary hover:text-foreground'
+                                : 'bg-secondary/30 border-border/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
                                 }`}
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
@@ -352,24 +364,24 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         )}
                     </div>
 
-                    <div className="flex items-center bg-secondary/30 rounded-lg p-0.5 border border-transparent h-8">
+                    <div className="flex items-center bg-secondary/30 rounded-full p-1 border border-border/50 h-9">
                         <button
                             onClick={() => togglePreference('fastest')}
                             title="Fastest Route"
                             aria-label="Fastest route"
                             aria-pressed={localPreference === 'fastest'}
-                            className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'fastest' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            className={`h-full px-3 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'fastest' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                         >
-                            <Zap className="w-3 h-3" />
+                            <Zap className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={() => togglePreference('scenic')}
                             title="Scenic Route"
                             aria-label="Scenic route"
                             aria-pressed={localPreference === 'scenic'}
-                            className={`h-full px-2.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                            className={`h-full px-3 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${localPreference === 'scenic' ? 'bg-emerald-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                         >
-                            <Camera className="w-3 h-3" />
+                            <Camera className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>
@@ -396,86 +408,81 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                 )}
             </div>
 
-            {/* Right: Metrics Chips & Actions */}
-            <div className="flex items-center justify-end min-w-0">
-                {/* Metric chips — wrap on small screens instead of hiding behind a scroll fade */}
-                <div className="relative flex justify-start md:justify-end min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 py-1 md:pl-4 pr-1 justify-start md:justify-end">
+            {/* Right: Metrics & Actions — one aligned row of equal-height pills */}
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2 min-w-0">
 
-                        {/* Metric: Time, Distance, Fuel, EV — wraps internally on small screens */}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 bg-secondary/50 rounded-2xl sm:rounded-full border border-border/50">
-                            <div className="flex items-center gap-1.5">
-                                <Clock className="w-3.5 h-3.5 text-blue-500" />
-                                <span className="text-xs font-bold whitespace-nowrap">{metrics.time}</span>
-                            </div>
-                            <div className="w-px h-3 bg-border" />
-                            <div className="flex items-center gap-1.5">
-                                <Navigation className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.distance}</span>
-                            </div>
-
-                            {/* Fuel Price */}
-                            {metrics.fuel && metrics.fuel !== "0 gal" && (
-                                <>
-                                    <div className="hidden sm:block w-px h-3 bg-border" />
-                                    <div className="flex items-center gap-1.5">
-                                        <Fuel className="w-3.5 h-3.5 text-orange-500" />
-                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.fuel}</span>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* EV Price */}
-                            {metrics.ev && metrics.ev !== "$0" && (
-                                <>
-                                    <div className="hidden sm:block w-px h-3 bg-border" />
-                                    <div className="flex items-center gap-1.5">
-                                        <Zap className="w-3.5 h-3.5 text-yellow-500" />
-                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">{metrics.ev}</span>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Toll Cost */}
-                            {metrics.tollCost && metrics.tollCost !== "$0" && (
-                                <>
-                                    <div className="hidden sm:block w-px h-3 bg-border" />
-                                    <div className="flex items-center gap-1.5">
-                                        <CircleDollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                                        <span className="text-xs font-medium text-foreground whitespace-nowrap">
-                                            {metrics.tollCost}{metrics.tollEstimated ? ' est.' : ''}
-                                        </span>
-                                        {metrics.tollEstimated && (
-                                            <span className="relative group/toll inline-flex">
-                                                <Info
-                                                    className="w-3 h-3 text-muted-foreground/60 cursor-help outline-none"
-                                                    tabIndex={0}
-                                                    aria-label="How tolls are estimated"
-                                                />
-                                                <span
-                                                    role="tooltip"
-                                                    className="pointer-events-none absolute top-full right-0 mt-2 w-56 opacity-0 group-hover/toll:opacity-100 group-focus-within/toll:opacity-100 transition-opacity duration-200 bg-black/90 text-white text-[10px] leading-relaxed rounded-lg p-2.5 border border-white/10 shadow-xl z-[100] normal-case font-normal tracking-normal"
-                                                >
-                                                    Estimated from typical toll rates for the states your route passes through. Add a toll-pricing API key for exact, live tolls.
-                                                </span>
-                                            </span>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Metric: Alerts */}
-                        {alertCount > 0 && (
-                            <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 text-amber-500 rounded-full border border-amber-500/20 shrink-0">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold whitespace-nowrap">{alertCount} Alerts</span>
-                            </div>
-                        )}
+                {/* Metrics pill — stays on one line (sm+); wraps internally only on phones */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 h-auto sm:h-9 px-4 py-2 sm:py-0 bg-secondary/50 rounded-2xl sm:rounded-full border border-border/50 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span className="text-xs font-bold whitespace-nowrap">{metrics.time}</span>
                     </div>
+                    <div className="w-px h-3.5 bg-border shrink-0" />
+                    <div className="flex items-center gap-1.5">
+                        <Navigation className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-xs font-semibold text-foreground whitespace-nowrap">{metrics.distance}</span>
+                    </div>
+
+                    {/* Fuel Price */}
+                    {metrics.fuel && metrics.fuel !== "0 gal" && (
+                        <>
+                            <div className="hidden sm:block w-px h-3.5 bg-border shrink-0" />
+                            <div className="flex items-center gap-1.5">
+                                <Fuel className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{metrics.fuel}</span>
+                            </div>
+                        </>
+                    )}
+
+                    {/* EV Price */}
+                    {metrics.ev && metrics.ev !== "$0" && (
+                        <>
+                            <div className="hidden sm:block w-px h-3.5 bg-border shrink-0" />
+                            <div className="flex items-center gap-1.5">
+                                <Zap className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{metrics.ev}</span>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Toll Cost */}
+                    {metrics.tollCost && metrics.tollCost !== "$0" && (
+                        <>
+                            <div className="hidden sm:block w-px h-3.5 bg-border shrink-0" />
+                            <div className="flex items-center gap-1.5">
+                                <CircleDollarSign className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+                                    {metrics.tollCost}{metrics.tollEstimated ? ' est.' : ''}
+                                </span>
+                                {metrics.tollEstimated && (
+                                    <span className="relative group/toll inline-flex">
+                                        <Info
+                                            className="w-3 h-3 text-muted-foreground/60 cursor-help outline-none"
+                                            tabIndex={0}
+                                            aria-label="How tolls are estimated"
+                                        />
+                                        <span
+                                            role="tooltip"
+                                            className="pointer-events-none absolute top-full right-0 mt-2 w-56 opacity-0 group-hover/toll:opacity-100 group-focus-within/toll:opacity-100 transition-opacity duration-200 bg-black/90 text-white text-[10px] leading-relaxed rounded-lg p-2.5 border border-white/10 shadow-xl z-[100] normal-case font-normal tracking-normal"
+                                        >
+                                            Estimated from typical toll rates for the states your route passes through. Add a toll-pricing API key for exact, live tolls.
+                                        </span>
+                                    </span>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                <div className="hidden lg:block h-6 w-px bg-border/50 mx-2 shrink-0" />
+                {/* Alerts */}
+                {alertCount > 0 && (
+                    <div className="flex items-center gap-1.5 h-9 px-3.5 bg-amber-500/10 text-amber-600 rounded-full border border-amber-500/25 shrink-0">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span className="text-xs font-bold whitespace-nowrap">{alertCount} Alerts</span>
+                    </div>
+                )}
+
+                <div className="hidden lg:block h-5 w-px bg-border/60 mx-0.5 shrink-0" />
 
                 {/* Export itinerary PDF */}
                 {onExportPdf && (
@@ -483,24 +490,24 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                         onClick={onExportPdf}
                         title="Download itinerary as PDF"
                         aria-label="Download itinerary as PDF"
-                        className="flex items-center gap-1.5 h-8 px-3 mr-2 rounded-lg text-xs font-bold bg-secondary/50 border border-border/50 text-foreground hover:bg-secondary hover:border-primary/40 transition-colors shrink-0"
+                        className="flex items-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-bold bg-secondary/50 border border-border/50 text-foreground hover:bg-secondary hover:border-primary/40 transition-colors shrink-0"
                     >
                         <Download className="w-3.5 h-3.5" />
                         <span className="hidden sm:inline">PDF</span>
                     </button>
                 )}
 
-                {/* Unit Toggle - Larger Touch Targets */}
-                <div className="flex items-center bg-secondary/30 rounded-lg p-1 border border-border/50 shrink-0">
+                {/* Unit Toggle */}
+                <div className="flex items-center h-9 bg-secondary/40 rounded-full p-1 border border-border/50 shrink-0">
                     <button
                         onClick={() => onUnitChange('C')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all min-w-[32px] ${unit === 'C' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`text-xs font-bold px-3 h-full rounded-full transition-all min-w-[34px] ${unit === 'C' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         °C
                     </button>
                     <button
                         onClick={() => onUnitChange('F')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all min-w-[32px] ${unit === 'F' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`text-xs font-bold px-3 h-full rounded-full transition-all min-w-[34px] ${unit === 'F' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         °F
                     </button>

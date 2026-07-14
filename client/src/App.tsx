@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import MapComponent from './components/MapComponent';
 import { getRoute, getRoutePreview } from './services/api';
 
@@ -14,6 +14,7 @@ import { TripViewLayout } from './components/trip-view/TripViewLayout';
 import { AnalyticsService } from './services/analytics';
 
 import { PlannerCard } from './components/PlannerCard';
+import { type Waypoint, makeWaypointId } from './components/WaypointsEditor';
 import { WayvueBrand } from './components/WayvueBrand';
 import { AiAssistant } from './components/AiAssistant';
 import { generateItineraryPdf } from './utils/itineraryPdf';
@@ -59,7 +60,11 @@ export default function App() {
   const [destination, setDestination] = useState("Buffalo, NY");
   const [startCoords, setStartCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
   const [destCoords, setDestCoords] = useState<{ lat: number, lng: number } | undefined>(undefined);
-  const [waypoints, setWaypoints] = useState<{ name: string; lat?: number; lng?: number }[]>([]);
+  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
+  // Snapshot of the waypoints actually baked into tripData.variants — lets the
+  // preference-toggle "instant switch" cache below detect a stale route (added/
+  // removed/reordered stops) instead of silently reusing a route that skips them.
+  const cachedVariantsWaypointsKey = useRef<string>('[]');
 
   // Trip Data State
   const [route, setRoute] = useState<any>(null);
@@ -214,7 +219,7 @@ export default function App() {
     overridePreference?: 'fastest' | 'scenic',
     returnDateOverride?: string,
     returnTimeOverride?: string,
-    waypointsOverride?: { name: string; lat?: number; lng?: number }[]
+    waypointsOverride?: Waypoint[]
   ) => {
     setError(null); // Clear previous errors
     const searchStart = Date.now();
@@ -277,9 +282,17 @@ export default function App() {
     // Note: If returnDate changed, we CANNOT use cache, must fetch new route
     const isSameReturnDate = (returnDateToUse || '') === (returnDate || '');
 
+    // Waypoints must also match what the cached variants were actually routed
+    // through — otherwise toggling fastest/scenic (or clicking "Update Route"
+    // right after adding/removing/reordering a stop, which also passes a
+    // preference) would silently redraw a route that skips the new stops.
+    const activeWaypoints = (waypointsOverride ?? waypoints).filter(w => w.name && w.name.trim());
+    const waypointsKey = JSON.stringify(activeWaypoints.map(w => ({ name: w.name.trim(), lat: w.lat, lng: w.lng })));
+    const isSameWaypoints = waypointsKey === cachedVariantsWaypointsKey.current;
+
     const hasTripData = !!tripData;
     const hasVariants = !!(tripData && tripData.variants);
-    const canSwitch = hasTripData && hasVariants && overridePreference && isSameLocations && isSameReturnDate;
+    const canSwitch = hasTripData && hasVariants && overridePreference && isSameLocations && isSameReturnDate && isSameWaypoints;
 
     console.log('[DEBUG-SWITCH] Cache Check:', {
       canSwitch,
@@ -288,6 +301,7 @@ export default function App() {
       overridePreference,
       isSameLocations,
       isSameReturnDate,
+      isSameWaypoints,
       s, start, d, destination,
       returnDateToUse, currentReturnDate: returnDate
     });
@@ -386,8 +400,6 @@ export default function App() {
     });
 
     setLoading(true);
-    // AI-driven updates can pass a fresh waypoint list (state may be stale in this closure).
-    const activeWaypoints = (waypointsOverride ?? waypoints).filter(w => w.name && w.name.trim());
 
     // PHASE 1 — fast preview: render the map + basic metrics in ~3s, then enrich.
     let resolvedStart = sCoords;
@@ -430,6 +442,9 @@ export default function App() {
       const response = await getRoute(s, d, resolvedStart, resolvedEnd, dateToUse, timeToUse, rtToUse, prefToUse as 'fastest' | 'scenic', returnDateToUse, returnTimeToUse, activeWaypoints);
       if (response) {
         setTripData(response);
+        // This route's variants were computed through the current stop list —
+        // record it so the instant-switch cache above can trust it next time.
+        cachedVariantsWaypointsKey.current = waypointsKey;
 
 
 
@@ -534,6 +549,61 @@ export default function App() {
   useEffect(() => { startRef.current = start; }, [start]);
   useEffect(() => { destRef.current = destination; }, [destination]);
 
+  // ── Restore the trip after a sign-in redirect ─────────────────────────────
+  // Google OAuth fully reloads the app, which would otherwise drop the user on the
+  // landing page. While viewing a trip we snapshot its request; on reload right after
+  // an auth redirect (flag set in AuthContext.signInWithGoogle) we rebuild that trip.
+  const handleRouteSubmitRef = useRef(handleRouteSubmit);
+  handleRouteSubmitRef.current = handleRouteSubmit;
+
+  useEffect(() => {
+    if (viewMode !== 'trip') return;
+    try {
+      sessionStorage.setItem('wayvue.tripSnapshot', JSON.stringify({
+        savedAt: Date.now(),
+        start, destination, startCoords, destCoords,
+        departureDate, departureTime, returnDate, returnTime,
+        isRoundTrip, preference: outboundPref, waypoints,
+      }));
+    } catch { /* ignore */ }
+  }, [viewMode, start, destination, startCoords, destCoords, departureDate, departureTime, returnDate, returnTime, isRoundTrip, outboundPref, waypoints]);
+
+  useEffect(() => {
+    let returning = false;
+    try { returning = sessionStorage.getItem('wayvue.authRedirect') === '1'; } catch { /* ignore */ }
+    if (!returning) return;
+    try { sessionStorage.removeItem('wayvue.authRedirect'); } catch { /* ignore */ }
+
+    let snap: any = null;
+    try {
+      const raw = sessionStorage.getItem('wayvue.tripSnapshot');
+      if (raw) snap = JSON.parse(raw);
+    } catch { /* ignore */ }
+    // Only restore a fresh snapshot (guards against jumping into a long-stale trip).
+    if (!snap || !snap.start || !snap.destination) return;
+    if (typeof snap.savedAt === 'number' && Date.now() - snap.savedAt > 10 * 60 * 1000) return;
+
+    setStart(snap.start);
+    setDestination(snap.destination);
+    if (snap.startCoords) setStartCoords(snap.startCoords);
+    if (snap.destCoords) setDestCoords(snap.destCoords);
+    if (snap.departureDate) setDepartureDate(snap.departureDate);
+    if (snap.departureTime) setDepartureTime(snap.departureTime);
+    if (snap.returnDate) setReturnDate(snap.returnDate);
+    if (snap.returnTime) setReturnTime(snap.returnTime);
+    if (typeof snap.isRoundTrip === 'boolean') setIsRoundTrip(snap.isRoundTrip);
+    if (snap.preference) { setOutboundPref(snap.preference); setReturnPref(snap.preference); }
+    if (Array.isArray(snap.waypoints)) setWaypoints(snap.waypoints);
+
+    handleRouteSubmitRef.current(
+      snap.start, snap.destination, snap.departureDate, snap.departureTime,
+      snap.startCoords, snap.destCoords, snap.isRoundTrip, snap.preference,
+      snap.returnDate, snap.returnTime, snap.waypoints,
+    );
+    // Run once on mount — the ref keeps handleRouteSubmit current.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Compact live snapshot of the trip sent to Claude as context each turn.
   const buildTripContext = () => {
     if (viewMode !== 'trip' || !route) {
@@ -597,9 +667,9 @@ export default function App() {
     if (u.returnTime) setReturnTime(u.returnTime);
     if (u.roundTrip !== undefined) setIsRoundTrip(u.roundTrip);
     if (u.preference) { setOutboundPref(u.preference); setReturnPref(u.preference); }
-    let wpOverride: { name: string }[] | undefined;
+    let wpOverride: Waypoint[] | undefined;
     if (u.waypoints !== undefined) {
-      wpOverride = u.waypoints.map(name => ({ name }));
+      wpOverride = u.waypoints.map(name => ({ id: makeWaypointId(), name }));
       setWaypoints(wpOverride);
     }
 
@@ -770,7 +840,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-6 md:px-12 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <WayvueBrand size="md" tagline />
           <p className="text-sm text-muted-foreground max-w-sm text-center md:text-right">
-            Weather, traffic, tolls and stays — one glance before every drive.
+            Weather, traffic, tolls and stays - one glance before every drive.
           </p>
           <p className="text-xs text-muted-foreground/70">
             © {new Date().getFullYear()} Wayvue
@@ -838,39 +908,10 @@ export default function App() {
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {viewMode === 'landing' ? (
-          <motion.div
-            key="landing-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="h-screen w-full relative"
-          >
-            {renderLandingView()}
-          </motion.div>
-        ) : viewMode === 'planning' ? (
-          <motion.div
-            key="planning-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-background"
-          >
-            {renderPlanningView()}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="trip-view"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20, filter: "blur(4px)" }}
-            transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] as any }}
-            className="min-h-screen w-full relative bg-background"
-          >
-            <ErrorBoundary>
+      {viewMode === 'landing' && renderLandingView()}
+      {viewMode === 'planning' && renderPlanningView()}
+      {viewMode === 'trip' && (
+        <ErrorBoundary>
               <TripViewLayout
                 isLoading={loading}
                 isEnriching={isEnriching}
@@ -888,6 +929,7 @@ export default function App() {
                 unit={unit}
                 onUnitChange={setUnit}
                 onBack={handleBackToPlanning}
+                onHome={() => setViewMode('landing')}
                 onExportPdf={handleExportPdf}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
@@ -941,6 +983,8 @@ export default function App() {
                 // Pass raw return date string for editing
                 rawReturnDate={returnDate}
                 rawReturnTime={returnTime}
+                waypoints={waypoints}
+                onWaypointsChange={setWaypoints}
 
                 map={(activeTab, rightInset) => (
                   <MapComponent
@@ -970,10 +1014,8 @@ export default function App() {
                   />
                 )}
               />
-            </ErrorBoundary>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </ErrorBoundary>
+      )}
 
       {/* AI trip planner — available across landing, planning, and trip views */}
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { TripHeader } from './TripHeader';
 import { VerdictBar } from './VerdictBar';
 import { type RoadCondition } from '@/components/RoadConditionCard';
@@ -10,7 +9,8 @@ import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
-import { TopCategoryNav } from '../TopCategoryNav';
+import { InsightsAccordion } from './InsightsAccordion';
+import { type Waypoint } from '@/components/WaypointsEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -28,6 +28,7 @@ interface TripViewLayoutProps {
     recommendations: any[];
     unit: 'C' | 'F';
     onBack: () => void;
+    onHome?: () => void;
     onUnitChange: (unit: 'C' | 'F') => void;
     onExportPdf?: () => void;
     onSearch: (start?: string, end?: string, depDate?: string, depTime?: string, startCoords?: any, endCoords?: any, roundTrip?: boolean, preference?: 'fastest' | 'scenic', returnDate?: string, returnTime?: string) => void;
@@ -43,12 +44,18 @@ interface TripViewLayoutProps {
     onLegChange?: (leg: 'outbound' | 'return') => void;
     onSetRoundTrip?: (isRoundTrip: boolean) => void;
     isRoundTrip?: boolean;
+    waypoints?: Waypoint[];
+    onWaypointsChange?: (waypoints: Waypoint[]) => void;
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
-// Width of the docked insights panel on desktop (px). The map reserves this much
-// on its right edge so the route never hides behind the panel.
-const PANEL_WIDTH = 440;
+// Docked insights panel width (px). The map reserves this much on its right edge so
+// the route never hides behind the panel. The width is user-resizable within these
+// bounds and persisted to localStorage.
+const DEFAULT_PANEL_WIDTH = 440;
+const MIN_PANEL_WIDTH = 340;
+const MAX_PANEL_WIDTH = 720;
+const PANEL_WIDTH_KEY = 'wayvue.insightsPanelWidth';
 
 // Streaming placeholders shown while phase-2 enrichment is in flight
 function CardSkeleton({ rows = 3 }: { rows?: number }) {
@@ -83,6 +90,7 @@ export function TripViewLayout({
     unit,
     onUnitChange,
     onBack,
+    onHome,
     onExportPdf,
     onSearch,
     onSegmentSelect,
@@ -97,6 +105,8 @@ export function TripViewLayout({
     onSetRoundTrip,
     isRoundTrip,
     rawReturnDate,
+    waypoints,
+    onWaypointsChange,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Insights panel — open by default, collapsible to reveal the full-screen map.
@@ -104,9 +114,46 @@ export function TripViewLayout({
     // Only reserve map space / offset the toolbar when the panel docks (sm+); on
     // small screens the panel is a full-width overlay instead.
     const [isDocked, setIsDocked] = useState(false);
+    // User-resizable docked width (persisted). Drag the panel's left edge to change it.
+    const [panelWidth, setPanelWidth] = useState<number>(() => {
+        if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH;
+        const saved = Number(window.localStorage.getItem(PANEL_WIDTH_KEY));
+        return saved >= MIN_PANEL_WIDTH && saved <= MAX_PANEL_WIDTH ? saved : DEFAULT_PANEL_WIDTH;
+    });
+    const [isResizing, setIsResizing] = useState(false);
 
     // Reset scroll to top on mount
     useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+
+    // Drag-to-resize: while active, translate the pointer's X into a panel width
+    // measured from the right edge, clamped to the allowed bounds.
+    useEffect(() => {
+        if (!isResizing) return;
+        const onMove = (e: PointerEvent) => {
+            const next = window.innerWidth - e.clientX;
+            setPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, next)));
+        };
+        const stop = () => setIsResizing(false);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('pointercancel', stop);
+        const prevCursor = document.body.style.cursor;
+        const prevSelect = document.body.style.userSelect;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        return () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', stop);
+            window.removeEventListener('pointercancel', stop);
+            document.body.style.cursor = prevCursor;
+            document.body.style.userSelect = prevSelect;
+        };
+    }, [isResizing]);
+
+    // Persist the chosen width.
+    useEffect(() => {
+        window.localStorage.setItem(PANEL_WIDTH_KEY, String(panelWidth));
+    }, [panelWidth]);
 
     // Track whether the viewport is wide enough for the panel to dock beside the map.
     useEffect(() => {
@@ -117,7 +164,7 @@ export function TripViewLayout({
         return () => mq.removeEventListener('change', update);
     }, []);
 
-    const mapRightInset = panelOpen && isDocked ? PANEL_WIDTH : 0;
+    const mapRightInset = panelOpen && isDocked ? panelWidth : 0;
 
     const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
@@ -129,10 +176,8 @@ export function TripViewLayout({
         { id: 'rentals', title: 'Rental vehicles', subtitle: 'Smart vehicle matches for your trip' },
         { id: 'stay', title: 'Hotels', subtitle: 'Overnight stays matched to your route' },
     ];
-    const active = TABS.find(t => t.id === activeTab) || TABS[0];
-
-    const renderPanel = () => {
-        switch (activeTab) {
+    const renderPanel = (id: string) => {
+        switch (id) {
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />
@@ -193,10 +238,14 @@ export function TripViewLayout({
                     {map(activeTab, mapRightInset)}
                 </div>
 
+                {/* Transparent capture layer during resize so the map canvas doesn't
+                    eat pointer events or flash hover states while dragging. */}
+                {isResizing && <div className="absolute inset-0 z-50 cursor-col-resize" />}
+
                 {/* Floating toolbar over the map; stops short of the docked panel */}
                 <div
-                    className="absolute top-0 left-0 z-30 pt-3 transition-[right] duration-300 ease-out"
-                    style={{ right: panelOpen && isDocked ? PANEL_WIDTH : 0 }}
+                    className={`absolute top-0 left-0 z-30 pt-3 ${isResizing ? '' : 'transition-[right] duration-300 ease-out'}`}
+                    style={{ right: panelOpen && isDocked ? panelWidth : 0 }}
                 >
                     <TripHeader
                         start={start}
@@ -207,6 +256,7 @@ export function TripViewLayout({
                         unit={unit}
                         onUnitChange={onUnitChange}
                         onBack={onBack}
+                        onHome={onHome}
                         onExportPdf={onExportPdf}
                         onSearch={onSearch}
                         isRoundTrip={isRoundTrip}
@@ -218,6 +268,8 @@ export function TripViewLayout({
                         depTime={depTime}
                         rawReturnTime={rawReturnTime}
                         onSetRoundTrip={onSetRoundTrip}
+                        waypoints={waypoints}
+                        onWaypointsChange={onWaypointsChange}
                     />
                 </div>
 
@@ -233,18 +285,34 @@ export function TripViewLayout({
                     </button>
                 )}
 
-                {/* Docked insights panel — collapsible */}
+                {/* Docked insights panel — collapsible + drag-to-resize */}
                 <aside
-                    className={`absolute top-0 right-0 h-full z-40 w-full sm:w-[440px] transition-transform duration-300 ease-out ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    className={`absolute top-0 right-0 h-full z-40 w-full transition-transform duration-300 ease-out ${panelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    style={isDocked ? { width: panelWidth } : undefined}
                     aria-hidden={!panelOpen}
                 >
                     <div className="relative h-full flex flex-col bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl">
+
+                        {/* Resize handle on the panel's leading edge (docked only) */}
+                        {isDocked && panelOpen && (
+                            <div
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label="Resize insights panel"
+                                onPointerDown={(e) => { e.preventDefault(); setIsResizing(true); }}
+                                onDoubleClick={() => setPanelWidth(DEFAULT_PANEL_WIDTH)}
+                                title="Drag to resize · double-click to reset"
+                                className="group/resize absolute left-0 top-0 h-full w-3 -translate-x-1/2 z-20 cursor-col-resize"
+                            >
+                                <div className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors ${isResizing ? 'bg-primary w-0.5' : 'bg-transparent group-hover/resize:bg-primary/50'}`} />
+                            </div>
+                        )}
 
                         {/* Collapse handle on the panel's leading edge */}
                         <button
                             onClick={() => setPanelOpen(false)}
                             aria-label="Collapse insights panel"
-                            className="absolute -left-3.5 top-24 z-10 w-7 h-11 flex items-center justify-center rounded-l-xl bg-card border border-r-0 border-border shadow-soft text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute -left-3.5 top-24 z-30 w-7 h-11 flex items-center justify-center rounded-l-xl bg-card border border-r-0 border-border shadow-soft text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
@@ -260,33 +328,20 @@ export function TripViewLayout({
                             )}
                         </div>
 
-                        {/* Tabs */}
-                        <div className="shrink-0 px-2 pb-2">
-                            <TopCategoryNav activeSection={activeTab} onNavigate={setActiveTab} badges={{ road: alertCount }} />
-                        </div>
-
-                        {/* Scrollable active panel — data-lenis-prevent so Lenis smooth-scroll
-                            doesn't swallow wheel events over this nested scroll area */}
-                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-6">
-                            <div className="mb-4 mt-1">
-                                <div className="flex items-center gap-2.5 mb-1">
-                                    <div className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-amber-400/50" />
-                                    <h2 className="text-xl font-display font-medium text-foreground">{active.title}</h2>
-                                </div>
-                                <p className="text-muted-foreground text-sm ml-[15px]">{active.subtitle}</p>
-                            </div>
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={activeTab}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.22, ease: [0.76, 0, 0.24, 1] }}
-                                    className="glass-surface overflow-hidden"
-                                >
-                                    {renderPanel()}
-                                </motion.div>
-                            </AnimatePresence>
+                        {/* Insights sections — stacked collapsible accordions, always visible
+                            without horizontal scrolling. Overview is expanded by default;
+                            data-lenis-prevent so Lenis smooth-scroll doesn't swallow wheel
+                            events over this nested scroll area. */}
+                        {/* pb-24 clears the fixed "Ask Wayvue AI" button (bottom-6, ~56px tall)
+                            so it never covers the last card's content. */}
+                        <div data-lenis-prevent className="flex-1 min-h-0 overflow-y-auto px-3 pb-24 pt-1">
+                            <InsightsAccordion
+                                categories={TABS}
+                                activeId={activeTab}
+                                onToggle={setActiveTab}
+                                badges={{ road: alertCount }}
+                                renderContent={renderPanel}
+                            />
                         </div>
                     </div>
                 </aside>

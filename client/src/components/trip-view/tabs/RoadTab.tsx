@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { RoadConditionCard, type RoadCondition } from '@/components/RoadConditionCard';
-import { AlertTriangle, Construction, Car, Ban, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, Construction, Car, Ban, TriangleAlert, ChevronDown } from 'lucide-react';
 
 export interface TrafficIncident {
     id: string;
@@ -26,7 +27,10 @@ const INCIDENT_META: Record<string, { icon: any; label: string; color: string }>
     hazard: { icon: TriangleAlert, label: 'Hazard', color: 'text-yellow-500' }
 };
 
+const INCIDENT_PREVIEW_COUNT = 4;
+
 export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncidentSelect }: RoadTabProps) {
+    const [showAllIncidents, setShowAllIncidents] = useState(false);
     const hasIncidents = incidents && incidents.length > 0;
     const hasConditions = roadConditions && roadConditions.length > 0;
 
@@ -60,13 +64,12 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                         </div>
                         <p className="text-xs text-muted-foreground mt-1.5">
                             {calm
-                                ? `No major disruptions on your route — ${minorCount} minor item${minorCount !== 1 ? 's' : ''} to be aware of.`
+                                ? `No major disruptions on your route. ${minorCount} minor item${minorCount !== 1 ? 's' : ''} to be aware of.`
                                 : `${majorCount} disruption${majorCount !== 1 ? 's' : ''} may affect your route. Review before you go.`}
                         </p>
                     </div>
-                    {/* data-lenis-prevent: Lenis smooth-scroll otherwise swallows wheel events over nested scroll areas */}
-                    <div data-lenis-prevent className="divide-y divide-border max-h-[280px] overflow-y-auto custom-scrollbar">
-                        {incidents!.map((inc, idx) => {
+                    <div className="divide-y divide-border">
+                        {(showAllIncidents ? incidents! : incidents!.slice(0, INCIDENT_PREVIEW_COUNT)).map((inc, idx) => {
                             const meta = INCIDENT_META[inc.type] || INCIDENT_META.hazard;
                             const Icon = meta.icon;
                             return (
@@ -95,6 +98,15 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                             );
                         })}
                     </div>
+                    {incidents!.length > INCIDENT_PREVIEW_COUNT && (
+                        <button
+                            onClick={() => setShowAllIncidents(v => !v)}
+                            className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-primary hover:bg-secondary transition-colors border-t border-border"
+                        >
+                            {showAllIncidents ? 'Show less' : `Show all ${incidents!.length} alerts`}
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllIncidents ? 'rotate-180' : ''}`} />
+                        </button>
+                    )}
                 </div>
                 );
             })()}

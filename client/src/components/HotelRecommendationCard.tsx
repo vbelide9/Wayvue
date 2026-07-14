@@ -43,14 +43,16 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
             {/* Advanced Hover Glow Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
-            {/* Header Section */}
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
+            {/* Header Section — always stacked: this card only ever renders inside the
+                narrow docked insights panel, so a viewport-width `sm:` breakpoint would
+                fire on any large screen and squeeze the title into a multi-line wrap. */}
+            <div className="flex flex-col justify-between items-start gap-4 relative z-10">
                 <div className="flex items-center gap-4">
                     <div className="p-4 bg-secondary rounded-2xl text-primary shadow-none border border-border group-hover:scale-110 transition-transform duration-500 ease-out">
                         <BedDouble className="w-7 h-7 drop-shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-foreground text-xl tracking-tight">Smart Stay Match</h3>
+                        <h3 className="font-bold text-foreground text-lg tracking-tight">Smart Stay Match</h3>
                         <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] uppercase font-bold tracking-widest text-[#10b981] bg-[#10b981]/10 px-3 py-1 rounded-full border border-[#10b981]/20 flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                                 <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
@@ -61,7 +63,7 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
                 </div>
 
                 {/* Main Recommendation Highlight */}
-                <div className="bg-secondary/50 border border-border rounded-2xl p-4 flex flex-col items-start gap-1 w-full sm:w-auto shadow-inner group-hover:bg-secondary transition-colors duration-300">
+                <div className="bg-secondary/50 border border-border rounded-2xl p-4 flex flex-col items-start gap-1 w-full shadow-inner group-hover:bg-secondary transition-colors duration-300">
                     <span className="text-[10px] font-bold text-primary/80 uppercase tracking-widest">
                         Recommended Tier{data.nights ? ` • ${data.nights} night${data.nights > 1 ? 's' : ''}` : ''}
                     </span>
@@ -163,7 +165,7 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
                 <p className="leading-relaxed font-light">
                     {data.isLive
                         ? 'Live nightly rates retrieved for your dates. Final availability and total confirmed at checkout by the booking partner.'
-                        : 'Prices are shown only when live rates are available. These are suggested properties for your route — tap to see real-time availability and pricing on the booking partner.'}
+                        : 'Prices are shown only when live rates are available. These are suggested properties for your route. Tap to see real-time availability and pricing on the booking partner.'}
                 </p>
             </div>
         </motion.div>

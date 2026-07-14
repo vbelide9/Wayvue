@@ -1,6 +1,8 @@
-import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, Filter, TreePine, Info, Zap } from "lucide-react";
+import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { RatingStars } from "@/components/RatingStars";
+import { type RateablePlace } from "@/lib/useRating";
 
 interface Place {
     id: string;
@@ -10,13 +12,22 @@ interface Place {
     description: string;
 }
 
+// Only real OSM points of interest are rateable — generic "fallback-*" stops aren't
+// actual businesses, so they never get a place_key.
+const toRateable = (p: Place): RateablePlace | null =>
+    p.id.startsWith("osm-") ? { placeKey: p.id, name: p.title, type: p.type } : null;
+
 interface PlacesRecommendationsProps {
     places: Place[] | null;
 }
 
+// How many stops to show before the "Show more" toggle.
+const PREVIEW_COUNT = 8;
+
 export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>("all");
+    const [showAll, setShowAll] = useState(false);
 
     const categories = [
         { id: "all", label: "All Stops", icon: <MapPin className="w-3.5 h-3.5" /> },
@@ -33,7 +44,12 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
         return places.filter(p => p.type === activeCategory);
     }, [places, activeCategory]);
 
-    if (!places || !Array.isArray(places) || places.length === 0) return null;
+    // Cap the initial view; the rest reveal behind "Show more".
+    const visiblePlaces = showAll ? filteredPlaces : filteredPlaces.slice(0, PREVIEW_COUNT);
+    const hiddenCount = filteredPlaces.length - visiblePlaces.length;
+
+    // Show an empty state (not a hidden section) when there are genuinely no stops.
+    if (!places || !Array.isArray(places)) return null;
 
     const getIcon = (type: string, className = "w-4 h-4") => {
         switch (type) {
@@ -60,14 +76,16 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                     Suggested Stops
                 </h3>
 
-                {/* Category Filter Chips - Horizontal Scroll */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none px-1 -mx-1 snap-x">
+                {/* Category Filter Chips — wraps onto multiple lines so every category
+                    stays visible at once, instead of hiding behind an undiscoverable
+                    horizontal scroll in the narrow docked panel. */}
+                <div className="flex flex-wrap items-center gap-2 px-1">
                     {categories.map((cat) => (
                         <button
                             key={cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
+                            onClick={() => { setActiveCategory(cat.id); setShowAll(false); }}
                             className={`
-                                relative flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 flex-none snap-start overflow-hidden outline-none
+                                relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 overflow-hidden outline-none
                                 ${activeCategory === cat.id
                                     ? "text-primary shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                                     : "bg-secondary/50 border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -95,7 +113,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
             <div className="flex-1 flex flex-col gap-3 min-h-[100px] overflow-visible pb-4">
                 <AnimatePresence mode="popLayout">
                     {filteredPlaces.length > 0 ? (
-                        filteredPlaces.map((place, i) => {
+                        visiblePlaces.map((place, i) => {
                             // Determine Category Color
                             let bgClass = "bg-secondary";
                             let ringClass = "hover:shadow-primary/20";
@@ -128,14 +146,19 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0 pr-8 relative z-10">
-                                        <h4 className="font-bold text-lg text-foreground leading-tight group-hover:text-primary transition-colors truncate mb-2 tracking-tight">
+                                        <h4 className="font-bold text-lg text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-2 mb-2 tracking-tight">
                                             {place.title}
                                         </h4>
                                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium bg-secondary/70 w-fit px-3 py-1.5 rounded-full border border-border">
                                             <span className="text-foreground/80">{place.location}</span>
-                                            <span className="w-1 h-1 rounded-full bg-border" />
-                                            <span className="text-primary font-bold">37 mi</span>
                                         </div>
+
+                                        {/* Community rating — real OSM stops only */}
+                                        {toRateable(place) && (
+                                            <div className="mt-3">
+                                                <RatingStars place={toRateable(place)} />
+                                            </div>
+                                        )}
 
                                         {/* Action Link */}
                                         <div className="mt-4 flex items-center gap-1.5 text-[10px] text-primary font-bold uppercase tracking-widest opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
@@ -160,10 +183,25 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             className="w-full h-40 flex flex-col items-center justify-center text-center opacity-70 bg-secondary/10 rounded-2xl border border-dashed border-border mt-4"
                         >
                             <Filter className="w-8 h-8 mb-3 text-muted-foreground" />
-                            <p className="text-sm font-medium text-muted-foreground">No stops found in this category</p>
+                            <p className="text-sm font-medium text-muted-foreground">
+                                {activeCategory === "all"
+                                    ? "No stops found along this route"
+                                    : "No stops found in this category"}
+                            </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Show more / less toggle */}
+                {filteredPlaces.length > PREVIEW_COUNT && (
+                    <button
+                        onClick={() => setShowAll(v => !v)}
+                        className="mt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors py-2"
+                    >
+                        {showAll ? "Show less" : `Show ${hiddenCount} more`}
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAll ? "rotate-180" : ""}`} />
+                    </button>
+                )}
             </div>
 
             {/* Details Modal */}
@@ -206,9 +244,17 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-foreground/80 leading-relaxed mb-8 bg-secondary/60 p-5 rounded-2xl border border-border shadow-inner">
+                                <p className="text-sm text-foreground/80 leading-relaxed mb-6 bg-secondary/60 p-5 rounded-2xl border border-border shadow-inner">
                                     {selectedPlace.description}
                                 </p>
+
+                                {/* Community rating — real OSM stops only */}
+                                {toRateable(selectedPlace) && (
+                                    <div className="mb-8 flex items-center justify-between gap-3">
+                                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your rating</span>
+                                        <RatingStars place={toRateable(selectedPlace)} size="md" />
+                                    </div>
+                                )}
 
                                 <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route
