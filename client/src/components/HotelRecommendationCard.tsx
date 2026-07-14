@@ -1,6 +1,7 @@
 import { BedDouble, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { AddToPlanButton } from './AddToPlanButton';
 
 interface HotelOption {
     name: string;
@@ -147,6 +148,12 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
                                     </Button>
                                 )}
                             </div>
+                            <AddToPlanButton item={{
+                                kind: 'hotel',
+                                title: option.name,
+                                detail: option.features,
+                                external_url: links?.booking || option.link,
+                            }} />
                         </div>
                     </motion.div>
                 ))}

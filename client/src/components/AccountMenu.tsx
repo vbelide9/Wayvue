@@ -1,0 +1,146 @@
+// Account control for the header: signed-out → "Sign in"; signed-in → avatar menu
+// with the user's name, an inline "edit name", and sign out. Renders nothing when
+// Supabase isn't configured.
+import { useState, useRef, useEffect } from 'react';
+import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { useSavedTrips } from '@/lib/SavedTripsContext';
+
+export function AccountMenu() {
+    const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar } = useAuth();
+    const { open: openSavedTrips } = useSavedTrips();
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [nameInput, setNameInput] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const ref = useRef<HTMLDivElement>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setEditing(false); }
+        };
+        document.addEventListener('mousedown', onDown);
+        return () => document.removeEventListener('mousedown', onDown);
+    }, [open]);
+
+    if (!enabled) return null;
+
+    if (!user) {
+        return (
+            <button
+                onClick={() => signInWithGoogle()}
+                className="flex items-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-bold bg-secondary/50 border border-border/50 text-foreground hover:bg-secondary hover:border-primary/40 transition-colors shrink-0"
+            >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign in</span>
+            </button>
+        );
+    }
+
+    const name = profile?.display_name || 'Traveler';
+    const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'T';
+
+    const saveName = async () => {
+        await updateDisplayName(nameInput);
+        setEditing(false);
+    };
+
+    const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // allow re-selecting the same file
+        if (!file) return;
+        setUploadError(null);
+        setUploading(true);
+        try {
+            await uploadAvatar(file);
+        } catch (err) {
+            setUploadError(err instanceof Error ? err.message : 'Upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="relative shrink-0" ref={ref}>
+            <button
+                onClick={() => setOpen(v => !v)}
+                aria-label="Account menu"
+                className="w-9 h-9 rounded-full overflow-hidden border border-border/60 hover:border-primary/40 transition-colors flex items-center justify-center bg-primary/10 text-primary text-xs font-bold shrink-0"
+            >
+                {profile?.avatar_url
+                    ? <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    : <span>{initials}</span>}
+            </button>
+
+            {open && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border shadow-2xl rounded-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} className="hidden" />
+                    <div className="p-4 border-b border-border bg-secondary/40 flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => !uploading && fileRef.current?.click()}
+                            title="Change photo"
+                            aria-label="Change profile photo"
+                            className="group/av relative w-10 h-10 rounded-full overflow-hidden border border-border/60 flex items-center justify-center bg-primary/10 text-primary text-sm font-bold shrink-0"
+                        >
+                            {profile?.avatar_url
+                                ? <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                : <span>{initials}</span>}
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover/av:opacity-100 transition-opacity">
+                                {uploading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Camera className="w-4 h-4 text-white" />}
+                            </span>
+                        </button>
+                        <div className="min-w-0">
+                            {editing ? (
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        autoFocus
+                                        value={nameInput}
+                                        onChange={e => setNameInput(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false); }}
+                                        className="w-full text-sm font-bold bg-background border border-border rounded-md px-2 py-1 outline-none focus:border-primary/50"
+                                        placeholder="Your name"
+                                    />
+                                    <button onClick={saveName} aria-label="Save name" className="p-1 text-emerald-600 hover:bg-secondary rounded"><Check className="w-4 h-4" /></button>
+                                    <button onClick={() => setEditing(false)} aria-label="Cancel" className="p-1 text-muted-foreground hover:bg-secondary rounded"><X className="w-4 h-4" /></button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-bold text-foreground truncate">{name}</p>
+                                    <button onClick={() => { setNameInput(name); setEditing(true); }} aria-label="Edit name" className="p-0.5 text-muted-foreground hover:text-foreground shrink-0"><Pencil className="w-3 h-3" /></button>
+                                </div>
+                            )}
+                            {user.email && <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>}
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => { setOpen(false); openSavedTrips(); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                    >
+                        <Bookmark className="w-4 h-4 text-muted-foreground" /> My Trips
+                    </button>
+                    <button
+                        onClick={() => !uploading && fileRef.current?.click()}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-60 border-t border-border"
+                        disabled={uploading}
+                    >
+                        {uploading ? <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /> : <Camera className="w-4 h-4 text-muted-foreground" />}
+                        {profile?.avatar_url ? 'Change photo' : 'Upload photo'}
+                    </button>
+                    {uploadError && (
+                        <p className="px-4 pb-2 -mt-1 text-[11px] text-destructive">{uploadError}</p>
+                    )}
+                    <button
+                        onClick={() => { setOpen(false); signOut(); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors border-t border-border"
+                    >
+                        <LogOut className="w-4 h-4 text-muted-foreground" /> Sign out
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}

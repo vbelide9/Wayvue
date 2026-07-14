@@ -114,8 +114,162 @@ alter table public.route_recommendations enable row level security;
 -- (Intentionally no policies — only service_role, which bypasses RLS, may access it.)
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 6. Profiles — a public identity (display name + avatar) per user, so posts,
+--    reviews, and group members can show a person instead of a raw user id.
+--    Provisioned client-side on first login from the Google profile (upsert); the
+--    row is keyed by auth.users.id.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.profiles (
+  id           uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  avatar_url   text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+drop trigger if exists profiles_touch_updated_at on public.profiles;
+create trigger profiles_touch_updated_at
+  before update on public.profiles
+  for each row execute function public.touch_updated_at();
+
+alter table public.profiles enable row level security;
+
+-- Anyone may read profiles (public identity); a user may create/update ONLY their own.
+drop policy if exists profiles_select_all on public.profiles;
+create policy profiles_select_all on public.profiles
+  for select using (true);
+
+drop policy if exists profiles_insert_own on public.profiles;
+create policy profiles_insert_own on public.profiles
+  for insert to authenticated with check (auth.uid() = id);
+
+drop policy if exists profiles_update_own on public.profiles;
+create policy profiles_update_own on public.profiles
+  for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 7. Storage: avatars bucket. Public read; each user may write ONLY within a folder
+--    named by their own uid (path: <uid>/avatar.<ext>). Lets users upload a Wayvue
+--    profile picture when Google has none (or to override it).
+-- ─────────────────────────────────────────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists avatars_public_read on storage.objects;
+create policy avatars_public_read on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists avatars_user_insert on storage.objects;
+create policy avatars_user_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists avatars_user_update on storage.objects;
+create policy avatars_user_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists avatars_user_delete on storage.objects;
+create policy avatars_user_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 8. Saved trips — a user's persisted trips (foundation for the feed + group
+--    planning). Owner-only for now; a `shared`/members model comes with groups.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trips (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  title             text,
+  start_label       text not null,
+  destination_label text not null,
+  start_coords      jsonb,   -- { lat, lng }
+  dest_coords       jsonb,
+  waypoints         jsonb not null default '[]',
+  departure_date    text,
+  departure_time    text,
+  return_date       text,
+  return_time       text,
+  is_round_trip     boolean not null default false,
+  preference        text,    -- 'fastest' | 'scenic'
+  distance          text,    -- display, e.g. "377 mi"
+  duration          text,    -- display, e.g. "7 hr 52 min"
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists trips_user_id_idx on public.trips (user_id, created_at desc);
+
+drop trigger if exists trips_touch_updated_at on public.trips;
+create trigger trips_touch_updated_at
+  before update on public.trips
+  for each row execute function public.touch_updated_at();
+
+alter table public.trips enable row level security;
+
+-- Owner-only read/write (a shared-with-members policy will be added for group trips).
+drop policy if exists trips_select_own on public.trips;
+create policy trips_select_own on public.trips
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists trips_insert_own on public.trips;
+create policy trips_insert_own on public.trips
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists trips_update_own on public.trips;
+create policy trips_update_own on public.trips
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists trips_delete_own on public.trips;
+create policy trips_delete_own on public.trips
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9. Trip items — the editable itinerary of a saved trip: chosen stops, hotels,
+--    attractions, restaurants, and free-text notes. Ordered by `position`.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_items (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  kind         text not null,   -- 'stop' | 'hotel' | 'attraction' | 'restaurant' | 'note'
+  title        text not null,
+  detail       text,
+  location     text,
+  image_url    text,
+  external_url text,
+  notes        text,
+  position     integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists trip_items_trip_idx on public.trip_items (trip_id, position);
+
+alter table public.trip_items enable row level security;
+
+-- Owner-only (a members policy will follow for group trips).
+drop policy if exists trip_items_select_own on public.trip_items;
+create policy trip_items_select_own on public.trip_items
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists trip_items_insert_own on public.trip_items;
+create policy trip_items_insert_own on public.trip_items
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists trip_items_update_own on public.trip_items;
+create policy trip_items_update_own on public.trip_items
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists trip_items_delete_own on public.trip_items;
+create policy trip_items_delete_own on public.trip_items
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
---   • public.profiles (display name / avatar) so reviews can show an author.
+--   • trip_members / invites / votes / cost-split for group planning.
+--   • posts + post_likes (+ Storage photos) for the social feed.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.
 --   • periodic refresh/TTL for route_recommendations (places change over time).
 -- ─────────────────────────────────────────────────────────────────────────────

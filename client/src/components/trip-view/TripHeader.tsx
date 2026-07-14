@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
 import { WayvueBrand } from '../WayvueBrand';
 import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
+import { AccountMenu } from '../AccountMenu';
+import { SaveTripButton } from '../SaveTripButton';
 
 export interface TripAlert {
     id: string;
@@ -565,6 +567,9 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
 
                 <div className="hidden lg:block h-5 w-px bg-border/60 mx-0.5 shrink-0" />
 
+                {/* Save trip */}
+                <SaveTripButton />
+
                 {/* Export itinerary PDF */}
                 {onExportPdf && (
                     <button
@@ -593,6 +598,9 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                         °F
                     </button>
                 </div>
+
+                {/* Account (sign in / profile menu) */}
+                <AccountMenu />
             </div>
         </div>
     );

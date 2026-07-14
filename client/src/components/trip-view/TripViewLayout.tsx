@@ -10,6 +10,7 @@ import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
+import { MyPlanTab } from './tabs/MyPlanTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { type Waypoint } from '@/components/WaypointsEditor';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -202,6 +203,7 @@ export function TripViewLayout({
 
     const TABS: { id: string; title: string; subtitle: string }[] = [
         { id: 'overview', title: 'Overview', subtitle: 'AI journey confidence and insights' },
+        { id: 'plan', title: 'My Plan', subtitle: 'Your saved itinerary for this trip' },
         { id: 'weather', title: 'Weather forecast', subtitle: 'Local forecasts along your route' },
         { id: 'stops', title: 'Stops', subtitle: 'Dining, fuel, and rest stops along the way' },
         { id: 'road', title: 'Road conditions', subtitle: 'Live alerts and driving logistics' },
@@ -211,6 +213,8 @@ export function TripViewLayout({
     ];
     const renderPanel = (id: string) => {
         switch (id) {
+            case 'plan':
+                return <MyPlanTab start={start} destination={destination} waypoints={waypoints} />;
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />

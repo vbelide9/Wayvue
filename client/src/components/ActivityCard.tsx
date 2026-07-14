@@ -1,5 +1,6 @@
 // A bookable activity (Viator) — image, rating, "from" price, and an affiliate CTA.
 import { Star, ArrowUpRight } from 'lucide-react';
+import { AddToPlanButton } from './AddToPlanButton';
 
 export interface Activity {
     code: string;
@@ -13,11 +14,11 @@ export interface Activity {
 
 export function ActivityCard({ activity }: { activity: Activity }) {
     return (
-        <a
+        <div className="group block bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:border-primary/40 hover:shadow-soft transition-all"><a
             href={activity.bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group block bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:border-primary/40 hover:shadow-soft transition-all"
+            className="block"
         >
             {activity.image && (
                 <div className="h-32 w-full overflow-hidden bg-secondary">
@@ -46,5 +47,15 @@ export function ActivityCard({ activity }: { activity: Activity }) {
                 </div>
             </div>
         </a>
+        <div className="px-4 pb-4">
+            <AddToPlanButton item={{
+                kind: 'attraction',
+                title: activity.title,
+                external_url: activity.bookingUrl,
+                image_url: activity.image ?? null,
+                detail: activity.fromPrice ? `from ${activity.fromPrice}` : null,
+            }} />
+        </div>
+        </div>
     );
 }

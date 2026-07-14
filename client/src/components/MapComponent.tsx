@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/map';
 import type { FeatureCollection, Geometry } from 'geojson';
 import { AnalyticsService } from '../services/analytics';
+import { PlanMarkers } from './PlanMarkers';
 
 // OpenFreeMap for the light basemap: free, no key, no usage caps.
 // CARTO dark-matter kept as the dark fallback (app currently renders light-only).
@@ -424,6 +425,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ routeGeoJSON, returnRouteGe
                 <FitBounds coordinates={activePositions} rightInset={rightInset} />
                 <MoveTracker />
                 {selectedLocation && <FlyToLocation location={selectedLocation} />}
+
+                {/* Plan items placed on the route at their mileage, category-coloured */}
+                <PlanMarkers coordinates={activePositions} />
 
                 {/* Weather markers for the active leg */}
                 {showWeatherLayer && activeWeather.map((point, idx) => (

@@ -2,7 +2,9 @@ import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, T
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RatingStars } from "@/components/RatingStars";
+import { AddToPlanButton } from "@/components/AddToPlanButton";
 import { type RateablePlace } from "@/lib/useRating";
+import { type NewTripItem, type TripItemKind } from "@/lib/tripItems";
 
 interface Place {
     id: string;
@@ -10,12 +12,19 @@ interface Place {
     location: string;
     title: string;
     description: string;
+    miles?: number; // distance from start (route order)
 }
 
 // Only real OSM points of interest are rateable — generic "fallback-*" stops aren't
 // actual businesses, so they never get a place_key.
 const toRateable = (p: Place): RateablePlace | null =>
     p.id.startsWith("osm-") ? { placeKey: p.id, name: p.title, type: p.type } : null;
+
+// Map a stop to a plan item (dining → restaurant, scenic → attraction, else stop).
+const toPlanItem = (p: Place): NewTripItem => {
+    const kind: TripItemKind = p.type === 'food' ? 'restaurant' : p.type === 'view' ? 'attraction' : 'stop';
+    return { kind, title: p.title, detail: p.description, location: p.location, routeMiles: p.miles };
+};
 
 interface PlacesRecommendationsProps {
     places: Place[] | null;
@@ -160,6 +169,10 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                             </div>
                                         )}
 
+                                        <div className="mt-3">
+                                            <AddToPlanButton item={toPlanItem(place)} />
+                                        </div>
+
                                         {/* Action Link */}
                                         <div className="mt-4 flex items-center gap-1.5 text-[10px] text-primary font-bold uppercase tracking-widest opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                                             <Info className="w-3.5 h-3.5" />
@@ -259,6 +272,9 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                 <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route
                                 </button>
+                                <div className="mt-3 flex justify-center">
+                                    <AddToPlanButton item={toPlanItem(selectedPlace)} />
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>
