@@ -176,8 +176,60 @@ create policy avatars_user_delete on storage.objects
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 8. Saved trips — a user's persisted trips (foundation for the feed + group
+--    planning). Owner-only for now; a `shared`/members model comes with groups.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trips (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  title             text,
+  start_label       text not null,
+  destination_label text not null,
+  start_coords      jsonb,   -- { lat, lng }
+  dest_coords       jsonb,
+  waypoints         jsonb not null default '[]',
+  departure_date    text,
+  departure_time    text,
+  return_date       text,
+  return_time       text,
+  is_round_trip     boolean not null default false,
+  preference        text,    -- 'fastest' | 'scenic'
+  distance          text,    -- display, e.g. "377 mi"
+  duration          text,    -- display, e.g. "7 hr 52 min"
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists trips_user_id_idx on public.trips (user_id, created_at desc);
+
+drop trigger if exists trips_touch_updated_at on public.trips;
+create trigger trips_touch_updated_at
+  before update on public.trips
+  for each row execute function public.touch_updated_at();
+
+alter table public.trips enable row level security;
+
+-- Owner-only read/write (a shared-with-members policy will be added for group trips).
+drop policy if exists trips_select_own on public.trips;
+create policy trips_select_own on public.trips
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists trips_insert_own on public.trips;
+create policy trips_insert_own on public.trips
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists trips_update_own on public.trips;
+create policy trips_update_own on public.trips
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists trips_delete_own on public.trips;
+create policy trips_delete_own on public.trips
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
---   • public.trips (saved/persisted trips) — foundation for feed + group planning.
+--   • trip_members / invites / votes / cost-split for group planning.
+--   • posts + post_likes (+ Storage photos) for the social feed.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.
 --   • periodic refresh/TTL for route_recommendations (places change over time).
 -- ─────────────────────────────────────────────────────────────────────────────

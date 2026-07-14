@@ -12,6 +12,7 @@ import { StayTab } from './tabs/StayTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { type Waypoint } from '@/components/WaypointsEditor';
+import { type SaveTripInput } from '@/lib/trips';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -47,6 +48,7 @@ interface TripViewLayoutProps {
     isRoundTrip?: boolean;
     waypoints?: Waypoint[];
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
+    saveTripData?: SaveTripInput | null;
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
@@ -108,6 +110,7 @@ export function TripViewLayout({
     rawReturnDate,
     waypoints,
     onWaypointsChange,
+    saveTripData,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Insights panel — open by default, collapsible to reveal the full-screen map.
@@ -306,6 +309,7 @@ export function TripViewLayout({
                         onSetRoundTrip={onSetRoundTrip}
                         waypoints={waypoints}
                         onWaypointsChange={onWaypointsChange}
+                        saveTripData={saveTripData}
                     />
                 </div>
 

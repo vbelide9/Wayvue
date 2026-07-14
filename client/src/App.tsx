@@ -17,6 +17,8 @@ import { PlannerCard } from './components/PlannerCard';
 import { type Waypoint, makeWaypointId } from './components/WaypointsEditor';
 import { WayvueBrand } from './components/WayvueBrand';
 import { AccountMenu } from './components/AccountMenu';
+import { SavedTripsProvider } from './lib/SavedTripsContext';
+import { type SavedTrip, type SaveTripInput } from './lib/trips';
 import { AiAssistant } from './components/AiAssistant';
 import { generateItineraryPdf } from './utils/itineraryPdf';
 
@@ -903,8 +905,50 @@ export default function App() {
     </main>
   );
 
+  // Snapshot of the current trip for the "Save trip" button (trip view only).
+  const saveTripData: SaveTripInput | null = viewMode === 'trip' ? {
+    title: null,
+    start_label: start,
+    destination_label: destination,
+    start_coords: startCoords ?? null,
+    dest_coords: destCoords ?? null,
+    waypoints,
+    departure_date: departureDate || null,
+    departure_time: departureTime || null,
+    return_date: isRoundTrip ? (returnDate || null) : null,
+    return_time: isRoundTrip ? (returnTime || null) : null,
+    is_round_trip: isRoundTrip,
+    preference: outboundPref,
+    distance: metrics.distance || null,
+    duration: metrics.time || null,
+  } : null;
+
+  // Load a saved trip back into the planner and rebuild it.
+  const handleLoadTrip = (t: SavedTrip) => {
+    // Go straight to the results view. handleRouteSubmit's cached "instant switch"
+    // path can return without navigating (it assumes you're already on the trip view),
+    // so we set it explicitly here — clicking a saved trip should always show results.
+    setViewMode('trip');
+    setStart(t.start_label);
+    setDestination(t.destination_label);
+    setStartCoords(t.start_coords ?? undefined);
+    setDestCoords(t.dest_coords ?? undefined);
+    setWaypoints(Array.isArray(t.waypoints) ? t.waypoints : []);
+    if (t.departure_date) setDepartureDate(t.departure_date);
+    if (t.departure_time) setDepartureTime(t.departure_time);
+    if (t.return_date) setReturnDate(t.return_date);
+    if (t.return_time) setReturnTime(t.return_time);
+    setIsRoundTrip(!!t.is_round_trip);
+    if (t.preference) { setOutboundPref(t.preference); setReturnPref(t.preference); }
+    handleRouteSubmit(
+      t.start_label, t.destination_label, t.departure_date || undefined, t.departure_time || undefined,
+      t.start_coords ?? undefined, t.dest_coords ?? undefined, t.is_round_trip, t.preference || undefined,
+      t.return_date || undefined, t.return_time || undefined, Array.isArray(t.waypoints) ? t.waypoints : [],
+    );
+  };
+
   return (
-    <>
+    <SavedTripsProvider onLoad={handleLoadTrip}>
       {viewMode === 'landing' && renderLandingView()}
       {viewMode === 'planning' && renderPlanningView()}
       {viewMode === 'trip' && (
@@ -928,6 +972,7 @@ export default function App() {
                 onBack={handleBackToPlanning}
                 onHome={() => setViewMode('landing')}
                 onExportPdf={handleExportPdf}
+                saveTripData={saveTripData}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
                   if (newStart) setStart(newStart);
@@ -1016,6 +1061,6 @@ export default function App() {
 
       {/* AI trip planner — available across landing, planning, and trip views */}
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
-    </>
+    </SavedTripsProvider>
   );
 }

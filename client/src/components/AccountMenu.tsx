@@ -2,11 +2,13 @@
 // with the user's name, an inline "edit name", and sign out. Renders nothing when
 // Supabase isn't configured.
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2 } from 'lucide-react';
+import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { useSavedTrips } from '@/lib/SavedTripsContext';
 
 export function AccountMenu() {
     const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar } = useAuth();
+    const { open: openSavedTrips } = useSavedTrips();
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [nameInput, setNameInput] = useState('');
@@ -115,8 +117,14 @@ export function AccountMenu() {
                         </div>
                     </div>
                     <button
+                        onClick={() => { setOpen(false); openSavedTrips(); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                    >
+                        <Bookmark className="w-4 h-4 text-muted-foreground" /> My Trips
+                    </button>
+                    <button
                         onClick={() => !uploading && fileRef.current?.click()}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-60"
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-60 border-t border-border"
                         disabled={uploading}
                     >
                         {uploading ? <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /> : <Camera className="w-4 h-4 text-muted-foreground" />}
