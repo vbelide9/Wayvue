@@ -52,7 +52,9 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
         const tourismRegex = "viewpoint|museum|park|theme_park"; // Removed attraction
         const lodgingRegex = "hotel|motel|guest_house|hostel"; // Overnight stays
         const historicRegex = "memorial|monument|castle|ruins";
-        const highwayRegex = "rest_area";
+        // Rest stops: `rest_area` (basic pull-offs) AND `services` (motorway service
+        // plazas). Both are usually mapped as WAYS/areas, not nodes, so query both.
+        const highwayRegex = "rest_area|services";
 
         const query = `
             [out:json][timeout:25];
@@ -83,6 +85,20 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
             // more search points along the route).
             await new Promise(r => setTimeout(r, i * 350));
 
+            // Rest stops (rest_area / motorway service plazas) are almost always mapped as
+            // WAYS in OSM, which are too heavy to bundle into the main query on public
+            // mirrors. Fetch them SEPARATELY, best-effort, with a short timeout so a slow or
+            // failed way query never blocks the core node stops. Runs in parallel below.
+            const wayQuery = `[out:json][timeout:12];(way["highway"~"rest_area|services"](around:15000,${lat},${lon}););out center 20;`;
+            const fetchWays = axios
+                // Use the OTHER mirror so the way query doesn't contend with the main node
+                // query (which tries mirrors[0] first) for this segment.
+                .get(`https://${mirrors[mirrors.length - 1]}/api/interpreter?data=${encodeURIComponent(wayQuery)}`, {
+                    headers: { 'User-Agent': 'WayvueApp/3.0' }, timeout: 14000,
+                })
+                .then(r => r.data.elements || [])
+                .catch(() => []); // best-effort — no rest ways this segment if it fails
+
             let nodes = null;
             for (let m = 0; m < mirrors.length; m++) {
                 const mirror = mirrors[m];
@@ -99,7 +115,10 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
                     if (m < mirrors.length - 1) await new Promise(r => setTimeout(r, 600)); // brief backoff before fallback
                 }
             }
-            if (!nodes) return; // both mirrors failed for this search point
+            const restWays = await fetchWays;
+            if (!nodes) nodes = [];
+            if (restWays.length) nodes = nodes.concat(restWays);
+            if (nodes.length === 0) return; // nothing from either query for this point
 
             const segmentCandidates = [];
 
@@ -111,7 +130,7 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
                     if (tags.amenity.includes('charging_station')) return 'charging';
                     if (['rest_area', 'toilets'].some(v => tags.amenity.includes(v))) return 'rest';
                 }
-                if (tags.highway && tags.highway.includes('rest_area')) return 'rest';
+                if (tags.highway && (tags.highway.includes('rest_area') || tags.highway.includes('services'))) return 'rest';
                 if (tags.tourism && ['hotel', 'motel', 'guest_house', 'hostel'].some(v => tags.tourism.includes(v))) return 'lodging';
                 if (tags.tourism) return 'view';
                 if (tags.historic) return 'view';
@@ -119,8 +138,14 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
             };
 
             nodes.forEach(node => {
-                if (node.tags && (node.tags.name || node.tags.operator)) {
-                    const name = node.tags.name || node.tags.operator;
+                if (node.tags) {
+                    const type = determineType(node.tags);
+                    // Rest areas / service points are frequently unnamed in OSM but still
+                    // useful, so give them a sensible fallback instead of dropping them.
+                    let name = node.tags.name || node.tags.operator;
+                    if (!name && type === 'rest') name = defaultTownName ? `Rest Area · ${defaultTownName}` : 'Rest Area';
+                    if (!name) return;
+
                     // Quality score: more tags usually means better data/more popular
                     const qualityScore = Object.keys(node.tags).length;
 
@@ -131,8 +156,6 @@ async function getRecommendations(routeSegments, distanceIndex = null) {
                     const stopMiles = (distanceIndex && poiLat != null && poiLon != null)
                         ? Math.round(mileageAt(distanceIndex, poiLat, poiLon))
                         : Number(milesFromStart);
-
-                    const type = determineType(node.tags);
 
                     // `location` is finalized after per-stop city resolution below — we
                     // prefer the stop's own OSM addr:city, then a reverse-geocode of its
