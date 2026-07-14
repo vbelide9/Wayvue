@@ -236,20 +236,44 @@ export async function getFollowing(userId: string): Promise<PostAuthor[]> {
     return hydrateAuthors((data || []).map(f => f.followee_id));
 }
 
-/** Recent posters you don't follow yet (simple discovery). */
+/** People to follow: recent posters first, then other recent travelers you don't follow. */
 export async function getSuggestedUsers(): Promise<PostAuthor[]> {
     if (!supabase) return [];
     const uid = await currentUserId();
-    const [{ data: recent }, { data: fol }] = await Promise.all([
+    const [{ data: recent }, { data: fol }, { data: profs }] = await Promise.all([
         supabase.from('posts').select('user_id').order('created_at', { ascending: false }).limit(80),
         supabase.from('follows').select('followee_id').eq('follower_id', uid),
+        supabase.from('profiles').select('id, display_name, avatar_url').order('created_at', { ascending: false }).limit(60),
     ]);
     const followed = new Set([uid, ...(fol || []).map(f => f.followee_id)]);
-    const candidateIds = [...new Set((recent || []).map(r => r.user_id))].filter(id => !followed.has(id)).slice(0, 10);
-    if (candidateIds.length === 0) return [];
-    const { data: profiles } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', candidateIds);
-    const pmap = new Map((profiles || []).map(p => [p.id, p]));
-    return candidateIds.map(id => authorOf(pmap, id));
+    const pmap = new Map((profs || []).map(p => [p.id, p]));
+    const activeIds = [...new Set((recent || []).map(r => r.user_id))].filter(id => !followed.has(id));
+    const activeSet = new Set(activeIds);
+    const otherIds = (profs || []).map(p => p.id).filter(id => !followed.has(id) && !activeSet.has(id));
+    const ordered = [...activeIds, ...otherIds].slice(0, 12);
+    // Some active posters may not be in the recent-profiles page — fetch their profiles.
+    const missing = ordered.filter(id => !pmap.has(id));
+    if (missing.length) {
+        const { data: extra } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', missing);
+        (extra || []).forEach(p => pmap.set(p.id, p));
+    }
+    return ordered.map(id => authorOf(pmap, id));
+}
+
+/** Search travelers by display name (for the Discover search box). */
+export async function searchUsers(query: string): Promise<PostAuthor[]> {
+    if (!supabase) return [];
+    const q = query.trim();
+    if (!q) return [];
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    const escaped = q.replace(/[%_]/g, m => `\\${m}`); // treat % and _ as literals
+    const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .ilike('display_name', `%${escaped}%`)
+        .limit(20);
+    return (data || []).filter(p => p.id !== uid).map(p => ({ userId: p.id, name: p.display_name || 'Traveler', avatar: p.avatar_url || null }));
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────

@@ -2,15 +2,16 @@
 // anyone, so the feed isn't empty before you follow people), a composer, and suggested
 // users to follow. Structured like SavedTripsPage.
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, Loader2, Users, Compass, UserPlus, Lock, Globe } from 'lucide-react';
+import { ChevronLeft, Loader2, Users, Compass, UserPlus, Lock, Globe, Search, X } from 'lucide-react';
 import { WayvueBrand } from '../WayvueBrand';
 import { AccountMenu } from '../AccountMenu';
 import { useAuth } from '@/lib/AuthContext';
-import { getFeed, getDiscover, getSuggestedUsers, getFollowCounts, getUserPosts, follow, type FeedPost, type PostAuthor } from '@/lib/feed';
+import { getFeed, getDiscover, getSuggestedUsers, getFollowCounts, getUserPosts, getFollowingSet, searchUsers, follow, unfollow, type FeedPost, type PostAuthor } from '@/lib/feed';
 import { PostComposer } from './PostComposer';
 import { PostCard, Avatar } from './PostCard';
 import { UserProfilePanel } from './UserProfilePanel';
 import { FollowListModal } from './FollowListModal';
+import { UserRow } from './UserRow';
 
 type Tab = 'following' | 'discover';
 
@@ -25,14 +26,36 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
     const [viewingProfile, setViewingProfile] = useState<PostAuthor | null>(null);
     const [myStats, setMyStats] = useState({ posts: 0, followers: 0, following: 0 });
     const [followList, setFollowList] = useState<{ userId: string; mode: 'followers' | 'following' } | null>(null);
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<PostAuthor[]>([]);
+    const [searching, setSearching] = useState(false);
+    const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
 
-    // Your own stats for the Instagram-style profile header.
+    // Your own stats for the Instagram-style profile header + who you follow (for buttons).
     useEffect(() => {
         if (!user) return;
-        Promise.all([getFollowCounts(user.id), getUserPosts(user.id)])
-            .then(([c, p]) => setMyStats({ posts: p.length, followers: c.followers, following: c.following }))
+        Promise.all([getFollowCounts(user.id), getUserPosts(user.id), getFollowingSet()])
+            .then(([c, p, set]) => { setMyStats({ posts: p.length, followers: c.followers, following: c.following }); setFollowingSet(set); })
             .catch(() => {});
     }, [user]);
+
+    // Debounced user search.
+    useEffect(() => {
+        const q = query.trim();
+        if (!q) { setResults([]); setSearching(false); return; }
+        setSearching(true);
+        const t = setTimeout(() => { searchUsers(q).then(r => setResults(r)).finally(() => setSearching(false)); }, 300);
+        return () => clearTimeout(t);
+    }, [query]);
+
+    // Follow/unfollow from search results or suggestions (keeps the button + count in sync).
+    const toggleFollow = async (a: PostAuthor) => {
+        const isF = followingSet.has(a.userId);
+        setFollowingSet(s => { const n = new Set(s); isF ? n.delete(a.userId) : n.add(a.userId); return n; });
+        setMyStats(s => ({ ...s, following: s.following + (isF ? -1 : 1) }));
+        try { isF ? await unfollow(a.userId) : await follow(a.userId); if (tab === 'following') setPosts(await getFeed()); }
+        catch { setFollowingSet(s => { const n = new Set(s); isF ? n.add(a.userId) : n.delete(a.userId); return n; }); }
+    };
 
     const fetchTab = useCallback(async (t: Tab): Promise<FeedPost[]> => (t === 'following' ? getFeed() : getDiscover()), []);
 
@@ -69,6 +92,8 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
 
     const followSuggested = async (a: PostAuthor) => {
         setSuggested(s => s.filter(x => x.userId !== a.userId));
+        setFollowingSet(s => new Set(s).add(a.userId));
+        setMyStats(s => ({ ...s, following: s.following + 1 }));
         try { await follow(a.userId); if (tab === 'following') setPosts(await getFeed()); } catch { /* ignore */ }
     };
 
@@ -146,6 +171,33 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
 
                         <div className="mb-5"><PostComposer key={prefill?.placeKey || prefill?.tripId || 'composer'} onPosted={p => { setPosts(prev => [p, ...prev]); setMyStats(s => ({ ...s, posts: s.posts + 1 })); }} prefill={prefill} /></div>
 
+                        {/* Search travelers by name */}
+                        {user && (
+                            <div className="relative mb-4">
+                                <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                    placeholder="Search travelers by name…"
+                                    className="w-full h-11 pl-10 pr-9 text-sm bg-card border border-border rounded-full outline-none focus:border-primary/50"
+                                />
+                                {query && <button onClick={() => setQuery('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
+                            </div>
+                        )}
+
+                        {query.trim() ? (
+                            /* Search results */
+                            <div className="bg-card border border-border rounded-2xl p-2 min-h-[120px]">
+                                {searching ? (
+                                    <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                                ) : results.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center py-10">No travelers found for “{query.trim()}”.</p>
+                                ) : results.map(u => (
+                                    <UserRow key={u.userId} user={u} isFollowing={followingSet.has(u.userId)} onToggleFollow={toggleFollow} onOpen={setViewingProfile} />
+                                ))}
+                            </div>
+                        ) : (
+                        <>
                         {/* Tabs */}
                         <div className="flex items-center gap-1 mb-5 bg-secondary/40 rounded-full p-1 border border-border w-fit">
                             {(['following', 'discover'] as Tab[]).map(t => {
@@ -205,6 +257,8 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
                                     </button>
                                 )}
                             </div>
+                        )}
+                    </>
                         )}
                     </>
                 )}
