@@ -166,15 +166,33 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
         seen.current = next;
     }, [tripId, user, toast, refreshItems, selfRemovedIds]);
 
-    // Baseline load (no toasts/feed) on trip or user change.
-    useEffect(() => { load(false); }, [load]);
+    // Always call the latest `load` from the effects below WITHOUT letting the effects
+    // re-run on every `load` identity change. The Supabase `user` object churns (e.g.
+    // onAuthStateChange fires when the tab regains focus), which would otherwise reset the
+    // baseline — silently absorbing a teammate's new stop every time you switch windows.
+    const loadRef = useRef(load);
+    loadRef.current = load;
+    const uid = user?.id ?? null;
 
-    // Background poll for collaborator activity.
+    // Baseline (no toasts/feed) — only on an actual trip or user change, keyed on the
+    // stable user id so focus-triggered auth events don't re-baseline.
+    useEffect(() => { loadRef.current(false); }, [tripId, uid]);
+
+    // Stable background poll for collaborator activity (interval never churns). Also poll
+    // immediately when the tab regains focus — background tabs throttle timers, so this is
+    // what surfaces a teammate's change the moment you switch back to check.
     useEffect(() => {
-        if (!tripId || !user) return;
-        const t = setInterval(() => load(true), POLL_MS);
-        return () => clearInterval(t);
-    }, [tripId, user, load]);
+        if (!tripId || !uid) return;
+        const t = setInterval(() => loadRef.current(true), POLL_MS);
+        const onVisible = () => { if (document.visibilityState === 'visible') loadRef.current(true); };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('focus', onVisible);
+        return () => {
+            clearInterval(t);
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('focus', onVisible);
+        };
+    }, [tripId, uid]);
 
     const myRole = members.find(m => m.userId === user?.id)?.role ?? null;
     const unreadCount = notifications.reduce((n, x) => n + (x.read ? 0 : 1), 0);
