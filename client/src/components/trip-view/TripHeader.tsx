@@ -194,8 +194,9 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
     return (
         <div className="flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch md:items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border border-border rounded-3xl shadow-soft z-50 relative gap-3 md:gap-4 mx-4" ref={containerRef}>
 
-            {/* Left: Back, Brand & Route */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0 justify-start">
+            {/* Left: Back, Brand & Route. `relative z-10` keeps the Fastest/Scenic toggle
+                clickable even if the row crowds under the right toolbar on narrow widths. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0 justify-start relative z-10">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -439,8 +440,11 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                 )}
             </div>
 
-            {/* Right: Metrics & Actions — one aligned row of equal-height pills */}
-            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2 min-w-0">
+            {/* Right: Metrics & Actions — one aligned row of equal-height pills.
+                `md:justify-self-end` shrinks this grid item to its content and pins it right,
+                so its (otherwise cell-filling) empty left half can't overlap and swallow
+                clicks on the Fastest/Scenic toggle in the adjacent left cell. */}
+            <div className="flex flex-wrap items-center justify-start md:justify-end md:justify-self-end gap-2 min-w-0">
 
                 {/* Metrics pill — stays on one line (sm+); wraps internally only on phones */}
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 h-auto sm:h-9 px-4 py-2 sm:py-0 bg-secondary/50 rounded-2xl sm:rounded-full border border-border/50 shrink-0">
