@@ -19,6 +19,12 @@ const EMPTY_VOTES: RouteVotes = { fastest: 0, scenic: 0, mine: null, votes: [] }
 const POLL_MS = 10000;
 const MAX_FEED = 40;
 
+// "added a note" / "an attraction" / "a stop" — the right noun for each itinerary kind.
+const ITEM_NOUN: Record<string, string> = {
+    note: 'a note', hotel: 'a hotel', restaurant: 'a place to eat', attraction: 'an attraction', stop: 'a stop',
+};
+const nounOf = (kind: string) => ITEM_NOUN[kind] || 'an item';
+
 export interface GroupNotification {
     id: number;
     message: string;
@@ -61,6 +67,7 @@ export const useGroupTrip = () => {
 
 interface Snapshot {
     itemTitle: Map<string, string>;
+    itemKind: Map<string, string>;
     itemAuthor: Map<string, string>;
     routeVote: Map<string, RouteChoice>;   // userId -> choice
     itemVote: Map<string, number>;          // `${itemId}:${userId}` -> value
@@ -68,7 +75,7 @@ interface Snapshot {
     primed: boolean;
 }
 const emptySnapshot = (): Snapshot => ({
-    itemTitle: new Map(), itemAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
+    itemTitle: new Map(), itemKind: new Map(), itemAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
     memberIds: new Set(), primed: false,
 });
 
@@ -107,6 +114,7 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
         // Build the new snapshot.
         const next: Snapshot = {
             itemTitle: new Map(items.map(i => [i.id, i.title])),
+            itemKind: new Map(items.map(i => [i.id, i.kind])),
             itemAuthor: new Map(items.map(i => [i.id, i.user_id])),
             routeVote: new Map(rv.votes.map(v => [v.userId, v.choice])),
             itemVote: new Map(voteRows.map(v => [`${v.tripItemId}:${v.userId}`, v.value])),
@@ -117,17 +125,18 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
         if (announce && prev.primed) {
             const events: { message: string; detail?: string; avatar?: string | null; toast?: boolean }[] = [];
 
-            // Stops added by someone else.
+            // Itinerary items added by someone else (kind-aware: stop / note / hotel / …).
             for (const it of items) {
                 if (!prev.itemTitle.has(it.id) && it.user_id !== user.id) {
-                    events.push({ message: `${nameOf(it.user_id)} added a stop`, detail: it.title, avatar: avatarOf(it.user_id), toast: true });
+                    events.push({ message: `${nameOf(it.user_id)} added ${nounOf(it.kind)}`, detail: it.title, avatar: avatarOf(it.user_id), toast: true });
                 }
             }
-            // Stops removed (skip the user's own deletions — no "removed_by" to attribute).
+            // Items removed (skip the user's own deletions — no "removed_by" to attribute).
             for (const [id, title] of prev.itemTitle) {
                 if (!next.itemTitle.has(id)) {
                     if (selfRemovedIds.current.has(id)) { selfRemovedIds.current.delete(id); continue; }
-                    events.push({ message: 'A stop was removed', detail: title });
+                    const noun = nounOf(prev.itemKind.get(id) || 'stop');
+                    events.push({ message: `${noun.charAt(0).toUpperCase()}${noun.slice(1)} was removed`, detail: title });
                 }
             }
             // Route votes cast / changed by others.
