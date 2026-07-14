@@ -1,4 +1,4 @@
-import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, Filter, TreePine, Info, Zap } from "lucide-react";
+import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RatingStars } from "@/components/RatingStars";
@@ -21,9 +21,13 @@ interface PlacesRecommendationsProps {
     places: Place[] | null;
 }
 
+// How many stops to show before the "Show more" toggle.
+const PREVIEW_COUNT = 8;
+
 export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>("all");
+    const [showAll, setShowAll] = useState(false);
 
     const categories = [
         { id: "all", label: "All Stops", icon: <MapPin className="w-3.5 h-3.5" /> },
@@ -40,7 +44,12 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
         return places.filter(p => p.type === activeCategory);
     }, [places, activeCategory]);
 
-    if (!places || !Array.isArray(places) || places.length === 0) return null;
+    // Cap the initial view; the rest reveal behind "Show more".
+    const visiblePlaces = showAll ? filteredPlaces : filteredPlaces.slice(0, PREVIEW_COUNT);
+    const hiddenCount = filteredPlaces.length - visiblePlaces.length;
+
+    // Show an empty state (not a hidden section) when there are genuinely no stops.
+    if (!places || !Array.isArray(places)) return null;
 
     const getIcon = (type: string, className = "w-4 h-4") => {
         switch (type) {
@@ -74,7 +83,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                     {categories.map((cat) => (
                         <button
                             key={cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
+                            onClick={() => { setActiveCategory(cat.id); setShowAll(false); }}
                             className={`
                                 relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 overflow-hidden outline-none
                                 ${activeCategory === cat.id
@@ -104,7 +113,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
             <div className="flex-1 flex flex-col gap-3 min-h-[100px] overflow-visible pb-4">
                 <AnimatePresence mode="popLayout">
                     {filteredPlaces.length > 0 ? (
-                        filteredPlaces.map((place, i) => {
+                        visiblePlaces.map((place, i) => {
                             // Determine Category Color
                             let bgClass = "bg-secondary";
                             let ringClass = "hover:shadow-primary/20";
@@ -174,10 +183,25 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             className="w-full h-40 flex flex-col items-center justify-center text-center opacity-70 bg-secondary/10 rounded-2xl border border-dashed border-border mt-4"
                         >
                             <Filter className="w-8 h-8 mb-3 text-muted-foreground" />
-                            <p className="text-sm font-medium text-muted-foreground">No stops found in this category</p>
+                            <p className="text-sm font-medium text-muted-foreground">
+                                {activeCategory === "all"
+                                    ? "No stops found along this route"
+                                    : "No stops found in this category"}
+                            </p>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Show more / less toggle */}
+                {filteredPlaces.length > PREVIEW_COUNT && (
+                    <button
+                        onClick={() => setShowAll(v => !v)}
+                        className="mt-1 flex items-center justify-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors py-2"
+                    >
+                        {showAll ? "Show less" : `Show ${hiddenCount} more`}
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAll ? "rotate-180" : ""}`} />
+                    </button>
+                )}
             </div>
 
             {/* Details Modal */}

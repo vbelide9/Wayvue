@@ -150,8 +150,14 @@ a rated stop could vanish. Fix: cache the first good result per route in Supabas
 - [x] Wired into `tripProcessor.js` section C: cache-hit → return; miss → fetch + store.
 - [x] `server/.env(.example)`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Verified the
       disabled path (no key) → logs "route cache disabled", route still returns places.
-- [ ] **You:** run the new table SQL + add `SUPABASE_SERVICE_ROLE_KEY` to `server/.env`.
-- [ ] Then verify cache-hit: same route twice → identical place set.
+- [x] Table SQL run + `SUPABASE_SERVICE_ROLE_KEY` in `server/.env`.
+- [x] Node 20 has no native WebSocket; supabase-js's realtime init threw at
+      construction. Added `ws` dep + `realtime: { transport: ws }` in `supabaseAdmin.js`,
+      wrapped in try/catch so an init failure can't break `/api/route`.
+- [x] **Verified cache-hit:** same route twice → identical 27-stop set (was 35 vs 23
+      before); `route_recommendations` has the fastest + scenic rows. ✅
+- Note: start the server from `server/` (or via its npm script) so dotenv loads
+  `server/.env` — running `node server/index.js` from the repo root loads 0 env vars.
 
 ### Follow-ons
 - [ ] `public.profiles` (display name/avatar) so reviews show an author.
