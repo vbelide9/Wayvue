@@ -81,6 +81,64 @@ export async function listMembers(tripId: string): Promise<TripMember[]> {
         .sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : a.joinedAt.localeCompare(b.joinedAt)));
 }
 
+/** Rosters for several trips at once (for the My Trips list). Keyed by trip id, owner first. */
+export async function getTripsMembers(tripIds: string[]): Promise<Record<string, TripMember[]>> {
+    if (!supabase || tripIds.length === 0) return {};
+    const { data: rows, error } = await supabase
+        .from('trip_members')
+        .select('trip_id, user_id, role, joined_at')
+        .in('trip_id', tripIds);
+    if (error || !rows) { if (error) console.error('[group] trips members failed:', error); return {}; }
+    const userIds = [...new Set(rows.map(r => r.user_id))];
+    const { data: profiles } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds);
+    const pmap = new Map((profiles || []).map(p => [p.id, p]));
+    const out: Record<string, TripMember[]> = {};
+    for (const r of rows) {
+        (out[r.trip_id] ||= []).push({
+            userId: r.user_id, role: r.role as 'owner' | 'member', joinedAt: r.joined_at,
+            name: pmap.get(r.user_id)?.display_name || 'Traveler', avatar: pmap.get(r.user_id)?.avatar_url || null,
+        });
+    }
+    for (const id in out) out[id].sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : a.joinedAt.localeCompare(b.joinedAt)));
+    return out;
+}
+
+// Per-trip "last opened" timestamps (localStorage), so the My Trips list can badge trips
+// with collaborator activity you haven't seen since you last viewed them.
+const SEEN_KEY = 'wayvue.tripSeen';
+export function getSeenMap(): Record<string, string> {
+    try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch { return {}; }
+}
+export function markTripSeen(tripId: string): void {
+    try {
+        const m = getSeenMap();
+        m[tripId] = new Date().toISOString();
+        localStorage.setItem(SEEN_KEY, JSON.stringify(m));
+    } catch { /* ignore */ }
+}
+
+/** Count of collaborator activity per trip (by OTHERS, since you last opened it). */
+export async function getTripsActivityCounts(tripIds: string[], myUserId: string): Promise<Record<string, number>> {
+    if (!supabase || tripIds.length === 0) return {};
+    const seen = getSeenMap();
+    const counts: Record<string, number> = {};
+    const bump = (tripId: string, ts: string, uid: string) => {
+        if (uid === myUserId) return;             // ignore your own activity
+        const last = seen[tripId];
+        if (last && ts <= last) return;           // already seen (ISO UTC strings compare lexically)
+        counts[tripId] = (counts[tripId] || 0) + 1;
+    };
+    const [items, votes, itemVotes] = await Promise.all([
+        supabase.from('trip_items').select('trip_id, user_id, created_at').in('trip_id', tripIds),
+        supabase.from('trip_votes').select('trip_id, user_id, updated_at').in('trip_id', tripIds),
+        supabase.from('trip_item_votes').select('trip_id, user_id, updated_at').in('trip_id', tripIds),
+    ]);
+    for (const r of items.data || []) bump(r.trip_id, r.created_at, r.user_id);
+    for (const r of votes.data || []) bump(r.trip_id, r.updated_at, r.user_id);
+    for (const r of itemVotes.data || []) bump(r.trip_id, r.updated_at, r.user_id);
+    return counts;
+}
+
 /** Owner removes a member (or a member removes themselves). */
 export async function removeMember(tripId: string, userId: string): Promise<void> {
     if (!supabase) return;

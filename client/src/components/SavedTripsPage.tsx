@@ -6,8 +6,34 @@ import { WayvueBrand } from './WayvueBrand';
 import { AccountMenu } from './AccountMenu';
 import { listTrips, deleteTrip, type SavedTrip } from '@/lib/trips';
 import { getPlanItemCounts } from '@/lib/tripItems';
+import { getTripsMembers, getTripsActivityCounts, markTripSeen, type TripMember } from '@/lib/groupTrips';
 import { shortPlace } from '@/lib/placeFormat';
 import { useAuth } from '@/lib/AuthContext';
+
+// Overlapping avatar stack of the members sharing a trip.
+function MemberStack({ members }: { members: TripMember[] }) {
+    const shown = members.slice(0, 4);
+    const extra = members.length - shown.length;
+    return (
+        <div className="flex -space-x-2 items-center">
+            {shown.map(m => {
+                const initials = m.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'T';
+                return (
+                    <div
+                        key={m.userId}
+                        title={`${m.name}${m.role === 'owner' ? ' (organizer)' : ''}`}
+                        className="w-7 h-7 rounded-full overflow-hidden bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center ring-2 ring-card"
+                    >
+                        {m.avatar ? <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span>{initials}</span>}
+                    </div>
+                );
+            })}
+            {extra > 0 && (
+                <div className="w-7 h-7 rounded-full bg-secondary ring-2 ring-card text-[10px] font-bold text-muted-foreground flex items-center justify-center">+{extra}</div>
+            )}
+        </div>
+    );
+}
 
 function formatDepart(date?: string | null): string {
     if (!date) return '';
@@ -26,6 +52,8 @@ interface SavedTripsPageProps {
 export function SavedTripsPage({ onOpen, onBack }: SavedTripsPageProps) {
     const [trips, setTrips] = useState<SavedTrip[]>([]);
     const [planCounts, setPlanCounts] = useState<Record<string, number>>({});
+    const [members, setMembers] = useState<Record<string, TripMember[]>>({});
+    const [activity, setActivity] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -39,7 +67,15 @@ export function SavedTripsPage({ onOpen, onBack }: SavedTripsPageProps) {
             setLoading(true);
             try {
                 const [data, counts] = await Promise.all([listTrips(), getPlanItemCounts()]);
-                if (!cancelled) { setTrips(data); setPlanCounts(counts); }
+                if (cancelled) return;
+                setTrips(data); setPlanCounts(counts);
+                // Members (for the shared-trip avatars) + unseen collaborator activity counts.
+                const ids = data.map(t => t.id);
+                const [mem, act] = await Promise.all([
+                    getTripsMembers(ids),
+                    user ? getTripsActivityCounts(ids, user.id) : Promise.resolve({}),
+                ]);
+                if (!cancelled) { setMembers(mem); setActivity(act); }
             } catch (e) {
                 console.error('[trips] list failed:', e);
             } finally {
@@ -121,10 +157,13 @@ export function SavedTripsPage({ onOpen, onBack }: SavedTripsPageProps) {
                         {trips.map(trip => {
                             const stops = (trip.waypoints || []).map(w => shortPlace(w?.name)).filter(Boolean);
                             const stopCount = (trip.waypoints || []).filter(w => w?.name?.trim()).length;
+                            const sharedMembers = members[trip.id] || [];
+                            const isShared = sharedMembers.length > 1;
+                            const unseen = activity[trip.id] || 0;
                             return (
                                 <button
                                     key={trip.id}
-                                    onClick={() => onOpen(trip)}
+                                    onClick={() => { markTripSeen(trip.id); setActivity(a => ({ ...a, [trip.id]: 0 })); onOpen(trip); }}
                                     className="group text-left w-full bg-card hover:bg-secondary/40 border border-border rounded-2xl p-5 transition-colors shadow-soft hover:border-primary/30 flex items-center gap-4"
                                 >
                                     <div className="flex-1 min-w-0">
@@ -148,6 +187,26 @@ export function SavedTripsPage({ onOpen, onBack }: SavedTripsPageProps) {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Shared-trip members + unseen-activity counter */}
+                                    {isShared && (
+                                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                            <div className="relative">
+                                                <MemberStack members={sharedMembers} />
+                                                {unseen > 0 && (
+                                                    <span
+                                                        title={`${unseen} new update${unseen > 1 ? 's' : ''} from collaborators`}
+                                                        className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-card shadow-sm"
+                                                    >
+                                                        {unseen > 99 ? '99+' : unseen}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                                {sharedMembers.length} people
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center gap-1 shrink-0">
                                         <span

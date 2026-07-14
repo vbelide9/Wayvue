@@ -21,7 +21,7 @@ import { SavedTripsProvider } from './lib/SavedTripsContext';
 import { SavedTripsPage } from './components/SavedTripsPage';
 import { TripPlanProvider } from './lib/TripPlanContext';
 import { GroupTripProvider } from './lib/GroupTripContext';
-import { joinTrip } from './lib/groupTrips';
+import { joinTrip, markTripSeen } from './lib/groupTrips';
 import { useAuth } from './lib/AuthContext';
 import { getTripById, type SavedTrip, type SaveTripInput } from './lib/trips';
 import { AiAssistant } from './components/AiAssistant';
@@ -1060,6 +1060,16 @@ export default function App() {
     if (restoreViewRef.current === 'trips') setViewMode('trips');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mark the open trip "seen" (up to now) when leaving the trip view, so the My Trips list
+  // only badges collaborator activity that happens after you looked at it.
+  const prevViewModeRef = useRef(viewMode);
+  useEffect(() => {
+    if (prevViewModeRef.current === 'trip' && viewMode !== 'trip' && currentTripId) {
+      markTripSeen(currentTripId);
+    }
+    prevViewModeRef.current = viewMode;
+  }, [viewMode, currentTripId]);
 
   return (
     <SavedTripsProvider open={() => setViewMode('trips')}>
