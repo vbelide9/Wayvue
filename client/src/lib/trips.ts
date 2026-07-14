@@ -30,13 +30,17 @@ export async function saveTrip(input: SaveTripInput): Promise<SavedTrip | null> 
     const uid = userData.user?.id;
     if (!uid) throw new Error('Sign in to save trips.');
 
-    const { data, error } = await supabase
+    // Generate the id client-side and insert WITHOUT a returning select. An
+    // `insert().select()` fails here: the AFTER-INSERT trigger that adds the owner to
+    // trip_members (for group planning) isn't visible to that same statement's RLS SELECT,
+    // so the RETURNING row is rejected (42501). We already have all the data, so we build
+    // the row locally instead of reading it back.
+    const id = crypto.randomUUID();
+    const { error } = await supabase
         .from('trips')
-        .insert({ ...input, user_id: uid })
-        .select()
-        .single();
+        .insert({ id, ...input, user_id: uid });
     if (error) throw error;
-    return data as SavedTrip;
+    return { id, created_at: new Date().toISOString(), ...input } as SavedTrip;
 }
 
 export async function getTripById(id: string): Promise<SavedTrip | null> {
