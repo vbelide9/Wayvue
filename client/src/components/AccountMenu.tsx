@@ -2,18 +2,20 @@
 // with the user's name, an inline "edit name", and sign out. Renders nothing when
 // Supabase isn't configured.
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark } from 'lucide-react';
+import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark, Smile } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSavedTrips } from '@/lib/SavedTripsContext';
+import { PRESET_AVATARS } from '@/lib/presetAvatars';
 
 export function AccountMenu() {
-    const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar } = useAuth();
+    const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar } = useAuth();
     const { open: openSavedTrips } = useSavedTrips();
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [nameInput, setNameInput] = useState('');
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [showAvatars, setShowAvatars] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +134,29 @@ export function AccountMenu() {
                     </button>
                     {uploadError && (
                         <p className="px-4 pb-2 -mt-1 text-[11px] text-destructive">{uploadError}</p>
+                    )}
+                    <button
+                        onClick={() => setShowAvatars(v => !v)}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors border-t border-border"
+                    >
+                        <Smile className="w-4 h-4 text-muted-foreground" /> Choose an avatar
+                    </button>
+                    {showAvatars && (
+                        <div className="px-4 py-3 grid grid-cols-4 gap-2 border-t border-border">
+                            {PRESET_AVATARS.map(a => {
+                                const selected = profile?.avatar_url === a.url;
+                                return (
+                                    <button
+                                        key={a.id}
+                                        onClick={() => { setAvatar(a.url); }}
+                                        aria-label={`Use ${a.id} avatar`}
+                                        className={`aspect-square rounded-full overflow-hidden border-2 transition-all hover:scale-105 ${selected ? 'border-primary ring-2 ring-primary/30' : 'border-transparent'}`}
+                                    >
+                                        <img src={a.url} alt="" className="w-full h-full" />
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                     <button
                         onClick={() => { setOpen(false); signOut(); }}

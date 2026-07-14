@@ -1,9 +1,11 @@
-import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap } from "lucide-react";
-import { useState, useMemo } from "react";
+import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap, Star, Navigation } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { RatingStars } from "@/components/RatingStars";
+import { PlaceReviews } from "@/components/PlaceReviews";
 import { AddToPlanButton } from "@/components/AddToPlanButton";
-import { type RateablePlace } from "@/lib/useRating";
+import { getRatingStats, type RateablePlace } from "@/lib/useRating";
 import { type NewTripItem, type TripItemKind } from "@/lib/tripItems";
 
 interface Place {
@@ -37,6 +39,17 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>("all");
     const [showAll, setShowAll] = useState(false);
+    const [sortMode, setSortMode] = useState<'route' | 'rated'>('route');
+    const [stats, setStats] = useState<Record<string, { avg: number; count: number }>>({});
+
+    // Community aggregates for the rateable (OSM) stops — powers the "Top rated" sort.
+    useEffect(() => {
+        const keys = (places || []).map(p => p.id).filter(id => id.startsWith('osm-'));
+        if (keys.length === 0) { setStats({}); return; }
+        let cancelled = false;
+        getRatingStats(keys).then(s => { if (!cancelled) setStats(s); });
+        return () => { cancelled = true; };
+    }, [places]);
 
     const categories = [
         { id: "all", label: "All Stops", icon: <MapPin className="w-3.5 h-3.5" /> },
@@ -49,9 +62,16 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
 
     const filteredPlaces = useMemo(() => {
         if (!places) return [];
-        if (activeCategory === "all") return places;
-        return places.filter(p => p.type === activeCategory);
-    }, [places, activeCategory]);
+        const byCategory = activeCategory === "all" ? places : places.filter(p => p.type === activeCategory);
+        if (sortMode === 'route') return byCategory;
+        // Top rated: highest community average first (then most reviews); unrated last.
+        return [...byCategory].sort((a, b) => {
+            const sa = stats[a.id], sb = stats[b.id];
+            const ra = sa ? sa.avg : -1, rb = sb ? sb.avg : -1;
+            if (rb !== ra) return rb - ra;
+            return (sb?.count || 0) - (sa?.count || 0);
+        });
+    }, [places, activeCategory, sortMode, stats]);
 
     // Cap the initial view; the rest reveal behind "Show more".
     const visiblePlaces = showAll ? filteredPlaces : filteredPlaces.slice(0, PREVIEW_COUNT);
@@ -115,6 +135,25 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             </span>
                         </button>
                     ))}
+                </div>
+
+                {/* Sort: route order vs community rating */}
+                <div className="flex items-center gap-1 px-1 -mt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">Sort</span>
+                    <div className="flex items-center bg-secondary/40 rounded-full p-1 border border-border">
+                        <button
+                            onClick={() => { setSortMode('route'); setShowAll(false); }}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${sortMode === 'route' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <Navigation className="w-3 h-3" /> Route
+                        </button>
+                        <button
+                            onClick={() => { setSortMode('rated'); setShowAll(false); }}
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${sortMode === 'rated' ? 'bg-card shadow-sm text-amber-600' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <Star className={`w-3 h-3 ${sortMode === 'rated' ? 'fill-amber-400 text-amber-400' : ''}`} /> Top rated
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -217,7 +256,10 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                 )}
             </div>
 
-            {/* Details Modal */}
+            {/* Details Modal — portaled to <body> so it isn't clipped by the insights
+                panel's `overflow-hidden` / transformed ancestors (which would otherwise
+                trap this fixed overlay and render it invisibly). */}
+            {createPortal(
             <AnimatePresence>
                 {selectedPlace && (
                     <motion.div
@@ -231,7 +273,7 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                             initial={{ scale: 0.95, y: 20, opacity: 0 }}
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.95, y: 20, opacity: 0 }}
-                            className="bg-card/90 backdrop-blur-2xl border border-border rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-sm w-full overflow-hidden"
+                            className="bg-card/90 backdrop-blur-2xl border border-border rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] max-w-sm w-full max-h-[90vh] overflow-y-auto"
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="h-40 bg-gradient-to-br from-primary/20 via-background to-background flex items-center justify-center relative border-b border-border/50">
@@ -261,25 +303,26 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                     {selectedPlace.description}
                                 </p>
 
-                                {/* Community rating — real OSM stops only */}
-                                {toRateable(selectedPlace) && (
-                                    <div className="mb-8 flex items-center justify-between gap-3">
-                                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your rating</span>
-                                        <RatingStars place={toRateable(selectedPlace)} size="md" />
-                                    </div>
-                                )}
-
-                                <button className="w-full py-4 bg-gradient-to-r from-primary to-emerald-500 text-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all">
+                                <button className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold shadow-orange-glow flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route
                                 </button>
                                 <div className="mt-3 flex justify-center">
                                     <AddToPlanButton item={toPlanItem(selectedPlace)} />
                                 </div>
+
+                                {/* Community ratings + reviews — real OSM stops only */}
+                                {toRateable(selectedPlace) && (
+                                    <div className="mt-8 pt-6 border-t border-border">
+                                        <PlaceReviews place={toRateable(selectedPlace)!} />
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body,
+            )}
         </div>
     );
 }

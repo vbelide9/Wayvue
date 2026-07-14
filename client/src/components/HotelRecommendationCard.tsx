@@ -2,6 +2,10 @@ import { BedDouble, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { AddToPlanButton } from './AddToPlanButton';
+import { RatingStars } from './RatingStars';
+
+// Stable rating key for a hotel = name + city (case/space-insensitive).
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 interface HotelOption {
     name: string;
@@ -28,9 +32,10 @@ interface HotelRecommendationProps {
         booking: string;
         kayak: string;
     } | null;
+    city?: string;
 }
 
-export function HotelRecommendationCard({ data, links }: HotelRecommendationProps) {
+export function HotelRecommendationCard({ data, links, city }: HotelRecommendationProps) {
     if (!data || !data.showRecommendation) return null;
 
     return (
@@ -104,6 +109,7 @@ export function HotelRecommendationCard({ data, links }: HotelRecommendationProp
                                     </span>
                                 ))}
                             </p>
+                            <RatingStars place={{ placeKey: `hotel:${slug(option.name)}:${slug(city || '')}`, name: option.name, type: 'hotel' }} />
                         </div>
 
                         {/* Pricing Display */}

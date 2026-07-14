@@ -200,7 +200,7 @@ export function StayTab({ metrics, start, destination, depDate, returnDate }: St
                     </div>
                 )}
 
-                {data && <HotelRecommendationCard data={data} links={links} />}
+                {data && <HotelRecommendationCard data={data} links={links} city={extractCity(destination)} />}
 
                 {!data && !loading && (
                     <div className="text-center text-sm text-muted-foreground py-10">

@@ -48,6 +48,12 @@ pull from, not a sprint plan.
       Airbnb affiliate links).
 - [ ] Insurance & roadside assistance partnerships — trip-specific coverage
       recommendations.
+- [ ] **Travel shopping recommendations** — surface trip-relevant gear/products with
+      affiliate links (Amazon Associates, etc.), tailored to the trip: rain gear for a
+      wet forecast, a cooler / sunshade for a long summer drive, dash cam, phone mount,
+      EV adapter, camping gear when the plan has campsites. Could live as its own
+      insights section ("Pack for this trip") and/or "Add to plan" items. High-intent,
+      low-friction affiliate revenue.
 
 ### Monetization
 - [ ] **Freemium tiers**

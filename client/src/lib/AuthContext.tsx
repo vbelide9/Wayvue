@@ -26,6 +26,8 @@ interface AuthValue {
     updateDisplayName: (name: string) => Promise<void>;
     /** Upload a profile picture to Wayvue storage and set it as the avatar. */
     uploadAvatar: (file: File) => Promise<void>;
+    /** Set the avatar to a given URL (e.g. a preset avatar). */
+    setAvatar: (url: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | undefined>(undefined);
@@ -132,8 +134,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(p => (p ? { ...p, avatar_url: url } : p));
     };
 
+    const setAvatar = async (url: string) => {
+        if (!supabase || !user) return;
+        await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+        setProfile(p => (p ? { ...p, avatar_url: url } : p));
+    };
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, enabled: isSupabaseEnabled, signInWithGoogle, signOut, updateDisplayName, uploadAvatar }}>
+        <AuthContext.Provider value={{ user, profile, loading, enabled: isSupabaseEnabled, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar }}>
             {children}
         </AuthContext.Provider>
     );

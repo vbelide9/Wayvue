@@ -126,14 +126,28 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip' | 'trips'>('landing');
   // The saved trip currently open (its plan is editable). null = unsaved/new trip.
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+  // Only restore the previous view/trip on an actual page RELOAD (F5) or the OAuth
+  // round-trip — NOT on a fresh navigation (typing the URL, a new tab, a link), which
+  // should always start at the landing page. sessionStorage alone can't tell these
+  // apart (it survives any same-tab load), so gate on the Navigation Timing type.
+  const shouldRestoreSession = (() => {
+    try { if (sessionStorage.getItem('wayvue.authRedirect') === '1') return true; } catch { /* ignore */ }
+    try {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      return nav?.type === 'reload' || nav?.type === 'back_forward';
+    } catch { return false; }
+  })();
+
   // Captured once at init (before effects can clear it): the saved trip that was open
   // before a refresh, so we can reopen it — with its plan — once auth resolves.
   const activeTripToRestore = useRef<string | null>((() => {
+    if (!shouldRestoreSession) return null;
     try { return sessionStorage.getItem('wayvue.activeTripId'); } catch { return null; }
   })());
   const activeTripRestored = useRef(false);
   // View to restore on refresh (captured before effects overwrite it).
   const restoreViewRef = useRef<string | null>((() => {
+    if (!shouldRestoreSession) return null;
     try { return sessionStorage.getItem('wayvue.viewMode'); } catch { return null; }
   })());
 

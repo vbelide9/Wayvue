@@ -206,6 +206,11 @@ Bookable things-to-do near the destination with affiliate "Book on Viator" links
 ---
 
 ## Notes / backlog
+- [ ] **Refine user avatars.** The "Choose an avatar" presets in
+      `client/src/lib/presetAvatars.ts` are currently code-generated SVG data URIs
+      (travel line-icons + Apple-style person silhouettes). Replace/expand with a
+      properly designed set later — see the generation prompt shared in chat; drop the
+      result straight into `PRESET_AVATARS` (the picker + storage flow already work).
 - [ ] Reconcile the two ranking systems if desired: **bullet priorities** vs. **score
       penalties** use different weightings (e.g. a road closure is bullet-priority 100 but
       only −15 in the score; snow is −40 in the score but bullet-priority 96). Intentionally
