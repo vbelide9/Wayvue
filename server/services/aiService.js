@@ -339,17 +339,29 @@ function calculateTripScore(context) {
         deductions.push({ type: 'Night Driving', val: -5 });
     }
 
-    // 8. Traffic Incident Penalty (accidents / closures on route)
+    // 8. Traffic Incident Penalty — every reported incident type counts (closures,
+    //    accidents, jams, construction, hazards), weighted by severity and SCALED by how
+    //    many there are, so a corridor with many alerts genuinely lowers confidence
+    //    instead of scoring the same as a single one. The combined hit is capped so one
+    //    busy stretch can't zero an otherwise-fine trip.
     if (incidentCounts) {
         const closures = incidentCounts.closure || 0;
         const accidents = incidentCounts.accident || 0;
-        if (closures > 0) {
-            score -= 15;
-            deductions.push({ type: 'Road Closure on Route', val: -15 });
-        }
-        if (accidents > 0) {
-            score -= 10;
-            deductions.push({ type: `${accidents} Accident${accidents > 1 ? 's' : ''} Reported`, val: -10 });
+        const jams = incidentCounts.jam || 0;
+        const construction = incidentCounts.construction || 0;
+        const hazards = incidentCounts.hazard || 0;
+
+        const raw = closures * 12 + accidents * 8 + jams * 3 + construction * 2 + hazards * 3;
+        if (raw > 0) {
+            const penalty = Math.min(raw, 40); // cap combined incident impact
+            score -= penalty;
+            const parts = [];
+            if (closures) parts.push(`${closures} closure${closures > 1 ? 's' : ''}`);
+            if (accidents) parts.push(`${accidents} accident${accidents > 1 ? 's' : ''}`);
+            if (jams) parts.push(`${jams} jam${jams > 1 ? 's' : ''}`);
+            if (construction) parts.push(`${construction} construction`);
+            if (hazards) parts.push(`${hazards} hazard${hazards > 1 ? 's' : ''}`);
+            deductions.push({ type: `Traffic incidents (${parts.join(', ')})`, val: -penalty });
         }
     }
 

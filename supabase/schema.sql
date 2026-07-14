@@ -362,9 +362,13 @@ drop policy if exists trips_update_own on public.trips;
 drop policy if exists trips_delete_own on public.trips;
 drop policy if exists trips_insert_own on public.trips;
 
+-- Note the explicit `user_id = auth.uid()` alongside the membership check: it lets the
+-- owner read/update their trip WITHOUT depending on the owner's trip_members row, which
+-- matters right after INSERT — `saveTrip` does insert().select(), and the AFTER-INSERT
+-- trigger's membership write isn't reliably visible to that same statement's RLS SELECT.
 drop policy if exists trips_select_member on public.trips;
 create policy trips_select_member on public.trips
-  for select to authenticated using (public.is_trip_member(id));
+  for select to authenticated using (auth.uid() = user_id or public.is_trip_member(id));
 
 drop policy if exists trips_insert_own on public.trips;
 create policy trips_insert_own on public.trips
@@ -372,7 +376,9 @@ create policy trips_insert_own on public.trips
 
 drop policy if exists trips_update_member on public.trips;
 create policy trips_update_member on public.trips
-  for update to authenticated using (public.is_trip_member(id)) with check (public.is_trip_member(id));
+  for update to authenticated
+  using (auth.uid() = user_id or public.is_trip_member(id))
+  with check (auth.uid() = user_id or public.is_trip_member(id));
 
 drop policy if exists trips_delete_owner on public.trips;
 create policy trips_delete_owner on public.trips
