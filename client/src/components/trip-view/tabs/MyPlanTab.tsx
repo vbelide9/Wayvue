@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useTripPlan } from '@/lib/TripPlanContext';
 import { useGroupTrip } from '@/lib/GroupTripContext';
+import { GroupMembersBar } from '@/components/GroupMembersBar';
 import { type TripItem, type TripItemKind } from '@/lib/tripItems';
 import { type Waypoint } from '@/components/WaypointsEditor';
 import { shortPlace } from '@/lib/placeFormat';
@@ -86,6 +87,9 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                     </div>
                 )}
             </div>
+
+            {/* Group planning: members + invite (moved here from the top bar) */}
+            <GroupMembersBar />
 
             {/* Route backbone: start → destination + any waypoints the route passes through
                 (distinct from the itinerary items below — hence "Via"/"Direct", not "stops"). */}

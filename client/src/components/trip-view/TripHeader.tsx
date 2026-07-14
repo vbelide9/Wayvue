@@ -7,7 +7,6 @@ import { WayvueBrand } from '../WayvueBrand';
 import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
 import { AccountMenu } from '../AccountMenu';
 import { SaveTripButton } from '../SaveTripButton';
-import { GroupMembersBar } from '../GroupMembersBar';
 
 export interface TripAlert {
     id: string;
@@ -567,9 +566,6 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                 )}
 
                 <div className="hidden lg:block h-5 w-px bg-border/60 mx-0.5 shrink-0" />
-
-                {/* Group members + invite */}
-                <GroupMembersBar />
 
                 {/* Save trip */}
                 <SaveTripButton />
