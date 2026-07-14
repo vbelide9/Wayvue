@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Compass, Cloud, MapPin, AlertTriangle, Car, BedDouble, type LucideIcon } from 'lucide-react';
+import { ChevronDown, Compass, Cloud, MapPin, AlertTriangle, Car, BedDouble, Ticket, type LucideIcon } from 'lucide-react';
 
 export interface AccordionCategory {
     id: string;
@@ -15,6 +15,7 @@ const ICONS: Record<string, LucideIcon> = {
     road: AlertTriangle,
     rentals: Car,
     stay: BedDouble,
+    activities: Ticket,
 };
 
 interface InsightsAccordionProps {
