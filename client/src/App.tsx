@@ -18,13 +18,17 @@ import { type Waypoint, makeWaypointId } from './components/WaypointsEditor';
 import { WayvueBrand } from './components/WayvueBrand';
 import { AccountMenu } from './components/AccountMenu';
 import { SavedTripsProvider } from './lib/SavedTripsContext';
-import { type SavedTrip, type SaveTripInput } from './lib/trips';
+import { SavedTripsPage } from './components/SavedTripsPage';
+import { TripPlanProvider } from './lib/TripPlanContext';
+import { useAuth } from './lib/AuthContext';
+import { getTripById, type SavedTrip, type SaveTripInput } from './lib/trips';
 import { AiAssistant } from './components/AiAssistant';
 import { generateItineraryPdf } from './utils/itineraryPdf';
 
 export default function App() {
 
   const containerRef = useRef<HTMLElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Respect the OS "reduce motion" setting — skip smooth-scroll hijacking entirely,
@@ -119,7 +123,19 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // View Mode State
-  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip'>('landing');
+  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip' | 'trips'>('landing');
+  // The saved trip currently open (its plan is editable). null = unsaved/new trip.
+  const [currentTripId, setCurrentTripId] = useState<string | null>(null);
+  // Captured once at init (before effects can clear it): the saved trip that was open
+  // before a refresh, so we can reopen it — with its plan — once auth resolves.
+  const activeTripToRestore = useRef<string | null>((() => {
+    try { return sessionStorage.getItem('wayvue.activeTripId'); } catch { return null; }
+  })());
+  const activeTripRestored = useRef(false);
+  // View to restore on refresh (captured before effects overwrite it).
+  const restoreViewRef = useRef<string | null>((() => {
+    try { return sessionStorage.getItem('wayvue.viewMode'); } catch { return null; }
+  })());
 
   // Track Page View, Performance, Location, and Session
   useEffect(() => {
@@ -576,6 +592,9 @@ export default function App() {
     try { returning = sessionStorage.getItem('wayvue.authRedirect') === '1'; } catch { /* ignore */ }
     if (!returning) return;
     try { sessionStorage.removeItem('wayvue.authRedirect'); } catch { /* ignore */ }
+    // A SAVED trip is reopened from the DB by the active-trip restore below (which also
+    // restores its plan), so don't also rebuild it from the snapshot here.
+    if (activeTripToRestore.current) return;
 
     let snap: any = null;
     try {
@@ -828,7 +847,7 @@ export default function App() {
             AnalyticsService.trackClick(`pref_${pref}`);
           }}
           loading={loading}
-          onSubmit={() => handleRouteSubmit()}
+          onSubmit={() => { setCurrentTripId(null); handleRouteSubmit(); }}
           error={error}
         />
       </section>
@@ -898,7 +917,7 @@ export default function App() {
             AnalyticsService.trackClick(`pref_${pref}`);
           }}
           loading={loading}
-          onSubmit={() => handleRouteSubmit()}
+          onSubmit={() => { setCurrentTripId(null); handleRouteSubmit(); }}
           error={error}
         />
       </div>
@@ -929,6 +948,7 @@ export default function App() {
     // path can return without navigating (it assumes you're already on the trip view),
     // so we set it explicitly here — clicking a saved trip should always show results.
     setViewMode('trip');
+    setCurrentTripId(t.id); // this trip's plan is now the active one
     setStart(t.start_label);
     setDestination(t.destination_label);
     setStartCoords(t.start_coords ?? undefined);
@@ -947,10 +967,46 @@ export default function App() {
     );
   };
 
+  const handleLoadTripRef = useRef(handleLoadTrip);
+  handleLoadTripRef.current = handleLoadTrip;
+
+  // Persist which saved trip is open so a refresh can reopen it (cleared when you leave).
+  useEffect(() => {
+    try {
+      if (viewMode === 'trip' && currentTripId) sessionStorage.setItem('wayvue.activeTripId', currentTripId);
+      else if (viewMode !== 'trip') sessionStorage.removeItem('wayvue.activeTripId');
+    } catch { /* ignore */ }
+  }, [viewMode, currentTripId]);
+
+  // After a refresh, reopen the saved trip that was open (and its plan) once signed in.
+  useEffect(() => {
+    const id = activeTripToRestore.current;
+    if (!id || activeTripRestored.current || !user) return;
+    activeTripRestored.current = true;
+    (async () => {
+      const trip = await getTripById(id);
+      if (trip) handleLoadTripRef.current(trip);
+    })();
+  }, [user]);
+
+  // Persist the current view + restore the My Trips page on refresh (the trip view is
+  // handled by the active-trip restore above; landing/planning just start fresh).
+  useEffect(() => {
+    try { sessionStorage.setItem('wayvue.viewMode', viewMode); } catch { /* ignore */ }
+  }, [viewMode]);
+  useEffect(() => {
+    if (restoreViewRef.current === 'trips') setViewMode('trips');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <SavedTripsProvider onLoad={handleLoadTrip}>
+    <SavedTripsProvider open={() => setViewMode('trips')}>
+      <TripPlanProvider tripId={currentTripId} saveTripData={saveTripData} onTripIdChange={setCurrentTripId}>
       {viewMode === 'landing' && renderLandingView()}
       {viewMode === 'planning' && renderPlanningView()}
+      {viewMode === 'trips' && (
+        <SavedTripsPage onOpen={handleLoadTrip} onBack={() => setViewMode('landing')} />
+      )}
       {viewMode === 'trip' && (
         <ErrorBoundary>
               <TripViewLayout
@@ -972,7 +1028,6 @@ export default function App() {
                 onBack={handleBackToPlanning}
                 onHome={() => setViewMode('landing')}
                 onExportPdf={handleExportPdf}
-                saveTripData={saveTripData}
                 onSearch={async (newStart, newEnd, newDepDate, newDepTime, newStartCoords, newEndCoords, newRT, newPref, newReturnDate, newReturnTime) => {
                   // Update state first ONLY if values are provided
                   if (newStart) setStart(newStart);
@@ -1061,6 +1116,7 @@ export default function App() {
 
       {/* AI trip planner — available across landing, planning, and trip views */}
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
+      </TripPlanProvider>
     </SavedTripsProvider>
   );
 }

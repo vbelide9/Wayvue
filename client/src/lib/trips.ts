@@ -39,6 +39,13 @@ export async function saveTrip(input: SaveTripInput): Promise<SavedTrip | null> 
     return data as SavedTrip;
 }
 
+export async function getTripById(id: string): Promise<SavedTrip | null> {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('trips').select('*').eq('id', id).maybeSingle();
+    if (error) { console.error('[trips] getById failed:', error); return null; }
+    return data as SavedTrip | null;
+}
+
 export async function listTrips(): Promise<SavedTrip[]> {
     if (!supabase) return [];
     const { data, error } = await supabase

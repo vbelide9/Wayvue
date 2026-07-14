@@ -7,7 +7,6 @@ import { WayvueBrand } from '../WayvueBrand';
 import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
 import { AccountMenu } from '../AccountMenu';
 import { SaveTripButton } from '../SaveTripButton';
-import { type SaveTripInput } from '@/lib/trips';
 
 export interface TripAlert {
     id: string;
@@ -66,10 +65,9 @@ interface TripHeaderProps {
     onExportPdf?: () => void;
     waypoints?: Waypoint[];
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
-    saveTripData?: SaveTripInput | null;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, alerts = [], unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange, saveTripData }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, alerts = [], unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
@@ -570,7 +568,7 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                 <div className="hidden lg:block h-5 w-px bg-border/60 mx-0.5 shrink-0" />
 
                 {/* Save trip */}
-                <SaveTripButton trip={saveTripData ?? null} />
+                <SaveTripButton />
 
                 {/* Export itinerary PDF */}
                 {onExportPdf && (

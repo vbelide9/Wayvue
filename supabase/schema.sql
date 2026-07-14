@@ -227,6 +227,46 @@ create policy trips_delete_own on public.trips
   for delete to authenticated using (auth.uid() = user_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 9. Trip items — the editable itinerary of a saved trip: chosen stops, hotels,
+--    attractions, restaurants, and free-text notes. Ordered by `position`.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_items (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  kind         text not null,   -- 'stop' | 'hotel' | 'attraction' | 'restaurant' | 'note'
+  title        text not null,
+  detail       text,
+  location     text,
+  image_url    text,
+  external_url text,
+  notes        text,
+  position     integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists trip_items_trip_idx on public.trip_items (trip_id, position);
+
+alter table public.trip_items enable row level security;
+
+-- Owner-only (a members policy will follow for group trips).
+drop policy if exists trip_items_select_own on public.trip_items;
+create policy trip_items_select_own on public.trip_items
+  for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists trip_items_insert_own on public.trip_items;
+create policy trip_items_insert_own on public.trip_items
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists trip_items_update_own on public.trip_items;
+create policy trip_items_update_own on public.trip_items
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists trip_items_delete_own on public.trip_items;
+create policy trip_items_delete_own on public.trip_items
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
 --   • trip_members / invites / votes / cost-split for group planning.
 --   • posts + post_likes (+ Storage photos) for the social feed.

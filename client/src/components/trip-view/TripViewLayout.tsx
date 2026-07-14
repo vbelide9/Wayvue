@@ -10,9 +10,9 @@ import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
+import { MyPlanTab } from './tabs/MyPlanTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { type Waypoint } from '@/components/WaypointsEditor';
-import { type SaveTripInput } from '@/lib/trips';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -48,7 +48,6 @@ interface TripViewLayoutProps {
     isRoundTrip?: boolean;
     waypoints?: Waypoint[];
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
-    saveTripData?: SaveTripInput | null;
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
@@ -110,7 +109,6 @@ export function TripViewLayout({
     rawReturnDate,
     waypoints,
     onWaypointsChange,
-    saveTripData,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Insights panel — open by default, collapsible to reveal the full-screen map.
@@ -205,6 +203,7 @@ export function TripViewLayout({
 
     const TABS: { id: string; title: string; subtitle: string }[] = [
         { id: 'overview', title: 'Overview', subtitle: 'AI journey confidence and insights' },
+        { id: 'plan', title: 'My Plan', subtitle: 'Your saved itinerary for this trip' },
         { id: 'weather', title: 'Weather forecast', subtitle: 'Local forecasts along your route' },
         { id: 'stops', title: 'Stops', subtitle: 'Dining, fuel, and rest stops along the way' },
         { id: 'road', title: 'Road conditions', subtitle: 'Live alerts and driving logistics' },
@@ -214,6 +213,8 @@ export function TripViewLayout({
     ];
     const renderPanel = (id: string) => {
         switch (id) {
+            case 'plan':
+                return <MyPlanTab start={start} destination={destination} waypoints={waypoints} />;
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />
@@ -309,7 +310,6 @@ export function TripViewLayout({
                         onSetRoundTrip={onSetRoundTrip}
                         waypoints={waypoints}
                         onWaypointsChange={onWaypointsChange}
-                        saveTripData={saveTripData}
                     />
                 </div>
 

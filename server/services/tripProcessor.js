@@ -278,24 +278,31 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
             const distanceIndex = buildDistanceIndex(fullCoordinates);
             const totalMiles = distanceIndex.length ? distanceIndex[distanceIndex.length - 1].cumMiles : totalDistanceMiles;
 
-            // One search point roughly every ~50 miles (min 3, max 10) so stops spread
-            // across the whole route instead of clustering around a few fixed fractions.
-            const numPoints = Math.min(10, Math.max(3, Math.round(totalMiles / 50)));
-            const contextPoints = [];
-            for (let k = 1; k <= numPoints; k++) {
-                const targetMiles = (totalMiles * k) / (numPoints + 1); // evenly spaced, excludes exact start/end
+            // Search points ANCHORED near the start, then spaced by a capped interval, so
+            // the early miles are always covered (a fraction-based spread put the first
+            // point at total/(n+1) — ~127mi on a 1400mi route, leaving the start empty).
+            const MAX_POINTS = 14;
+            const spacing = Math.max(50, totalMiles / MAX_POINTS); // cap the count via spacing
+            const firstAt = Math.min(30, totalMiles * 0.4);        // early coverage, even on long routes
+            const targetList = [];
+            for (let m = firstAt; m < totalMiles - 8 && targetList.length < MAX_POINTS; m += spacing) {
+                targetList.push(m);
+            }
+            if (targetList.length === 0) targetList.push(totalMiles / 2);
+
+            const contextPoints = targetList.map(targetMiles => {
                 let best = distanceIndex[0];
                 let bestD = Infinity;
                 for (const e of distanceIndex) {
                     const dd = Math.abs(e.cumMiles - targetMiles);
                     if (dd < bestD) { bestD = dd; best = e; }
                 }
-                contextPoints.push({
+                return {
                     segment: `${Math.round(targetMiles)} mi`,
                     location: { lat: best.lat, lon: best.lon },
-                    miles: Math.round(targetMiles)
-                });
-            }
+                    miles: Math.round(targetMiles),
+                };
+            });
             const fresh = await getRecommendations(contextPoints, distanceIndex);
             await saveCachedRecommendations(routeKey, fresh);
             return fresh;
