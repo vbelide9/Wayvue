@@ -66,9 +66,11 @@ interface TripHeaderProps {
     onExportPdf?: () => void;
     waypoints?: Waypoint[];
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
+    /** Re-route immediately when a stop is added (picked) or removed. */
+    onWaypointsCommit?: (waypoints: Waypoint[]) => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, alerts = [], unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, alerts = [], unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange, onWaypointsCommit }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
@@ -293,7 +295,7 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                                 {/* Multi-Stop Waypoints */}
                                 {onWaypointsChange && (
                                     <div className="pt-2 border-t border-border/50">
-                                        <WaypointsEditor waypoints={waypoints} onWaypointsChange={onWaypointsChange} />
+                                        <WaypointsEditor waypoints={waypoints} onWaypointsChange={onWaypointsChange} onCommit={(wps) => { onWaypointsCommit?.(wps); setIsEditing(false); }} />
                                     </div>
                                 )}
 

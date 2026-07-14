@@ -48,6 +48,7 @@ interface TripViewLayoutProps {
     isRoundTrip?: boolean;
     waypoints?: Waypoint[];
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
+    onWaypointsCommit?: (waypoints: Waypoint[]) => void;
     map: (activeTab: string, rightInset: number) => React.ReactNode;
 }
 
@@ -109,6 +110,7 @@ export function TripViewLayout({
     rawReturnDate,
     waypoints,
     onWaypointsChange,
+    onWaypointsCommit,
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Insights panel — open by default, collapsible to reveal the full-screen map.
@@ -310,6 +312,7 @@ export function TripViewLayout({
                         onSetRoundTrip={onSetRoundTrip}
                         waypoints={waypoints}
                         onWaypointsChange={onWaypointsChange}
+                        onWaypointsCommit={onWaypointsCommit}
                     />
                 </div>
 

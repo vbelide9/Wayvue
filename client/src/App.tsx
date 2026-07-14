@@ -1145,6 +1145,16 @@ export default function App() {
                 rawReturnTime={returnTime}
                 waypoints={waypoints}
                 onWaypointsChange={setWaypoints}
+                // Adding (picking) or removing a stop re-routes immediately, so the drawn
+                // route always matches the stop markers. Pass the committed list straight
+                // through as the waypoints override to avoid a stale `waypoints` closure.
+                onWaypointsCommit={(wps) => {
+                  setWaypoints(wps);
+                  handleRouteSubmit(
+                    undefined, undefined, undefined, undefined, undefined, undefined,
+                    undefined, undefined, undefined, undefined, wps,
+                  );
+                }}
 
                 map={(activeTab, rightInset) => (
                   <MapComponent
