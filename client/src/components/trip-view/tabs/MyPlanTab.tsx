@@ -1,10 +1,10 @@
 // "My Plan" — the current saved trip's editable itinerary. Add items from the other
 // sections (stops/hotels/activities); here you reorder, annotate, and remove them.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     MapPin, BedDouble, Ticket, Utensils, StickyNote, Trash2,
     ExternalLink, Bookmark, Plus, Loader2,
-    Users, ThumbsUp, ThumbsDown, Zap, Camera, Bell,
+    Users, ThumbsUp, ThumbsDown, Zap, Camera, Bell, X,
 } from 'lucide-react';
 import type { TripMember } from '@/lib/groupTrips';
 import { useTripPlan } from '@/lib/TripPlanContext';
@@ -57,11 +57,11 @@ function MemberDot({ member, size = 20, title }: { member?: TripMember; size?: n
 
 export function MyPlanTab({ start, destination, waypoints = [] }: { start?: string; destination?: string; waypoints?: Waypoint[] }) {
     const { enabled, signedIn, tripId, items, busy, removeItem, updateNotes, addToPlan } = useTripPlan();
-    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem, memberById, notifications, unreadCount, markNotificationsRead } = useGroupTrip();
+    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem, memberById, notifications, markNotificationsRead, markNotificationRead } = useGroupTrip();
     const [showVoteResults, setShowVoteResults] = useState(false);
 
-    // My Plan is the notifications surface — clear the unread badge while it's open.
-    useEffect(() => { if (unreadCount > 0) markNotificationsRead(); }, [unreadCount, markNotificationsRead]);
+    // FB-style: the feed shows only UNREAD activity; reading (dismissing) removes it.
+    const unread = notifications.filter(n => !n.read);
     // Always show the plan in travel order (by distance from the start).
     const ordered = [...items].sort((a, b) => routeMile(a) - routeMile(b) || a.created_at.localeCompare(b.created_at));
     const counts = items.reduce<Record<string, number>>((acc, it) => { acc[it.kind] = (acc[it.kind] || 0) + 1; return acc; }, {});
@@ -120,16 +120,18 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
             {/* Group planning: members + invite (moved here from the top bar) */}
             <GroupMembersBar />
 
-            {/* Collaborator activity feed */}
-            {isGroup && notifications.length > 0 && (
+            {/* Collaborator activity feed — unread only; dismissing removes it (FB style). */}
+            {isGroup && unread.length > 0 && (
                 <div className="border border-border rounded-2xl overflow-hidden bg-card">
                     <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
                         <Bell className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent activity</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">New activity</span>
+                        <span className="text-[10px] font-bold text-white bg-red-500 rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">{unread.length}</span>
+                        <button onClick={markNotificationsRead} className="ml-auto text-[11px] font-bold text-primary hover:underline shrink-0">Mark all read</button>
                     </div>
                     <div className="max-h-56 overflow-y-auto divide-y divide-border/60">
-                        {notifications.map(n => (
-                            <div key={n.id} className={`flex items-start gap-2.5 px-4 py-2.5 ${n.read ? '' : 'bg-primary/5'}`}>
+                        {unread.map(n => (
+                            <div key={n.id} className="flex items-start gap-2.5 px-4 py-2.5 bg-primary/5 group/notif">
                                 <div className="w-[22px] h-[22px] rounded-full overflow-hidden shrink-0 bg-primary/10 text-primary flex items-center justify-center border border-border/60">
                                     {n.avatar ? <img src={n.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <Bell className="w-3 h-3" />}
                                 </div>
@@ -139,7 +141,13 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                     </p>
                                     <p className="text-[10px] text-muted-foreground mt-0.5">{ago(n.ts)}</p>
                                 </div>
-                                {!n.read && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                                <button
+                                    onClick={() => markNotificationRead(n.id)}
+                                    aria-label="Dismiss"
+                                    className="p-1 -m-1 rounded text-muted-foreground/50 hover:text-foreground shrink-0"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
                             </div>
                         ))}
                     </div>

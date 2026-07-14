@@ -39,7 +39,10 @@ interface GroupTripValue {
     /** Collaborator activity feed (newest first) + unread badge count. */
     notifications: GroupNotification[];
     unreadCount: number;
+    /** Mark every activity item read (they drop out of the feed). */
     markNotificationsRead: () => void;
+    /** Mark a single activity item read (dismiss it). */
+    markNotificationRead: (id: number) => void;
     refresh: () => void;
     getInvite: () => Promise<string | null>;
     voteRoute: (choice: RouteChoice) => Promise<void>;
@@ -83,6 +86,7 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
 
     const memberById = useCallback((id: string) => members.find(m => m.userId === id), [members]);
     const markNotificationsRead = useCallback(() => setNotifications(ns => ns.some(n => !n.read) ? ns.map(n => ({ ...n, read: true })) : ns), []);
+    const markNotificationRead = useCallback((id: number) => setNotifications(ns => ns.map(n => (n.id === id ? { ...n, read: true } : n))), []);
 
     const load = useCallback(async (announce: boolean) => {
         if (!tripId || !user) {
@@ -213,7 +217,8 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
     return (
         <Ctx.Provider value={{
             members, isGroup: members.length > 1, myRole, isOwner: myRole === 'owner',
-            routeVotes, itemVotes, memberById, notifications, unreadCount, markNotificationsRead,
+            routeVotes, itemVotes, memberById, notifications, unreadCount,
+            markNotificationsRead, markNotificationRead,
             refresh: () => load(false), getInvite, voteRoute, voteItem, kick, leave,
         }}>
             {children}
