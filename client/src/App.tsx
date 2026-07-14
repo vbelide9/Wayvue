@@ -20,6 +20,8 @@ import { AccountMenu } from './components/AccountMenu';
 import { SavedTripsProvider } from './lib/SavedTripsContext';
 import { SavedTripsPage } from './components/SavedTripsPage';
 import { TripPlanProvider } from './lib/TripPlanContext';
+import { GroupTripProvider } from './lib/GroupTripContext';
+import { joinTrip } from './lib/groupTrips';
 import { useAuth } from './lib/AuthContext';
 import { getTripById, type SavedTrip, type SaveTripInput } from './lib/trips';
 import { AiAssistant } from './components/AiAssistant';
@@ -28,7 +30,7 @@ import { generateItineraryPdf } from './utils/itineraryPdf';
 export default function App() {
 
   const containerRef = useRef<HTMLElement>(null);
-  const { user } = useAuth();
+  const { user, loading: authLoading, signInWithGoogle } = useAuth();
 
   useEffect(() => {
     // Respect the OS "reduce motion" setting — skip smooth-scroll hijacking entirely,
@@ -137,6 +139,24 @@ export default function App() {
       return nav?.type === 'reload' || nav?.type === 'back_forward';
     } catch { return false; }
   })();
+
+  // A group-invite token from a "?join=<token>" link (or one stashed before an OAuth
+  // redirect). Captured + stripped from the URL at init so a refresh doesn't re-join;
+  // processed once auth resolves (see the join effect below).
+  const joinTokenToProcess = useRef<string | null>((() => {
+    try {
+      const url = new URL(window.location.href);
+      const t = url.searchParams.get('join');
+      if (t) {
+        sessionStorage.setItem('wayvue.joinToken', t);   // survive the OAuth round-trip
+        url.searchParams.delete('join');
+        window.history.replaceState({}, '', url.toString());
+        return t;
+      }
+      return sessionStorage.getItem('wayvue.joinToken');
+    } catch { return null; }
+  })());
+  const joinProcessed = useRef(false);
 
   // Captured once at init (before effects can clear it): the saved trip that was open
   // before a refresh, so we can reopen it — with its plan — once auth resolves.
@@ -984,6 +1004,33 @@ export default function App() {
   const handleLoadTripRef = useRef(handleLoadTrip);
   handleLoadTripRef.current = handleLoadTrip;
 
+  // Process a group-invite link: join the trip, then open it. Requires auth — if signed
+  // out, kick off Google sign-in (the token is stashed in sessionStorage, so it resumes
+  // after the OAuth round-trip).
+  useEffect(() => {
+    const token = joinTokenToProcess.current;
+    if (!token || joinProcessed.current) return;
+    if (!user) {
+      if (!authLoading) signInWithGoogle();   // returns here after auth, token still stashed
+      return;
+    }
+    joinProcessed.current = true;
+    (async () => {
+      try {
+        const id = await joinTrip(token);
+        try { sessionStorage.removeItem('wayvue.joinToken'); } catch { /* ignore */ }
+        if (id) {
+          setViewMode('trip');
+          const trip = await getTripById(id);
+          if (trip) handleLoadTripRef.current(trip);
+        }
+      } catch (e) {
+        console.error('[join] failed:', e);
+        try { sessionStorage.removeItem('wayvue.joinToken'); } catch { /* ignore */ }
+      }
+    })();
+  }, [user, authLoading, signInWithGoogle]);
+
   // Persist which saved trip is open so a refresh can reopen it (cleared when you leave).
   useEffect(() => {
     try {
@@ -993,9 +1040,10 @@ export default function App() {
   }, [viewMode, currentTripId]);
 
   // After a refresh, reopen the saved trip that was open (and its plan) once signed in.
+  // A pending group-join takes precedence (it opens its own trip), so skip if one's queued.
   useEffect(() => {
     const id = activeTripToRestore.current;
-    if (!id || activeTripRestored.current || !user) return;
+    if (!id || activeTripRestored.current || !user || joinTokenToProcess.current) return;
     activeTripRestored.current = true;
     (async () => {
       const trip = await getTripById(id);
@@ -1016,6 +1064,7 @@ export default function App() {
   return (
     <SavedTripsProvider open={() => setViewMode('trips')}>
       <TripPlanProvider tripId={currentTripId} saveTripData={saveTripData} onTripIdChange={setCurrentTripId}>
+      <GroupTripProvider tripId={currentTripId}>
       {viewMode === 'landing' && renderLandingView()}
       {viewMode === 'planning' && renderPlanningView()}
       {viewMode === 'trips' && (
@@ -1130,6 +1179,7 @@ export default function App() {
 
       {/* AI trip planner — available across landing, planning, and trip views */}
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
+      </GroupTripProvider>
       </TripPlanProvider>
     </SavedTripsProvider>
   );

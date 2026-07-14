@@ -4,8 +4,10 @@ import { useState } from 'react';
 import {
     MapPin, BedDouble, Ticket, Utensils, StickyNote, Trash2,
     ExternalLink, Bookmark, Plus, Loader2,
+    Users, ChevronUp, ChevronDown, Zap, Camera,
 } from 'lucide-react';
 import { useTripPlan } from '@/lib/TripPlanContext';
+import { useGroupTrip } from '@/lib/GroupTripContext';
 import { type TripItem, type TripItemKind } from '@/lib/tripItems';
 import { type Waypoint } from '@/components/WaypointsEditor';
 import { shortPlace } from '@/lib/placeFormat';
@@ -29,6 +31,7 @@ const KIND_ORDER: TripItemKind[] = ['stop', 'restaurant', 'attraction', 'hotel',
 
 export function MyPlanTab({ start, destination, waypoints = [] }: { start?: string; destination?: string; waypoints?: Waypoint[] }) {
     const { enabled, signedIn, tripId, items, busy, removeItem, updateNotes, addToPlan } = useTripPlan();
+    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem } = useGroupTrip();
     // Always show the plan in travel order (by distance from the start).
     const ordered = [...items].sort((a, b) => routeMile(a) - routeMile(b) || a.created_at.localeCompare(b.created_at));
     const counts = items.reduce<Record<string, number>>((acc, it) => { acc[it.kind] = (acc[it.kind] || 0) + 1; return acc; }, {});
@@ -108,6 +111,43 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                 );
             })()}
 
+            {/* Group vote: fastest vs scenic. Shows once the trip has more than one member. */}
+            {isGroup && (() => {
+                const total = routeVotes.fastest + routeVotes.scenic;
+                return (
+                    <div className="bg-secondary/30 border border-border rounded-2xl p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                            <Users className="w-3 h-3" /> Group vote · Route style
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {(['fastest', 'scenic'] as const).map(choice => {
+                                const count = routeVotes[choice];
+                                const mine = routeVotes.mine === choice;
+                                const pct = total ? Math.round((count / total) * 100) : 0;
+                                const Icon = choice === 'fastest' ? Zap : Camera;
+                                return (
+                                    <button
+                                        key={choice}
+                                        onClick={() => voteRoute(choice)}
+                                        className={`relative overflow-hidden text-left px-3 py-2 rounded-xl border transition-all ${mine ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'}`}
+                                    >
+                                        <div className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${pct}%` }} />
+                                        <div className="relative flex items-center justify-between">
+                                            <span className="text-xs font-bold capitalize flex items-center gap-1.5">
+                                                <Icon className={`w-3.5 h-3.5 ${choice === 'fastest' ? 'text-primary' : 'text-purple-500'}`} />
+                                                {choice}
+                                            </span>
+                                            <span className="text-xs font-bold text-muted-foreground">{count}</span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-2">Tap to cast your vote — the organizer can apply the winner from the search bar.</p>
+                    </div>
+                );
+            })()}
+
             {ordered.length > 0 && (
                 <div className="flex flex-col gap-2">
                     {ordered.map((it) => {
@@ -145,6 +185,18 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                         </a>
                                     )}
                                 </div>
+                                {/* Group up/down vote on this stop */}
+                                {isGroup && (() => {
+                                    const v = itemVotes[it.id];
+                                    const net = (v?.up || 0) - (v?.down || 0);
+                                    return (
+                                        <div className="flex flex-col items-center shrink-0">
+                                            <button onClick={() => voteItem(it.id, 1)} aria-label="Upvote" className={`p-0.5 rounded transition-colors ${v?.mine === 1 ? 'text-primary' : 'text-muted-foreground/50 hover:text-foreground'}`}><ChevronUp className="w-4 h-4" /></button>
+                                            <span className={`text-xs font-bold ${net > 0 ? 'text-primary' : net < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{net}</span>
+                                            <button onClick={() => voteItem(it.id, -1)} aria-label="Downvote" className={`p-0.5 rounded transition-colors ${v?.mine === -1 ? 'text-red-500' : 'text-muted-foreground/50 hover:text-foreground'}`}><ChevronDown className="w-4 h-4" /></button>
+                                        </div>
+                                    );
+                                })()}
                                 <button onClick={() => removeItem(it.id)} aria-label="Remove" className="p-1 rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                         );

@@ -27,10 +27,15 @@ pull from, not a sprint plan.
 
 ### Social & community
 - [ ] Road trip social feed — share trip photos, tips, favorite stops.
-- [ ] Ratings on recommendations — users rate hotels/restaurants Wayvue suggested; feeds
-      back into recommendation quality and builds trust.
-- [ ] Group trip planning — organizer creates the trip, invites friends, the group votes
-      on route preferences and can split costs.
+- [x] Ratings on recommendations — users rate hotels/restaurants Wayvue suggested; feeds
+      back into recommendation quality and builds trust. **Shipped**: star ratings on stops
+      & hotels, community reviews with author names/avatars, and a "Top rated" sort.
+- [~] Group trip planning — organizer creates the trip, invites friends, the group votes
+      on route preferences and can split costs. **In progress** (branch
+      `feature/group-planning`): shareable invite links, shared member-editable itinerary,
+      and voting (route style + per-stop). Email invites, realtime sync, and cost-splitting
+      are follow-ons (cost-split **deferred**). Technical detail in
+      [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §6.
 
 ### Integrations & partnerships
 - [~] **Activities / things-to-do — Viator (TripAdvisor)**, affiliate. Surface bookable

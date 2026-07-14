@@ -160,7 +160,8 @@ a rated stop could vanish. Fix: cache the first good result per route in Supabas
   `server/.env` — running `node server/index.js` from the repo root loads 0 env vars.
 
 ### Follow-ons
-- [ ] `public.profiles` (display name/avatar) so reviews show an author.
+- [x] `public.profiles` (display name/avatar) so reviews show an author. Done: profiles
+      table + client-side join in `getReviews`; reviews list shows name + avatar.
 - [ ] Rateable hotels/rentals once live pricing gives stable property IDs.
 - [x] OAuth redirect returned to the landing page (full-page reload dropped trip state).
       Fixed: App snapshots the active trip to sessionStorage; on reload after an auth
@@ -202,6 +203,39 @@ Bookable things-to-do near the destination with affiliate "Book on Viator" links
 - [ ] Cache activity results per route (reuse the route-cache approach) so it's one
       lookup per trip.
 - [ ] Consider anchoring on major en-route stops too, not just the destination.
+
+---
+
+## 6. Group trip planning — shared trips, invites, voting
+
+### Status — built (branch `feature/group-planning`)
+Turns owner-only trips into **participant-based** collaboration.
+- **Schema** (`supabase/schema.sql` §10): `trips.invite_token`; `trip_members`,
+  `trip_votes` (route pref), `trip_item_votes` (per-stop up/down). Owner is auto-added to
+  `trip_members` via an `after insert` trigger, with a one-time backfill for existing trips.
+- **RLS**: participant-based via `SECURITY DEFINER` helpers `is_trip_member` /
+  `is_trip_owner` (they bypass RLS internally, avoiding the `trips ↔ trip_members`
+  recursion). `join_trip(token)` RPC inserts the caller's membership. Any member may edit
+  `trips` / `trip_items`; only the owner deletes the trip or removes members.
+- **Client**: `lib/groupTrips.ts` (data layer) + `GroupTripContext` (members + votes
+  state). `GroupMembersBar` in the trip header (avatar stack + copy-invite-link popover +
+  remove/leave). Join flow in `App.tsx` reads `?join=<token>`, joins, opens the trip
+  (survives the OAuth round-trip via a stashed token). Route-pref tally + per-stop vote
+  pills in `MyPlanTab`.
+
+### Remaining (blocked on you)
+- [ ] Run the updated `supabase/schema.sql` §10 in the Supabase SQL Editor.
+- [ ] Two-account end-to-end test (invite link → join → shared edit + voting → remove).
+
+### Follow-ons
+- [ ] **Email invites.** Link-join ships now; add an email provider (Resend/SendGrid) +
+      `trip_invites` (email, token, status). The invite popover already has the stubbed
+      "Email invites — Soon" row as the seam.
+- [ ] **Realtime live sync.** MVP refetches after each action; subscribe to
+      `postgres_changes` on `trip_items` / votes / members for live collaboration.
+- [ ] **Cost splitting** for group trips (expenses + per-member share).
+- [ ] "Apply winning route vote" is currently manual (organizer re-searches); could
+      auto-apply the winner to `trips.preference`.
 
 ---
 
