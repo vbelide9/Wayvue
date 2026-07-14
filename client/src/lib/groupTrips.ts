@@ -96,20 +96,31 @@ export async function leaveTrip(tripId: string): Promise<void> {
 
 // ── Route-preference vote ────────────────────────────────────────────────────
 
-/** All members' route votes for a trip, as { fastest, scenic } counts + your choice. */
-export async function getRouteVotes(tripId: string): Promise<{ fastest: number; scenic: number; mine: RouteChoice | null }> {
-    if (!supabase) return { fastest: 0, scenic: 0, mine: null };
+export interface RouteVotes {
+    fastest: number;
+    scenic: number;
+    mine: RouteChoice | null;
+    /** Raw per-user votes, so the UI can show who voted for which option. */
+    votes: { userId: string; choice: RouteChoice }[];
+}
+
+/** All members' route votes for a trip: counts, your choice, and per-user breakdown. */
+export async function getRouteVotes(tripId: string): Promise<RouteVotes> {
+    const empty: RouteVotes = { fastest: 0, scenic: 0, mine: null, votes: [] };
+    if (!supabase) return empty;
     const { data, error } = await supabase.from('trip_votes').select('user_id, choice').eq('trip_id', tripId);
-    if (error) { console.error('[group] route votes failed:', error); return { fastest: 0, scenic: 0, mine: null }; }
+    if (error) { console.error('[group] route votes failed:', error); return empty; }
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
     let fastest = 0, scenic = 0, mine: RouteChoice | null = null;
+    const votes: { userId: string; choice: RouteChoice }[] = [];
     for (const v of data || []) {
         if (v.choice === 'fastest') fastest++;
         else if (v.choice === 'scenic') scenic++;
         if (v.user_id === uid) mine = v.choice as RouteChoice;
+        votes.push({ userId: v.user_id, choice: v.choice as RouteChoice });
     }
-    return { fastest, scenic, mine };
+    return { fastest, scenic, mine, votes };
 }
 
 /** Cast (or change) your route-preference vote. */

@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import AdminDashboard from './pages/AdminDashboard.tsx'
 import { AuthProvider } from './lib/AuthContext.tsx'
+import { NotificationProvider } from './lib/Notifications.tsx'
 
 const Root = () => {
   const path = window.location.pathname;
@@ -16,7 +17,9 @@ const Root = () => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <Root />
+      <NotificationProvider>
+        <Root />
+      </NotificationProvider>
     </AuthProvider>
   </StrictMode>
 )

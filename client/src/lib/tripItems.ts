@@ -6,6 +6,8 @@ export type TripItemKind = 'stop' | 'hotel' | 'attraction' | 'restaurant' | 'not
 export interface TripItem {
     id: string;
     trip_id: string;
+    /** Who added this item (a trip member's user id) — used to show a contributor avatar. */
+    user_id: string;
     kind: TripItemKind;
     title: string;
     detail: string | null;

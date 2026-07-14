@@ -26,6 +26,8 @@ interface TripPlanValue {
     removeItem: (id: string) => Promise<void>;
     updateNotes: (id: string, notes: string) => Promise<void>;
     moveItem: (id: string, dir: -1 | 1) => Promise<void>;
+    /** Re-fetch the itinerary from the server (used to sync collaborators' edits). */
+    refreshItems: () => Promise<void>;
 }
 
 const Ctx = createContext<TripPlanValue | undefined>(undefined);
@@ -46,20 +48,19 @@ export function TripPlanProvider({ tripId, saveTripData, onTripIdChange, childre
     const [items, setItems] = useState<TripItem[]>([]);
     const [busy, setBusy] = useState(false);
 
-    // Load the plan whenever the active saved trip (or the user) changes.
-    useEffect(() => {
+    // Re-fetch the itinerary from the server (also used to pull in collaborators' edits).
+    const refreshItems = useCallback(async () => {
         if (!tripId) { setItems([]); return; }
-        let cancelled = false;
-        (async () => {
-            try {
-                const data = await listTripItems(tripId);
-                if (!cancelled) setItems(data);
-            } catch (e) {
-                console.error('[plan] list failed:', e);
-            }
-        })();
-        return () => { cancelled = true; };
-    }, [tripId, user]);
+        try {
+            const data = await listTripItems(tripId);
+            setItems(data);
+        } catch (e) {
+            console.error('[plan] list failed:', e);
+        }
+    }, [tripId]);
+
+    // Load the plan whenever the active saved trip (or the user) changes.
+    useEffect(() => { refreshItems(); }, [refreshItems, user]);
 
     const saveCurrentTrip = useCallback(async (): Promise<SavedTrip | null> => {
         if (!saveTripData) return null;
@@ -115,7 +116,7 @@ export function TripPlanProvider({ tripId, saveTripData, onTripIdChange, childre
     return (
         <Ctx.Provider value={{
             enabled, signedIn: !!user, hasTrip: !!saveTripData, tripId, items, busy,
-            saveCurrentTrip, addToPlan, removeItem, updateNotes, moveItem,
+            saveCurrentTrip, addToPlan, removeItem, updateNotes, moveItem, refreshItems,
         }}>
             {children}
         </Ctx.Provider>

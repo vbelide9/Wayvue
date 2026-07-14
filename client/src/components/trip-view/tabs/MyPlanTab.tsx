@@ -4,8 +4,9 @@ import { useState } from 'react';
 import {
     MapPin, BedDouble, Ticket, Utensils, StickyNote, Trash2,
     ExternalLink, Bookmark, Plus, Loader2,
-    Users, ChevronUp, ChevronDown, Zap, Camera,
+    Users, ThumbsUp, ThumbsDown, Zap, Camera,
 } from 'lucide-react';
+import type { TripMember } from '@/lib/groupTrips';
 import { useTripPlan } from '@/lib/TripPlanContext';
 import { useGroupTrip } from '@/lib/GroupTripContext';
 import { GroupMembersBar } from '@/components/GroupMembersBar';
@@ -30,9 +31,25 @@ const KIND_META: Record<TripItemKind, { icon: any; label: string; plural: string
 
 const KIND_ORDER: TripItemKind[] = ['stop', 'restaurant', 'attraction', 'hotel', 'note'];
 
+// Small circular avatar for a trip member (contributor / voter). `size` in px.
+function MemberDot({ member, size = 20, title }: { member?: TripMember; size?: number; title?: string }) {
+    const name = member?.name || 'Traveler';
+    const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'T';
+    return (
+        <div
+            title={title || name}
+            className="rounded-full overflow-hidden bg-primary/10 text-primary font-bold flex items-center justify-center border border-card ring-1 ring-border/60 shrink-0"
+            style={{ width: size, height: size, fontSize: size * 0.42 }}
+        >
+            {member?.avatar ? <img src={member.avatar} alt={name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span>{initials}</span>}
+        </div>
+    );
+}
+
 export function MyPlanTab({ start, destination, waypoints = [] }: { start?: string; destination?: string; waypoints?: Waypoint[] }) {
     const { enabled, signedIn, tripId, items, busy, removeItem, updateNotes, addToPlan } = useTripPlan();
-    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem } = useGroupTrip();
+    const { isGroup, routeVotes, itemVotes, voteRoute, voteItem, memberById } = useGroupTrip();
+    const [showVoteResults, setShowVoteResults] = useState(false);
     // Always show the plan in travel order (by distance from the start).
     const ordered = [...items].sort((a, b) => routeMile(a) - routeMile(b) || a.created_at.localeCompare(b.created_at));
     const counts = items.reduce<Record<string, number>>((acc, it) => { acc[it.kind] = (acc[it.kind] || 0) + 1; return acc; }, {});
@@ -129,6 +146,7 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                 const mine = routeVotes.mine === choice;
                                 const pct = total ? Math.round((count / total) * 100) : 0;
                                 const Icon = choice === 'fastest' ? Zap : Camera;
+                                const voters = routeVotes.votes.filter(v => v.choice === choice);
                                 return (
                                     <button
                                         key={choice}
@@ -143,11 +161,24 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                             </span>
                                             <span className="text-xs font-bold text-muted-foreground">{count}</span>
                                         </div>
+                                        {/* Who voted for this option */}
+                                        {showVoteResults && voters.length > 0 && (
+                                            <div className="relative flex -space-x-1.5 mt-2">
+                                                {voters.map(v => <MemberDot key={v.userId} member={memberById(v.userId)} size={18} />)}
+                                            </div>
+                                        )}
                                     </button>
                                 );
                             })}
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-2">Tap to cast your vote — the organizer can apply the winner from the search bar.</p>
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-muted-foreground">Tap to vote — the organizer applies the winner from the search bar.</p>
+                            {total > 0 && (
+                                <button onClick={() => setShowVoteResults(v => !v)} className="text-[11px] font-bold text-primary hover:underline shrink-0 ml-2">
+                                    {showVoteResults ? 'Hide results' : 'View results'}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 );
             })()}
@@ -164,6 +195,12 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{meta.label}</span>
                                         {it.location && <span className="text-[10px] text-muted-foreground">· {it.location}</span>}
+                                        {/* Who added this stop (group trips) */}
+                                        {isGroup && it.user_id && (
+                                            <span className="ml-auto flex items-center gap-1 shrink-0">
+                                                <MemberDot member={memberById(it.user_id)} size={16} title={`Added by ${memberById(it.user_id)?.name || 'a teammate'}`} />
+                                            </span>
+                                        )}
                                     </div>
                                     <p className="text-sm font-bold text-foreground leading-snug mt-0.5">{it.title}</p>
                                     {it.detail && <p className="text-xs text-muted-foreground leading-snug mt-0.5 line-clamp-2">{it.detail}</p>}
@@ -189,15 +226,27 @@ export function MyPlanTab({ start, destination, waypoints = [] }: { start?: stri
                                         </a>
                                     )}
                                 </div>
-                                {/* Group up/down vote on this stop */}
+                                {/* Group like / dislike on this stop */}
                                 {isGroup && (() => {
                                     const v = itemVotes[it.id];
-                                    const net = (v?.up || 0) - (v?.down || 0);
                                     return (
-                                        <div className="flex flex-col items-center shrink-0">
-                                            <button onClick={() => voteItem(it.id, 1)} aria-label="Upvote" className={`p-0.5 rounded transition-colors ${v?.mine === 1 ? 'text-primary' : 'text-muted-foreground/50 hover:text-foreground'}`}><ChevronUp className="w-4 h-4" /></button>
-                                            <span className={`text-xs font-bold ${net > 0 ? 'text-primary' : net < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>{net}</span>
-                                            <button onClick={() => voteItem(it.id, -1)} aria-label="Downvote" className={`p-0.5 rounded transition-colors ${v?.mine === -1 ? 'text-red-500' : 'text-muted-foreground/50 hover:text-foreground'}`}><ChevronDown className="w-4 h-4" /></button>
+                                        <div className="flex flex-col gap-1 shrink-0">
+                                            <button
+                                                onClick={() => voteItem(it.id, 1)}
+                                                aria-label="Like"
+                                                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border text-xs font-bold transition-colors ${v?.mine === 1 ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/30'}`}
+                                            >
+                                                <ThumbsUp className={`w-3.5 h-3.5 ${v?.mine === 1 ? 'fill-primary/20' : ''}`} />
+                                                {v?.up || 0}
+                                            </button>
+                                            <button
+                                                onClick={() => voteItem(it.id, -1)}
+                                                aria-label="Dislike"
+                                                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border text-xs font-bold transition-colors ${v?.mine === -1 ? 'border-red-400/40 bg-red-500/10 text-red-500' : 'border-border text-muted-foreground hover:text-foreground hover:border-red-300'}`}
+                                            >
+                                                <ThumbsDown className={`w-3.5 h-3.5 ${v?.mine === -1 ? 'fill-red-500/20' : ''}`} />
+                                                {v?.down || 0}
+                                            </button>
                                         </div>
                                     );
                                 })()}
