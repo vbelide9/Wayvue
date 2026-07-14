@@ -16,6 +16,7 @@ import { AnalyticsService } from './services/analytics';
 import { PlannerCard } from './components/PlannerCard';
 import { type Waypoint, makeWaypointId } from './components/WaypointsEditor';
 import { WayvueBrand } from './components/WayvueBrand';
+import { AccountMenu } from './components/AccountMenu';
 import { AiAssistant } from './components/AiAssistant';
 import { generateItineraryPdf } from './utils/itineraryPdf';
 
@@ -750,13 +751,8 @@ export default function App() {
           <WayvueBrand size="md" />
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-          <button
-            onClick={() => setViewMode('planning')}
-            className="rounded-full px-5 py-2.5 text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-orange-glow transition-all hover:-translate-y-0.5"
-          >
-            Start Planning
-          </button>
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+          <AccountMenu />
         </motion.div>
       </nav>
 
@@ -865,6 +861,7 @@ export default function App() {
       {/* Top Nav Bar */}
       <nav className="relative z-50 flex justify-between items-center px-6 md:px-12 py-6">
         <WayvueBrand size="md" tagline onClick={() => setViewMode('landing')} />
+        <AccountMenu />
       </nav>
 
       {/* Centered Card */}

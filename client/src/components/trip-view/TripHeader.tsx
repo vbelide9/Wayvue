@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { LocationInput } from '../LocationInput';
 import { WayvueBrand } from '../WayvueBrand';
 import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
+import { AccountMenu } from '../AccountMenu';
 
 export interface TripAlert {
     id: string;
@@ -593,6 +594,9 @@ export function TripHeader({ start, destination, metrics, alertCount, alerts = [
                         °F
                     </button>
                 </div>
+
+                {/* Account (sign in / profile menu) */}
+                <AccountMenu />
             </div>
         </div>
     );

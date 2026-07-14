@@ -114,8 +114,70 @@ alter table public.route_recommendations enable row level security;
 -- (Intentionally no policies — only service_role, which bypasses RLS, may access it.)
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 6. Profiles — a public identity (display name + avatar) per user, so posts,
+--    reviews, and group members can show a person instead of a raw user id.
+--    Provisioned client-side on first login from the Google profile (upsert); the
+--    row is keyed by auth.users.id.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.profiles (
+  id           uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  avatar_url   text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+drop trigger if exists profiles_touch_updated_at on public.profiles;
+create trigger profiles_touch_updated_at
+  before update on public.profiles
+  for each row execute function public.touch_updated_at();
+
+alter table public.profiles enable row level security;
+
+-- Anyone may read profiles (public identity); a user may create/update ONLY their own.
+drop policy if exists profiles_select_all on public.profiles;
+create policy profiles_select_all on public.profiles
+  for select using (true);
+
+drop policy if exists profiles_insert_own on public.profiles;
+create policy profiles_insert_own on public.profiles
+  for insert to authenticated with check (auth.uid() = id);
+
+drop policy if exists profiles_update_own on public.profiles;
+create policy profiles_update_own on public.profiles
+  for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 7. Storage: avatars bucket. Public read; each user may write ONLY within a folder
+--    named by their own uid (path: <uid>/avatar.<ext>). Lets users upload a Wayvue
+--    profile picture when Google has none (or to override it).
+-- ─────────────────────────────────────────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists avatars_public_read on storage.objects;
+create policy avatars_public_read on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists avatars_user_insert on storage.objects;
+create policy avatars_user_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists avatars_user_update on storage.objects;
+create policy avatars_user_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists avatars_user_delete on storage.objects;
+create policy avatars_user_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
---   • public.profiles (display name / avatar) so reviews can show an author.
+--   • public.trips (saved/persisted trips) — foundation for feed + group planning.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.
 --   • periodic refresh/TTL for route_recommendations (places change over time).
 -- ─────────────────────────────────────────────────────────────────────────────
