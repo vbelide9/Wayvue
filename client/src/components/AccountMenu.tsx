@@ -2,14 +2,14 @@
 // with the user's name, an inline "edit name", and sign out. Renders nothing when
 // Supabase isn't configured.
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark, Smile, Users } from 'lucide-react';
+import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark, Smile, Users, Lock } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSavedTrips } from '@/lib/SavedTripsContext';
 import { useFeed } from '@/lib/FeedContext';
 import { PRESET_AVATARS } from '@/lib/presetAvatars';
 
 export function AccountMenu() {
-    const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar } = useAuth();
+    const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar, setPrivacy } = useAuth();
     const { open: openSavedTrips } = useSavedTrips();
     const { openFeed } = useFeed();
     const [open, setOpen] = useState(false);
@@ -132,6 +132,20 @@ export function AccountMenu() {
                     >
                         <Users className="w-4 h-4 text-muted-foreground" /> Community
                     </button>
+                    {/* Private account: private → only followers see your posts. */}
+                    <button
+                        onClick={() => setPrivacy(!profile?.is_private).catch(() => {})}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors border-t border-border"
+                    >
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                        <span className="flex-1 text-left">Private account</span>
+                        <span className={`relative w-9 h-5 rounded-full transition-colors ${profile?.is_private ? 'bg-primary' : 'bg-border'}`}>
+                            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${profile?.is_private ? 'left-[18px]' : 'left-0.5'}`} />
+                        </span>
+                    </button>
+                    {profile?.is_private && (
+                        <p className="px-4 pb-2 -mt-1 text-[11px] text-muted-foreground">Only your followers can see your posts.</p>
+                    )}
                     <button
                         onClick={() => !uploading && fileRef.current?.click()}
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-60 border-t border-border"

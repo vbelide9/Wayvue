@@ -266,8 +266,10 @@ Turns owner-only trips into **participant-based** collaboration.
   `post_reports`, a `post_stats` view (like/comment counts), an `apply_report_hide()`
   `SECURITY DEFINER` trigger (auto-hide at ≥3 reports), the `is_post_author` helper, and a
   **`post-photos`** Storage bucket (public read, per-user-folder write — like `avatars`).
-- **RLS**: posts readable when `not hidden` (author still sees own hidden); follows/likes/
-  comments public-read + write-own; reports insert-only (not client-readable).
+- **RLS**: posts readable when `not hidden` AND the author is viewable — `profiles.is_private`
+  gates this: **public** authors are visible to everyone, **private** authors only to their
+  followers (and themselves), via the `can_view_author()` SECURITY DEFINER helper. Follows/
+  likes/comments public-read + write-own; reports insert-only (not client-readable).
 - **Client**: `lib/feed.ts` (posts/feed/discover, likes, comments, follows, suggested users,
   reports, `uploadPostPhoto`). UI under `components/feed/`: `CommunityFeedPage`
   (Following + Discover tabs, suggested travelers), `PostComposer` (text / photo / attach a

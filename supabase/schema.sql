@@ -534,6 +534,20 @@ returns boolean language sql security definer stable set search_path = public as
   select exists (select 1 from public.posts where id = _post_id and user_id = auth.uid());
 $$;
 
+-- Profile privacy: public (default) → anyone can see the user's posts; private → only the
+-- user's followers (and the user) can. Column lives on profiles.
+alter table public.profiles add column if not exists is_private boolean not null default false;
+
+-- Helper: may the caller view _author's posts? True if the author is public, or the caller
+-- follows them. (Self-visibility is handled directly in the posts policy.) SECURITY DEFINER
+-- so it reads profiles/follows past RLS — no recursion with the posts policy.
+create or replace function public.can_view_author(_author uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select
+    not coalesce((select is_private from public.profiles where id = _author), false)
+    or exists (select 1 from public.follows where follower_id = auth.uid() and followee_id = _author);
+$$;
+
 -- 11g. RLS.
 alter table public.posts         enable row level security;
 alter table public.follows       enable row level security;
@@ -541,10 +555,14 @@ alter table public.post_likes    enable row level security;
 alter table public.post_comments enable row level security;
 alter table public.post_reports  enable row level security;
 
--- posts: anyone reads VISIBLE posts (author still sees their own hidden ones); author writes.
+-- posts: the author always sees their own; others see a post when it isn't hidden AND they
+-- may view the author (author is public, or they follow a private author).
 drop policy if exists posts_select on public.posts;
 create policy posts_select on public.posts
-  for select using (not hidden or auth.uid() = user_id);
+  for select using (
+    auth.uid() = user_id
+    or (not hidden and public.can_view_author(user_id))
+  );
 
 drop policy if exists posts_insert_own on public.posts;
 create policy posts_insert_own on public.posts

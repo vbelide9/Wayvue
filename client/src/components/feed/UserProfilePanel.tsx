@@ -2,10 +2,10 @@
 // and their posts. Portaled to <body> so it isn't clipped.
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import { X, UserPlus, UserCheck, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import {
-    getUserPosts, getFollowCounts, getFollowingSet, follow, unfollow,
+    getUserPosts, getFollowCounts, getFollowingSet, getUserPrivacy, follow, unfollow,
     type FeedPost, type PostAuthor,
 } from '@/lib/feed';
 import { PostCard, Avatar } from './PostCard';
@@ -15,6 +15,7 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
     const [posts, setPosts] = useState<FeedPost[]>([]);
     const [counts, setCounts] = useState({ followers: 0, following: 0 });
     const [following, setFollowing] = useState(false);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const isMe = author.userId === user?.id;
@@ -23,16 +24,20 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
         let cancelled = false;
         (async () => {
             setLoading(true);
-            const [p, c, set] = await Promise.all([
+            const [p, c, set, priv] = await Promise.all([
                 getUserPosts(author.userId),
                 getFollowCounts(author.userId),
                 user ? getFollowingSet() : Promise.resolve(new Set<string>()),
+                getUserPrivacy(author.userId),
             ]);
             if (cancelled) return;
-            setPosts(p); setCounts(c); setFollowing(set.has(author.userId)); setLoading(false);
+            setPosts(p); setCounts(c); setFollowing(set.has(author.userId)); setIsPrivate(priv); setLoading(false);
         })();
         return () => { cancelled = true; };
     }, [author.userId, user]);
+
+    // A private account you don't follow hides its posts (RLS returns none).
+    const locked = isPrivate && !following && !isMe;
 
     const toggleFollow = async () => {
         if (!user || busy) return;
@@ -40,7 +45,11 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
         setFollowing(next);
         setCounts(c => ({ ...c, followers: c.followers + (next ? 1 : -1) }));
         setBusy(true);
-        try { next ? await follow(author.userId) : await unfollow(author.userId); }
+        try {
+            next ? await follow(author.userId) : await unfollow(author.userId);
+            // Following a private account unlocks their posts; refetch either way.
+            if (isPrivate) setPosts(next ? await getUserPosts(author.userId) : []);
+        }
         catch { setFollowing(!next); setCounts(c => ({ ...c, followers: c.followers + (next ? -1 : 1) })); }
         finally { setBusy(false); }
     };
@@ -65,7 +74,11 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
                             </button>
                         )}
                     </div>
-                    <h2 className="text-xl font-black text-foreground tracking-tight mt-2">{author.name}{isMe && <span className="text-muted-foreground font-normal text-sm"> (you)</span>}</h2>
+                    <h2 className="flex items-center gap-1.5 text-xl font-black text-foreground tracking-tight mt-2">
+                        {author.name}
+                        {isPrivate && <Lock className="w-3.5 h-3.5 text-muted-foreground" aria-label="Private account" />}
+                        {isMe && <span className="text-muted-foreground font-normal text-sm">(you)</span>}
+                    </h2>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                         <span><span className="font-bold text-foreground">{counts.followers}</span> followers</span>
                         <span><span className="font-bold text-foreground">{counts.following}</span> following</span>
@@ -77,6 +90,12 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
                 <div className="px-4 pb-5 space-y-3 max-h-[55vh] overflow-y-auto">
                     {loading ? (
                         <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                    ) : locked ? (
+                        <div className="text-center py-10 px-4">
+                            <Lock className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />
+                            <p className="text-sm font-bold text-foreground">This account is private</p>
+                            <p className="text-xs text-muted-foreground mt-1">Follow {author.name} to see their posts.</p>
+                        </div>
                     ) : posts.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">No posts yet.</p>
                     ) : posts.map(p => <PostCard key={p.id} post={p} onDeleted={id => setPosts(ps => ps.filter(x => x.id !== id))} />)}

@@ -198,6 +198,13 @@ export async function getFollowingSet(): Promise<Set<string>> {
     return new Set((data || []).map(f => f.followee_id));
 }
 
+/** Whether a user's profile is private (followers-only posts). */
+export async function getUserPrivacy(userId: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { data } = await supabase.from('profiles').select('is_private').eq('id', userId).maybeSingle();
+    return !!data?.is_private;
+}
+
 export async function getFollowCounts(userId: string): Promise<{ followers: number; following: number }> {
     if (!supabase) return { followers: 0, following: 0 };
     const [f1, f2] = await Promise.all([
