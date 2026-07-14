@@ -18,9 +18,6 @@ export function makeWaypointId() {
 interface WaypointsEditorProps {
     waypoints: Waypoint[];
     onWaypointsChange: (waypoints: Waypoint[]) => void;
-    /** Fired when the stop list is "finalized" (a stop picked with coords, or one
-     *  removed) so the caller can re-route immediately — no "Update Route" click needed. */
-    onCommit?: (waypoints: Waypoint[]) => void;
 }
 
 function WaypointRow({
@@ -83,17 +80,12 @@ function WaypointRow({
 
 // Drag-and-drop multi-stop editor (Google Maps style) — grab the handle to
 // reorder; the new order is submitted the next time the trip is (re)searched.
-export function WaypointsEditor({ waypoints, onWaypointsChange, onCommit }: WaypointsEditorProps) {
+export function WaypointsEditor({ waypoints, onWaypointsChange }: WaypointsEditorProps) {
     const updateWaypoint = (index: number, patch: Partial<Waypoint>) => {
-        const next = waypoints.map((wp, i) => (i === index ? { ...wp, ...patch } : wp));
-        onWaypointsChange(next);
-        // A patch carrying coords means a stop was picked from autocomplete → re-route now.
-        if (patch.lat !== undefined) onCommit?.(next);
+        onWaypointsChange(waypoints.map((wp, i) => (i === index ? { ...wp, ...patch } : wp)));
     };
     const removeWaypoint = (index: number) => {
-        const next = waypoints.filter((_, i) => i !== index);
-        onWaypointsChange(next);
-        onCommit?.(next);
+        onWaypointsChange(waypoints.filter((_, i) => i !== index));
     };
     const addWaypoint = () => {
         onWaypointsChange([...waypoints, { id: makeWaypointId(), name: '' }]);
