@@ -6,6 +6,15 @@ import { LocationInput } from '../LocationInput';
 import { WayvueBrand } from '../WayvueBrand';
 import { WaypointsEditor, type Waypoint } from '../WaypointsEditor';
 
+export interface TripAlert {
+    id: string;
+    label: string;        // e.g. "Accident", "Construction", "Moderate road conditions"
+    description: string;
+    severity: 'high' | 'medium';
+    place?: string;       // location: road number + town, e.g. "I-95 · Richmond, VA"
+    miles?: number;       // distance from the start
+}
+
 interface TripHeaderProps {
     start: string;
     destination: string;
@@ -22,6 +31,7 @@ interface TripHeaderProps {
         label: string;
     };
     alertCount: number;
+    alerts?: TripAlert[];
     unit: 'C' | 'F';
     onUnitChange: (unit: 'C' | 'F') => void;
     onBack: () => void;
@@ -55,10 +65,14 @@ interface TripHeaderProps {
     onWaypointsChange?: (waypoints: Waypoint[]) => void;
 }
 
-export function TripHeader({ start, destination, metrics, alertCount, unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
+export function TripHeader({ start, destination, metrics, alertCount, alerts = [], unit, onUnitChange, onBack, onHome, onSearch, isRoundTrip, routePreference, activeLeg, onLegChange, depDate, depTime, rawReturnDate, rawReturnTime, onSetRoundTrip, onExportPdf, waypoints = [], onWaypointsChange }: TripHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editStart, setEditStart] = useState(start);
     const [editDest, setEditDest] = useState(destination);
+
+    // Alerts popover (top-bar "N Alerts" pill)
+    const [showAlerts, setShowAlerts] = useState(false);
+    const alertsRef = useRef<HTMLDivElement>(null);
 
     // Ref for the header container
     const containerRef = useRef<HTMLDivElement>(null);
@@ -81,6 +95,21 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })());
     const [editReturnTime, setEditReturnTime] = useState(rawReturnTime || '10:00');
+
+    // Close the alerts popover on outside click / Escape.
+    useEffect(() => {
+        if (!showAlerts) return;
+        const onDown = (e: MouseEvent) => {
+            if (alertsRef.current && !alertsRef.current.contains(e.target as Node)) setShowAlerts(false);
+        };
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowAlerts(false); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [showAlerts]);
 
     // Effect: Sync props to state when props change (e.g. initial load or external update)
     useEffect(() => {
@@ -474,11 +503,63 @@ export function TripHeader({ start, destination, metrics, alertCount, unit, onUn
                     )}
                 </div>
 
-                {/* Alerts */}
+                {/* Alerts — click to see the list */}
                 {alertCount > 0 && (
-                    <div className="flex items-center gap-1.5 h-9 px-3.5 bg-amber-500/10 text-amber-600 rounded-full border border-amber-500/25 shrink-0">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span className="text-xs font-bold whitespace-nowrap">{alertCount} Alerts</span>
+                    <div className="relative shrink-0" ref={alertsRef}>
+                        <button
+                            onClick={() => setShowAlerts(v => !v)}
+                            aria-haspopup="dialog"
+                            aria-expanded={showAlerts}
+                            title="View road alerts"
+                            className="flex items-center gap-1.5 h-9 px-3.5 bg-amber-500/10 text-amber-600 rounded-full border border-amber-500/25 hover:bg-amber-500/20 transition-colors"
+                        >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold whitespace-nowrap">{alertCount} Alerts</span>
+                            <ChevronDown className={`w-3 h-3 transition-transform ${showAlerts ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {showAlerts && (
+                            <div
+                                role="dialog"
+                                aria-label="Road alerts"
+                                className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-card border border-border shadow-2xl rounded-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/40">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                        <span className="text-sm font-bold text-foreground">Road Alerts ({alertCount})</span>
+                                    </div>
+                                    <button onClick={() => setShowAlerts(false)} aria-label="Close" className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="max-h-[320px] overflow-y-auto custom-scrollbar divide-y divide-border" data-lenis-prevent>
+                                    {alerts.length > 0 ? alerts.map((a) => (
+                                        <div key={a.id} className="flex items-start gap-3 px-4 py-3">
+                                            <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${a.severity === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-baseline justify-between gap-2">
+                                                    <span className="text-xs font-bold text-foreground">{a.label}</span>
+                                                    {a.miles != null && (
+                                                        <span className="text-[10px] font-semibold text-amber-600 whitespace-nowrap shrink-0">{a.miles} mi</span>
+                                                    )}
+                                                </div>
+                                                {a.place && (
+                                                    <p className="text-xs font-medium text-foreground/80 mt-0.5 leading-snug">{a.place}</p>
+                                                )}
+                                                {a.description && a.description.toLowerCase() !== 'closed' && (
+                                                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{a.description}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                                            No detailed alerts available. Open the Road conditions panel for more.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

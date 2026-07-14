@@ -10,6 +10,8 @@ export interface TrafficIncident {
     location?: { lat: number; lng: number } | null;
     from?: string | null;
     to?: string | null;
+    miles?: number;   // distance from the start
+    place?: string;   // location label: road + town, e.g. "I-376 W · Beaver, PA"
 }
 
 interface RoadTabProps {
@@ -31,6 +33,10 @@ const INCIDENT_PREVIEW_COUNT = 4;
 
 export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncidentSelect }: RoadTabProps) {
     const [showAllIncidents, setShowAllIncidents] = useState(false);
+    // Same ordering as the top-bar alerts popover: nearest-first by distance from start.
+    const sortedIncidents = incidents
+        ? [...incidents].sort((a, b) => (a.miles ?? Infinity) - (b.miles ?? Infinity))
+        : [];
     const hasIncidents = incidents && incidents.length > 0;
     const hasConditions = roadConditions && roadConditions.length > 0;
 
@@ -69,9 +75,11 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                         </p>
                     </div>
                     <div className="divide-y divide-border">
-                        {(showAllIncidents ? incidents! : incidents!.slice(0, INCIDENT_PREVIEW_COUNT)).map((inc, idx) => {
+                        {(showAllIncidents ? sortedIncidents : sortedIncidents.slice(0, INCIDENT_PREVIEW_COUNT)).map((inc, idx) => {
                             const meta = INCIDENT_META[inc.type] || INCIDENT_META.hazard;
                             const Icon = meta.icon;
+                            const location = inc.place || (inc.from ? `${inc.from}${inc.to ? ` → ${inc.to}` : ''}` : null);
+                            const showDesc = inc.description && inc.description.toLowerCase() !== 'closed';
                             return (
                                 <div
                                     key={inc.id || idx}
@@ -80,17 +88,22 @@ export function RoadTab({ roadConditions, incidents, onSegmentSelect, onIncident
                                 >
                                     <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${meta.color}`} />
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-baseline justify-between gap-2">
                                             <span className={`text-xs font-bold uppercase tracking-wider ${meta.color}`}>
                                                 {meta.label}
                                             </span>
+                                            {inc.miles != null && (
+                                                <span className="text-[10px] font-semibold text-amber-600 whitespace-nowrap shrink-0">{inc.miles} mi</span>
+                                            )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground leading-snug mt-0.5 line-clamp-2">
-                                            {inc.description}
-                                        </p>
-                                        {(inc.from || inc.to) && (
-                                            <p className="text-[10px] text-muted-foreground/50 mt-1 font-mono truncate">
-                                                {inc.from}{inc.to ? ` → ${inc.to}` : ''}
+                                        {location && (
+                                            <p className="text-xs font-medium text-foreground/80 leading-snug mt-0.5 truncate">
+                                                {location}
+                                            </p>
+                                        )}
+                                        {showDesc && (
+                                            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+                                                {inc.description}
                                             </p>
                                         )}
                                     </div>

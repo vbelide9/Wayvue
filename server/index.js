@@ -666,6 +666,23 @@ app.get('/api/trip/hotel-recommendations', async (req, res) => {
   }
 });
 
+// Activities / things-to-do near the destination (Viator — placeholder until keyed).
+app.get('/api/trip/activity-recommendations', async (req, res) => {
+  try {
+    const { destination, lat, lng } = req.query;
+    const { getActivities } = require('./services/viatorService');
+    const result = await getActivities({
+      destination,
+      lat: lat ? parseFloat(lat) : undefined,
+      lng: lng ? parseFloat(lng) : undefined
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('[activities] error:', error.message);
+    res.status(500).json({ configured: false, provider: 'viator', activities: [], error: error.message });
+  }
+});
+
 app.listen(5001, () => {
   console.log(`Server running on port 5001`);
 });

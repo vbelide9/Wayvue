@@ -1,4 +1,6 @@
 const axios = require('axios');
+const { buildDistanceIndex, mileageAt } = require('../utils/geometry');
+const { reverseGeocode } = require('./geocodingService');
 
 /**
  * Incident Service — TomTom Traffic Incident Details API (v5)
@@ -138,9 +140,42 @@ async function fetchTile(apiKey, bboxStr) {
 }
 
 /**
+ * Adds `miles` (distance from the route start) and `place` (road + town) to each incident.
+ * Mutates the incidents in place.
+ */
+async function enrichIncidentLocations(incidents, routeCoordinates) {
+    if (!incidents || incidents.length === 0) return;
+
+    const distIndex = buildDistanceIndex(routeCoordinates);
+
+    // Reverse-geocode unique ~1km cells (incidents cluster; keeps API calls low).
+    const cellKey = (lat, lng) => `${lat.toFixed(2)},${lng.toFixed(2)}`;
+    const cells = [...new Set(incidents.map(i => cellKey(i.location.lat, i.location.lng)))];
+    const cellTown = new Map();
+    const CONCURRENCY = 6;
+    for (let k = 0; k < cells.length; k += CONCURRENCY) {
+        const batch = cells.slice(k, k + CONCURRENCY);
+        await Promise.all(batch.map(async cell => {
+            const [la, lo] = cell.split(',').map(Number);
+            const name = await reverseGeocode(la, lo); // "City, ST" | null
+            cellTown.set(cell, name || null);
+        }));
+    }
+
+    for (const inc of incidents) {
+        inc.miles = Math.round(mileageAt(distIndex, inc.location.lat, inc.location.lng));
+        const town = cellTown.get(cellKey(inc.location.lat, inc.location.lng));
+        const road = (inc.roads && inc.roads.length) ? inc.roads[0] : null;
+        let place = [road, town].filter(Boolean).join(' · ');
+        if (!place && inc.from) place = inc.to ? `${inc.from} → ${inc.to}` : inc.from;
+        inc.place = place || null;
+    }
+}
+
+/**
  * Fetch traffic incidents along the route (tiled to respect TomTom's bbox area cap).
  * @param {Array<[number, number]>} routeCoordinates - GeoJSON [lng, lat] pairs
- * @returns {Promise<Array<{ id, type, severity, description, location, from, to }>>}
+ * @returns {Promise<Array<{ id, type, severity, description, location, from, to, miles, place }>>}
  */
 async function getIncidentsAlongRoute(routeCoordinates) {
     const apiKey = process.env.TOMTOM_API_KEY;
@@ -229,6 +264,11 @@ async function getIncidentsAlongRoute(routeCoordinates) {
             typeCounts[inc.type]++;
         }
     }
+
+    // Enrich each incident with its distance from the start and a human location label
+    // (road number + reverse-geocoded town). Deduped by ~1km cell + bounded concurrency;
+    // cached alongside the incidents so it only runs once per 5-min window.
+    await enrichIncidentLocations(trimmed, routeCoordinates);
 
     incidentCache.set(cacheKey, { data: trimmed, timestamp: Date.now() });
     if (incidentCache.size > 200) {

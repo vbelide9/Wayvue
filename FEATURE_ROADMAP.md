@@ -33,6 +33,14 @@ pull from, not a sprint plan.
       on route preferences and can split costs.
 
 ### Integrations & partnerships
+- [~] **Activities / things-to-do — Viator (TripAdvisor)**, affiliate. Surface bookable
+      experiences near the destination (jet ski, parasailing, tours, theme parks like
+      Cedar Point at Sandusky) with "Book on Viator" links. **Placeholder shipped**: an
+      Activities section, `/api/trip/activity-recommendations` endpoint, and a
+      null-guarded `viatorService` all exist and degrade to a "coming soon" state.
+      Remaining: a Viator Partner **Basic/Affiliate API key** (`VIATOR_API_KEY`) + wiring
+      the product search + response mapping. Technical details in
+      [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md).
 - [ ] Spotify/Apple Music — curated playlist sized to the trip duration.
 - [ ] Gas/EV charging payment — partner with fuel networks (Shell, Tesla, Electrify
       America) for in-app payment; affiliate revenue.

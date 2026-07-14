@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TripHeader } from './TripHeader';
+import { TripHeader, type TripAlert } from './TripHeader';
 import { VerdictBar } from './VerdictBar';
 import { type RoadCondition } from '@/components/RoadConditionCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -9,6 +9,7 @@ import { StopsTab } from './tabs/StopsTab';
 import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
+import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { type Waypoint } from '@/components/WaypointsEditor';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -168,6 +169,37 @@ export function TripViewLayout({
 
     const alertCount = roadConditions.filter(c => c.status !== 'good').length + (incidents?.length || 0);
 
+    // Flattened alert list surfaced in the top-bar "Alerts" popover (incidents first,
+    // then non-good road conditions). Kept in sync with alertCount above.
+    const INCIDENT_LABELS: Record<string, string> = {
+        accident: 'Accident', closure: 'Road Closure', construction: 'Construction',
+        jam: 'Traffic Jam', hazard: 'Hazard',
+    };
+    const parseMiles = (s?: string) => {
+        const n = parseInt((s || '').replace(/[^0-9]/g, ''), 10);
+        return Number.isFinite(n) ? n : undefined;
+    };
+    const alerts: TripAlert[] = [
+        ...(incidents || []).map((inc: any, idx: number) => ({
+            id: inc.id || `inc-${idx}`,
+            label: INCIDENT_LABELS[inc.type] || 'Traffic Alert',
+            description: inc.description || '',
+            severity: (['accident', 'closure'].includes(inc.type) ? 'high' : 'medium') as 'high' | 'medium',
+            place: inc.place || undefined,
+            miles: typeof inc.miles === 'number' ? inc.miles : undefined,
+        })),
+        ...roadConditions.filter(c => c.status !== 'good').map((c, idx) => ({
+            id: `cond-${idx}-${c.segment}`,
+            label: c.status === 'poor' ? 'Poor road conditions' : 'Moderate road conditions',
+            description: c.description || '',
+            severity: (c.status === 'poor' ? 'high' : 'medium') as 'high' | 'medium',
+            place: c.segment || undefined,
+            miles: parseMiles(c.distance),
+        })),
+    ]
+        // Show alerts in travel order (nearest first).
+        .sort((a, b) => (a.miles ?? Infinity) - (b.miles ?? Infinity));
+
     const TABS: { id: string; title: string; subtitle: string }[] = [
         { id: 'overview', title: 'Overview', subtitle: 'AI journey confidence and insights' },
         { id: 'weather', title: 'Weather forecast', subtitle: 'Local forecasts along your route' },
@@ -175,6 +207,7 @@ export function TripViewLayout({
         { id: 'road', title: 'Road conditions', subtitle: 'Live alerts and driving logistics' },
         { id: 'rentals', title: 'Rental vehicles', subtitle: 'Smart vehicle matches for your trip' },
         { id: 'stay', title: 'Hotels', subtitle: 'Overnight stays matched to your route' },
+        { id: 'activities', title: 'Activities', subtitle: 'Things to do at your destination' },
     ];
     const renderPanel = (id: string) => {
         switch (id) {
@@ -214,6 +247,8 @@ export function TripViewLayout({
                     depDate={depDate}
                     returnDate={rawReturnDate || returnDate}
                 />;
+            case 'activities':
+                return <ActivitiesTab destination={destination} />;
             case 'overview':
             default:
                 return isEnriching && !aiAnalysis
@@ -253,6 +288,7 @@ export function TripViewLayout({
                         metrics={metrics}
                         tripScore={tripScore}
                         alertCount={alertCount}
+                        alerts={alerts}
                         unit={unit}
                         onUnitChange={onUnitChange}
                         onBack={onBack}

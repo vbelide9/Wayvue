@@ -175,6 +175,36 @@ a rated stop could vanish. Fix: cache the first good result per route in Supabas
 
 ---
 
+## 5. Activities integration — Viator (TripAdvisor)
+
+Product spec in [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) (Integrations & partnerships).
+Bookable things-to-do near the destination with affiliate "Book on Viator" links.
+
+**Placeholder shipped (scaffolding, graceful no-op):**
+- [x] `server/services/viatorService.js` — null-guarded `getActivities()`; returns
+      `{ configured:false, activities:[] }` when `VIATOR_API_KEY` is unset.
+- [x] `GET /api/trip/activity-recommendations?destination=&lat=&lng=` in `server/index.js`.
+- [x] Client `ActivityCard` (image / rating / from-price / affiliate CTA) +
+      `ActivitiesTab` with a "coming soon" empty state; wired into the insights accordion
+      (`activities` tab + Ticket icon). Verified: section renders, endpoint returns the
+      placeholder, no regressions.
+- [x] `VIATOR_API_KEY` documented in `server/.env(.example)`.
+
+**Remaining to make it live (Phase 2):**
+- [ ] **You:** apply for Viator Partner **Basic / Affiliate** access; add `VIATOR_API_KEY`
+      to `server/.env` (sandbox key works for building/testing first).
+- [ ] In `viatorService.getActivities()`:
+  1. Resolve destination name → Viator `destinationId` (`GET /destinations`, cached).
+  2. `POST /products/search` `{ filtering:{ destination }, sorting, pagination, currency }`.
+  3. Map products → `{ code, title, image, rating, reviewCount, fromPrice, bookingUrl }`.
+  - Auth header `exp-api-key: <key>`, `Accept: application/json;version=2.0`.
+  - Base `https://api.sandbox.viator.com/partner` | `https://api.viator.com/partner`.
+- [ ] Cache activity results per route (reuse the route-cache approach) so it's one
+      lookup per trip.
+- [ ] Consider anchoring on major en-route stops too, not just the destination.
+
+---
+
 ## Notes / backlog
 - [ ] Reconcile the two ranking systems if desired: **bullet priorities** vs. **score
       penalties** use different weightings (e.g. a road closure is bullet-priority 100 but
