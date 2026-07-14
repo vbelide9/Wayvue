@@ -168,9 +168,28 @@ a rated stop could vanish. Fix: cache the first good result per route in Supabas
       redirect (flag set in `signInWithGoogle`) it rebuilds that trip. Verified: auth
       return → trip view; normal refresh → landing (unchanged). Still shows a brief
       rebuild while the route re-fetches — a later optimization could restore from cache.
-- [ ] Places pipeline still leans on one healthy Overpass mirror (overpass-api.de was
-      429/504-throttling during testing). Consider a self-hosted Overpass or a POI
-      provider (Foursquare/Google Places) for reliability + stable IDs.
+- [ ] **Move off public Overpass to a reliable POI source.** The stops pipeline
+      (`server/services/placesService.js`) queries the free public Overpass mirrors
+      (overpass-api.de / maps.mail.ru), which frequently 429/504-throttle under our
+      per-route request volume (~14 segment queries/route). This leaves whole categories
+      thin or empty on some searches — most visibly **Rest Areas**, which are largely
+      way-mapped `highway=services` plazas that are heavy for the public mirrors (see the
+      rest-areas fix: a separate best-effort way query that's skipped when it times out, so
+      coverage is inconsistent by design). Options, best value first:
+    - **Self-hosted Overpass (recommended):** same OSM data + our existing tag logic (no
+      re-mapping), removes the throttling, no per-call cost — just server/infra. Biggest
+      reliability win for the least code change; make it the primary and keep public
+      mirrors as fallback.
+    - **Foursquare Places:** generous free tier, good POI categories; wire as a fallback
+      or for destination attractions. Gives stable IDs too.
+    - **HERE / TomTom / Mapbox:** usable free tiers; TomTom is already integrated for
+      traffic/incidents, so lowest onboarding friction.
+    - **Google Places:** best data quality but **paid/metered** (billing account required;
+      Nearby/Text Search ≈ $17–35 per 1k requests; free monthly allowance covers only a few
+      hundred routes at our call volume). Overkill for "find stops near these coords."
+    - Bonus: any of these gives **stable place IDs**, which also firms up the ratings
+      `place_key` (currently `osm-<id>`, which can churn when Overpass returns a different
+      node).
 - [ ] `route_recommendations` never expires yet — add a periodic refresh/TTL since POIs
       change over time.
 
