@@ -214,6 +214,28 @@ export async function getFollowCounts(userId: string): Promise<{ followers: numb
     return { followers: f1.count || 0, following: f2.count || 0 };
 }
 
+async function hydrateAuthors(ids: string[]): Promise<PostAuthor[]> {
+    if (!supabase || ids.length === 0) return [];
+    const unique = [...new Set(ids)];
+    const { data } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', unique);
+    const pmap = new Map((data || []).map(p => [p.id, p]));
+    return unique.map(id => authorOf(pmap, id));
+}
+
+/** Users who follow `userId`. */
+export async function getFollowers(userId: string): Promise<PostAuthor[]> {
+    if (!supabase) return [];
+    const { data } = await supabase.from('follows').select('follower_id').eq('followee_id', userId);
+    return hydrateAuthors((data || []).map(f => f.follower_id));
+}
+
+/** Users `userId` follows. */
+export async function getFollowing(userId: string): Promise<PostAuthor[]> {
+    if (!supabase) return [];
+    const { data } = await supabase.from('follows').select('followee_id').eq('follower_id', userId);
+    return hydrateAuthors((data || []).map(f => f.followee_id));
+}
+
 /** Recent posters you don't follow yet (simple discovery). */
 export async function getSuggestedUsers(): Promise<PostAuthor[]> {
     if (!supabase) return [];

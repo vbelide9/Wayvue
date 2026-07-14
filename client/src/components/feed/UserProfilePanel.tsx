@@ -9,8 +9,9 @@ import {
     type FeedPost, type PostAuthor,
 } from '@/lib/feed';
 import { PostCard, Avatar } from './PostCard';
+import { FollowListModal } from './FollowListModal';
 
-export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onClose: () => void }) {
+export function UserProfilePanel({ author, onClose, onOpenProfile }: { author: PostAuthor; onClose: () => void; onOpenProfile?: (a: PostAuthor) => void }) {
     const { user } = useAuth();
     const [posts, setPosts] = useState<FeedPost[]>([]);
     const [counts, setCounts] = useState({ followers: 0, following: 0 });
@@ -18,6 +19,7 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
     const [isPrivate, setIsPrivate] = useState(false);
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [followList, setFollowList] = useState<'followers' | 'following' | null>(null);
     const isMe = author.userId === user?.id;
 
     useEffect(() => {
@@ -80,8 +82,8 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
                         {isMe && <span className="text-muted-foreground font-normal text-sm">(you)</span>}
                     </h2>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                        <span><span className="font-bold text-foreground">{counts.followers}</span> followers</span>
-                        <span><span className="font-bold text-foreground">{counts.following}</span> following</span>
+                        <button onClick={() => setFollowList('followers')} className="hover:text-foreground transition-colors"><span className="font-bold text-foreground">{counts.followers}</span> followers</button>
+                        <button onClick={() => setFollowList('following')} className="hover:text-foreground transition-colors"><span className="font-bold text-foreground">{counts.following}</span> following</button>
                         <span><span className="font-bold text-foreground">{posts.length}</span> posts</span>
                     </div>
                 </div>
@@ -101,6 +103,15 @@ export function UserProfilePanel({ author, onClose }: { author: PostAuthor; onCl
                     ) : posts.map(p => <PostCard key={p.id} post={p} onDeleted={id => setPosts(ps => ps.filter(x => x.id !== id))} />)}
                 </div>
             </div>
+
+            {followList && (
+                <FollowListModal
+                    userId={author.userId}
+                    mode={followList}
+                    onClose={() => setFollowList(null)}
+                    onOpenProfile={a => { setFollowList(null); onOpenProfile?.(a); }}
+                />
+            )}
         </div>,
         document.body,
     );
