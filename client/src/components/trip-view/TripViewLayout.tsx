@@ -10,6 +10,7 @@ import { RoadTab } from './tabs/RoadTab';
 import { RentalTab } from './tabs/RentalTab';
 import { StayTab } from './tabs/StayTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
+import { PackTab } from './tabs/PackTab';
 import { MyPlanTab } from './tabs/MyPlanTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { useGroupTrip } from '@/lib/GroupTripContext';
@@ -213,6 +214,7 @@ export function TripViewLayout({
         { id: 'rentals', title: 'Rental vehicles', subtitle: 'Smart vehicle matches for your trip' },
         { id: 'stay', title: 'Hotels', subtitle: 'Overnight stays matched to your route' },
         { id: 'activities', title: 'Activities', subtitle: 'Things to do at your destination' },
+        { id: 'pack', title: 'Pack for this trip', subtitle: 'Trip-tailored gear & essentials' },
     ];
     const renderPanel = (id: string) => {
         switch (id) {
@@ -256,6 +258,8 @@ export function TripViewLayout({
                 />;
             case 'activities':
                 return <ActivitiesTab destination={destination} />;
+            case 'pack':
+                return <PackTab weatherData={weatherData} durationText={metrics.time} depDate={depDate} destination={destination} waypoints={waypoints} />;
             case 'overview':
             default:
                 return isEnriching && !aiAnalysis

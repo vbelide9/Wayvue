@@ -258,6 +258,34 @@ Turns owner-only trips into **participant-based** collaboration.
 
 ---
 
+## 7. Travel shopping — "Pack for this trip" affiliate recommendations
+
+### Status — built (branch `feature/travel-shopping`)
+- **Client-only** (no schema/server): `lib/travelShopping.ts` — a curated product catalog
+  with per-item `show(context)` rules + `amazonLink(query)` (Amazon Associates search links,
+  tag from `VITE_AMAZON_ASSOCIATE_TAG`; links still work untagged). `buildPackContext` derives
+  weather (precip / min-max °C from `weatherData[].weather`), drive duration, month/season,
+  and an "outdoorsy" heuristic from route/stop names.
+- **UI**: a **"Pack for this trip"** tab (`components/trip-view/tabs/PackTab.tsx`) — tailored
+  cards (icon, title, why-it's-suggested, category chip) each linking to Amazon with
+  `rel="…sponsored nofollow"`, plus the required Amazon Associates disclosure.
+
+### Requires from you
+- [ ] Sign up for **Amazon Associates** (affiliate-program.amazon.com) → put your tag in
+      `client/.env` as `VITE_AMAZON_ASSOCIATE_TAG` (e.g. `wayvue-20`). Until then links open
+      Amazon search with no commission (feature still fully works).
+
+### Follow-ons
+- [ ] **Amazon Product Advertising API** (needs 3 qualifying sales to unlock) for live
+      product images, titles, and prices instead of search links.
+- [ ] Higher-commission merchants per category (REI/Backcountry/YETI via AvantLink or
+      ShareASale; Travelpro for luggage) — each product already carries its own query/merchant
+      seam.
+- [ ] "Add to plan" (add a pick as a note/checklist item); non-US Amazon locales; EV-adapter
+      suggestion once we know the vehicle is an EV.
+
+---
+
 ## 12. Road-trip social feed — follow-based feed, likes, comments, moderation
 
 ### Status — built (branch `feature/social-feed`)
