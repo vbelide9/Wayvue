@@ -9,6 +9,7 @@ import { useAuth } from './AuthContext';
 import { useTripPlan } from './TripPlanContext';
 import { useNotify } from './Notifications';
 import { listTripItems } from './tripItems';
+import { listTracks } from './tripTracks';
 import {
     listMembers, getRouteVotes, getItemVotes, getItemVoteRows, castRouteVote, castItemVote,
     removeMember, leaveTrip, getInviteToken, inviteLink,
@@ -69,13 +70,16 @@ interface Snapshot {
     itemTitle: Map<string, string>;
     itemKind: Map<string, string>;
     itemAuthor: Map<string, string>;
+    trackTitle: Map<string, string>;        // trackId -> name
+    trackAuthor: Map<string, string>;       // trackId -> added_by
     routeVote: Map<string, RouteChoice>;   // userId -> choice
     itemVote: Map<string, number>;          // `${itemId}:${userId}` -> value
     memberIds: Set<string>;
     primed: boolean;
 }
 const emptySnapshot = (): Snapshot => ({
-    itemTitle: new Map(), itemKind: new Map(), itemAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
+    itemTitle: new Map(), itemKind: new Map(), itemAuthor: new Map(),
+    trackTitle: new Map(), trackAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
     memberIds: new Set(), primed: false,
 });
 
@@ -101,9 +105,9 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
             seen.current = emptySnapshot();
             return;
         }
-        const [m, rv, iv, items, voteRows] = await Promise.all([
+        const [m, rv, iv, items, voteRows, tracks] = await Promise.all([
             listMembers(tripId), getRouteVotes(tripId), getItemVotes(tripId),
-            listTripItems(tripId), getItemVoteRows(tripId),
+            listTripItems(tripId), getItemVoteRows(tripId), listTracks(tripId),
         ]);
         setMembers(m); setRouteVotes(rv); setItemVotes(iv);
 
@@ -116,6 +120,8 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
             itemTitle: new Map(items.map(i => [i.id, i.title])),
             itemKind: new Map(items.map(i => [i.id, i.kind])),
             itemAuthor: new Map(items.map(i => [i.id, i.user_id])),
+            trackTitle: new Map(tracks.map(t => [t.id, t.name])),
+            trackAuthor: new Map(tracks.map(t => [t.id, t.added_by])),
             routeVote: new Map(rv.votes.map(v => [v.userId, v.choice])),
             itemVote: new Map(voteRows.map(v => [`${v.tripItemId}:${v.userId}`, v.value])),
             memberIds: new Set(m.map(x => x.userId)),
@@ -125,6 +131,12 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
         if (announce && prev.primed) {
             const events: { message: string; detail?: string; avatar?: string | null; toast?: boolean }[] = [];
 
+            // Songs added to the trip playlist by someone else.
+            for (const t of tracks) {
+                if (!prev.trackTitle.has(t.id) && t.added_by !== user.id) {
+                    events.push({ message: `${nameOf(t.added_by)} added a song`, detail: t.name, avatar: avatarOf(t.added_by), toast: true });
+                }
+            }
             // Itinerary items added by someone else (kind-aware: stop / note / hotel / …).
             for (const it of items) {
                 if (!prev.itemTitle.has(it.id) && it.user_id !== user.id) {

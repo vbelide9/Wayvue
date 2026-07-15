@@ -258,6 +258,35 @@ Turns owner-only trips into **participant-based** collaboration.
 
 ---
 
+## 13. Spotify — collaborative trip playlist
+
+### Status — built (branch `feature/spotify-playlist`)
+- **Server**: `services/spotifyService.js` — Spotify **Client Credentials** (app token, no
+  user login) catalog search, cached token; endpoint `GET /api/spotify/search?q=` →
+  `{ configured, tracks }`. Null-guarded like `viatorService`: with no
+  `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` it returns `configured:false`.
+- **Schema** (`supabase/schema.sql` §12): `trip_tracks`, participant-based RLS reusing
+  `is_trip_member` — **any trip member adds/removes**, which is the collaborative playlist.
+- **Client**: `lib/tripTracks.ts` (search / list / add / remove) + a **Playlist tab** in the
+  trip view (`components/trip-view/tabs/PlaylistTab.tsx`): search → add, the shared list with
+  album art, **added-by avatar** (from `GroupTripContext.memberById`), 30s **preview**
+  (best-effort), **Open in Spotify**, remove. `GroupTripContext` also notifies **"X added a
+  song"** on shared trips (same activity poll as stops).
+
+### Remaining (blocked on you)
+- [ ] Create a free Spotify app (developer.spotify.com) → set `SPOTIFY_CLIENT_ID` /
+      `SPOTIFY_CLIENT_SECRET` in `server/.env`; run `supabase/schema.sql` §12.
+
+### Follow-ons
+- [ ] **Export / sync to a real Spotify playlist** (owner OAuth + `playlist-modify` scope) —
+      the deferred native-Spotify bridge; store `spotify_playlist_id` on the trip.
+- [ ] Full in-app playback (Web Playback SDK; requires Spotify Premium + per-user login).
+- [ ] **AI "fill to trip length"** — auto-suggest tracks sized to the drive duration
+      (Spotify recommendations seeded from the added songs). Note: Spotify `preview_url` is
+      null for many tracks now, so previews are best-effort; "Open in Spotify" is primary.
+
+---
+
 ## Notes / backlog
 - [ ] **Refine user avatars.** The "Choose an avatar" presets in
       `client/src/lib/presetAvatars.ts` are currently code-generated SVG data URIs

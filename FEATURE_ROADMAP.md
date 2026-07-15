@@ -76,7 +76,12 @@ pull from, not a sprint plan.
       Remaining: a Viator Partner **Basic/Affiliate API key** (`VIATOR_API_KEY`) + wiring
       the product search + response mapping. Technical details in
       [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md).
-- [ ] Spotify/Apple Music — curated playlist sized to the trip duration.
+- [~] Spotify/Apple Music — **built** (branch `feature/spotify-playlist`): a collaborative
+      per-trip **playlist** — search Spotify's catalog and add songs; on a shared trip every
+      member can add/remove (reuses group RLS + the activity feed). Playback = 30s previews
+      (best-effort) + "Open in Spotify". Follow-ons: export to a real Spotify playlist, full
+      in-app playback, and the roadmap's "curated playlist sized to trip duration" (AI fill).
+      Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §13.
 - [ ] Gas/EV charging payment — partner with fuel networks (Shell, Tesla, Electrify
       America) for in-app payment; affiliate revenue.
 - [ ] Hotel/rental booking — book directly instead of just recommending (Booking.com,
