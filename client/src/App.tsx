@@ -19,6 +19,8 @@ import { WayvueBrand } from './components/WayvueBrand';
 import { AccountMenu } from './components/AccountMenu';
 import { SavedTripsProvider } from './lib/SavedTripsContext';
 import { SavedTripsPage } from './components/SavedTripsPage';
+import { FeedProvider, type FeedPrefill } from './lib/FeedContext';
+import { CommunityFeedPage } from './components/feed/CommunityFeedPage';
 import { TripPlanProvider } from './lib/TripPlanContext';
 import { GroupTripProvider } from './lib/GroupTripContext';
 import { joinTrip, markTripSeen } from './lib/groupTrips';
@@ -125,7 +127,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // View Mode State
-  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip' | 'trips'>('landing');
+  const [viewMode, setViewMode] = useState<'landing' | 'planning' | 'trip' | 'trips' | 'feed'>('landing');
+  // Composer prefill when the feed is opened from a "Share stop / trip" action.
+  const [feedPrefill, setFeedPrefill] = useState<FeedPrefill | null>(null);
   // The saved trip currently open (its plan is editable). null = unsaved/new trip.
   const [currentTripId, setCurrentTripId] = useState<string | null>(null);
   // Only restore the previous view/trip on an actual page RELOAD (F5) or the OAuth
@@ -1073,12 +1077,16 @@ export default function App() {
 
   return (
     <SavedTripsProvider open={() => setViewMode('trips')}>
+      <FeedProvider openFeed={(pre) => { setFeedPrefill(pre ?? null); setViewMode('feed'); }}>
       <TripPlanProvider tripId={currentTripId} saveTripData={saveTripData} onTripIdChange={setCurrentTripId}>
       <GroupTripProvider tripId={currentTripId}>
       {viewMode === 'landing' && renderLandingView()}
       {viewMode === 'planning' && renderPlanningView()}
       {viewMode === 'trips' && (
         <SavedTripsPage onOpen={handleLoadTrip} onBack={() => setViewMode('landing')} />
+      )}
+      {viewMode === 'feed' && (
+        <CommunityFeedPage onBack={() => setViewMode('landing')} prefill={feedPrefill ?? undefined} />
       )}
       {viewMode === 'trip' && (
         <ErrorBoundary>
@@ -1191,6 +1199,7 @@ export default function App() {
       <AiAssistant tripContext={buildTripContext()} onApplyPlan={applyPlanFromAI} />
       </GroupTripProvider>
       </TripPlanProvider>
+      </FeedProvider>
     </SavedTripsProvider>
   );
 }

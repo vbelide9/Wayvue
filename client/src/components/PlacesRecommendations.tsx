@@ -1,4 +1,4 @@
-import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap, Star, Navigation } from "lucide-react";
+import { MapPin, Fuel, Camera, Utensils, X, ChevronRight, ChevronDown, Filter, TreePine, Info, Zap, Star, Navigation, Share2 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,7 @@ import { RatingStars } from "@/components/RatingStars";
 import { PlaceReviews } from "@/components/PlaceReviews";
 import { AddToPlanButton } from "@/components/AddToPlanButton";
 import { getRatingStats, type RateablePlace } from "@/lib/useRating";
+import { useFeed } from "@/lib/FeedContext";
 import { type NewTripItem, type TripItemKind } from "@/lib/tripItems";
 
 interface Place {
@@ -36,6 +37,7 @@ interface PlacesRecommendationsProps {
 const PREVIEW_COUNT = 8;
 
 export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
+    const { openFeed } = useFeed();
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>("all");
     const [showAll, setShowAll] = useState(false);
@@ -306,8 +308,14 @@ export function PlacesRecommendations({ places }: PlacesRecommendationsProps) {
                                 <button className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-bold shadow-orange-glow flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                                     <MapPin className="w-4 h-4" /> Add Stop to Route
                                 </button>
-                                <div className="mt-3 flex justify-center">
+                                <div className="mt-3 flex items-center justify-center gap-3">
                                     <AddToPlanButton item={toPlanItem(selectedPlace)} />
+                                    <button
+                                        onClick={() => openFeed({ placeKey: toRateable(selectedPlace)?.placeKey, placeName: selectedPlace.title, body: '' })}
+                                        className="flex items-center gap-1.5 h-9 px-4 rounded-full bg-secondary/60 border border-border text-xs font-bold text-foreground hover:border-primary/40 transition-colors"
+                                    >
+                                        <Share2 className="w-3.5 h-3.5" /> Share
+                                    </button>
                                 </div>
 
                                 {/* Community ratings + reviews — real OSM stops only */}

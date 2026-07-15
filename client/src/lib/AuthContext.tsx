@@ -11,6 +11,8 @@ export interface Profile {
     id: string;
     display_name: string | null;
     avatar_url: string | null;
+    /** Private profile → only followers (and the user) can see the user's posts. */
+    is_private?: boolean;
 }
 
 interface AuthValue {
@@ -28,6 +30,8 @@ interface AuthValue {
     uploadAvatar: (file: File) => Promise<void>;
     /** Set the avatar to a given URL (e.g. a preset avatar). */
     setAvatar: (url: string) => Promise<void>;
+    /** Toggle whether the profile (and its posts) is private (followers-only). */
+    setPrivacy: (isPrivate: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | undefined>(undefined);
@@ -67,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const meta: any = user.user_metadata || {};
             const { data: existing } = await supabase
                 .from('profiles')
-                .select('id, display_name, avatar_url')
+                .select('id, display_name, avatar_url, is_private')
                 .eq('id', user.id)
                 .maybeSingle();
             if (cancelled) return;
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 id: user.id,
                 display_name: meta.full_name || meta.name || (user.email ? user.email.split('@')[0] : 'Traveler'),
                 avatar_url: meta.avatar_url || meta.picture || null,
+                is_private: false,
             };
             await supabase.from('profiles').insert(seeded);
             if (!cancelled) setProfile(seeded);
@@ -140,8 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(p => (p ? { ...p, avatar_url: url } : p));
     };
 
+    const setPrivacy = async (isPrivate: boolean) => {
+        if (!supabase || !user) return;
+        setProfile(p => (p ? { ...p, is_private: isPrivate } : p)); // optimistic
+        const { error } = await supabase.from('profiles').update({ is_private: isPrivate }).eq('id', user.id);
+        if (error) { setProfile(p => (p ? { ...p, is_private: !isPrivate } : p)); throw error; }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, enabled: isSupabaseEnabled, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar }}>
+        <AuthContext.Provider value={{ user, profile, loading, enabled: isSupabaseEnabled, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar, setPrivacy }}>
             {children}
         </AuthContext.Provider>
     );

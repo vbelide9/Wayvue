@@ -258,6 +258,38 @@ Turns owner-only trips into **participant-based** collaboration.
 
 ---
 
+## 12. Road-trip social feed — follow-based feed, likes, comments, moderation
+
+### Status — built (branch `feature/social-feed`)
+- **Schema** (`supabase/schema.sql` §11): `posts` (photo/tip/stop/trip, optional trip_id /
+  place_key / image_url, `hidden` flag), `follows`, `post_likes`, `post_comments`,
+  `post_reports`, a `post_stats` view (like/comment counts), an `apply_report_hide()`
+  `SECURITY DEFINER` trigger (auto-hide at ≥3 reports), the `is_post_author` helper, and a
+  **`post-photos`** Storage bucket (public read, per-user-folder write — like `avatars`).
+- **RLS**: posts readable when `not hidden` AND the author is viewable — `profiles.is_private`
+  gates this: **public** authors are visible to everyone, **private** authors only to their
+  followers (and themselves), via the `can_view_author()` SECURITY DEFINER helper. Follows/
+  likes/comments public-read + write-own; reports insert-only (not client-readable).
+- **Client**: `lib/feed.ts` (posts/feed/discover, likes, comments, follows, suggested users,
+  reports, `uploadPostPhoto`). UI under `components/feed/`: `CommunityFeedPage`
+  (Following + Discover tabs, suggested travelers), `PostComposer` (text / photo / attach a
+  saved trip / share a stop), `PostCard` (like, expandable comments, delete/report menu),
+  `UserProfilePanel` (follow + a user's posts). Nav via `FeedContext` → a "Community" item
+  in `AccountMenu`; "Share" on the stop details modal prefills the composer.
+
+### Remaining (blocked on you)
+- [ ] Run `supabase/schema.sql` §11 in the SQL editor (creates the tables, `post-photos`
+      bucket, and the report-hide trigger).
+- [ ] Two-account end-to-end test (post → follow → like/comment → report auto-hide).
+
+### Follow-ons
+- [ ] **Notifications center** — notify the recipient of new followers / likes / comments
+      (same "since last seen" idea as the group activity feed). Deferred from this build.
+- [ ] Algorithmic / recency ranking, hashtags & @mentions, image moderation (NSFW),
+      user blocking, reposts, and a signed-out entry point to the feed.
+
+---
+
 ## Notes / backlog
 - [ ] **Refine user avatars.** The "Choose an avatar" presets in
       `client/src/lib/presetAvatars.ts` are currently code-generated SVG data URIs

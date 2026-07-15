@@ -2,14 +2,16 @@
 // with the user's name, an inline "edit name", and sign out. Renders nothing when
 // Supabase isn't configured.
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark, Smile } from 'lucide-react';
+import { LogOut, Check, X, Pencil, LogIn, Camera, Loader2, Bookmark, Smile, Users } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSavedTrips } from '@/lib/SavedTripsContext';
+import { useFeed } from '@/lib/FeedContext';
 import { PRESET_AVATARS } from '@/lib/presetAvatars';
 
 export function AccountMenu() {
     const { enabled, user, profile, signInWithGoogle, signOut, updateDisplayName, uploadAvatar, setAvatar } = useAuth();
     const { open: openSavedTrips } = useSavedTrips();
+    const { openFeed } = useFeed();
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [nameInput, setNameInput] = useState('');
@@ -123,6 +125,12 @@ export function AccountMenu() {
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                     >
                         <Bookmark className="w-4 h-4 text-muted-foreground" /> My Trips
+                    </button>
+                    <button
+                        onClick={() => { setOpen(false); openFeed(); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors border-t border-border"
+                    >
+                        <Users className="w-4 h-4 text-muted-foreground" /> Community
                     </button>
                     <button
                         onClick={() => !uploading && fileRef.current?.click()}
