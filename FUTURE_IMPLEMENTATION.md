@@ -261,28 +261,35 @@ Turns owner-only trips into **participant-based** collaboration.
 ## 7. Travel shopping — "Pack for this trip" affiliate recommendations
 
 ### Status — built (branch `feature/travel-shopping`)
-- **Client-only** (no schema/server): `lib/travelShopping.ts` — a curated product catalog
-  with per-item `show(context)` rules + `amazonLink(query)` (Amazon Associates search links,
-  tag from `VITE_AMAZON_ASSOCIATE_TAG`; links still work untagged). `buildPackContext` derives
-  weather (precip / min-max °C from `weatherData[].weather`), drive duration, month/season,
-  and an "outdoorsy" heuristic from route/stop names.
-- **UI**: a **"Pack for this trip"** tab (`components/trip-view/tabs/PackTab.tsx`) — tailored
-  cards (icon, title, why-it's-suggested, category chip) each linking to Amazon with
-  `rel="…sponsored nofollow"`, plus the required Amazon Associates disclosure.
+- **Client-only** (no schema/server): `lib/travelShopping.ts` — a curated item catalog
+  grouped into sub-categories (Essentials / Weather / Comfort / Outdoors), each with
+  per-item `show(context)` rules and a **merchant list**. `buildPackContext` derives weather
+  (precip / min-max °C from `weatherData[].weather`), drive duration, month/season, and an
+  "outdoorsy" heuristic from route/stop names.
+- **Multi-store merchant registry** (`MERCHANTS`): **Amazon** works today (tag from
+  `VITE_AMAZON_ASSOCIATE_TAG`; plain search when unset). Specialty stores — **REI,
+  Backcountry, YETI, Osprey, Cotopaxi, Travelpro, American Tourister** — render as real
+  store-search buttons NOW; each has an `affiliate` hook that's a **placeholder** (`undefined`)
+  documenting its network (**AvantLink / ShareASale / Impact**). Wire that hook + your
+  publisher ID to start earning on those clicks. Networks aren't storefronts, so they're the
+  `network` field, not buttons.
+- **UI**: a **"Pack for this trip"** tab (`components/trip-view/tabs/PackTab.tsx`) — grouped
+  sub-category sections; each item shows a store button per applicable merchant (Amazon
+  primary), all with `rel="…sponsored nofollow"`, plus the Amazon Associates disclosure.
 
 ### Requires from you
-- [ ] Sign up for **Amazon Associates** (affiliate-program.amazon.com) → put your tag in
-      `client/.env` as `VITE_AMAZON_ASSOCIATE_TAG` (e.g. `wayvue-20`). Until then links open
-      Amazon search with no commission (feature still fully works).
+- [ ] **Amazon Associates** (affiliate-program.amazon.com) → `VITE_AMAZON_ASSOCIATE_TAG` in
+      `client/.env` (e.g. `wayvue-20`). Until then every link works, just uncommissioned.
 
 ### Follow-ons
-- [ ] **Amazon Product Advertising API** (needs 3 qualifying sales to unlock) for live
-      product images, titles, and prices instead of search links.
-- [ ] Higher-commission merchants per category (REI/Backcountry/YETI via AvantLink or
-      ShareASale; Travelpro for luggage) — each product already carries its own query/merchant
-      seam.
-- [ ] "Add to plan" (add a pick as a note/checklist item); non-US Amazon locales; EV-adapter
-      suggestion once we know the vehicle is an EV.
+- [ ] **Turn on the specialty stores**: join AvantLink (REI, Backcountry, Osprey), Impact
+      (YETI, Travelpro, American Tourister), ShareASale (Cotopaxi); implement each merchant's
+      `affiliate(url)` deep-link wrap in `MERCHANTS`. Until then those buttons link to plain
+      store search (no commission).
+- [ ] **Amazon Product Advertising API** (needs 3 qualifying sales) for live product
+      images/titles/prices instead of search links.
+- [ ] "Add to plan" (add a pick as a note/checklist item); non-US Amazon locales; a smarter
+      "outdoorsy" signal; EV-adapter suggestion once the vehicle is known to be an EV.
 
 ---
 
