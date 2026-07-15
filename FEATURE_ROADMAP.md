@@ -57,7 +57,12 @@ pull from, not a sprint plan.
       weather alerts, fuel/charging warnings.
 
 ### Social & community
-- [ ] Road trip social feed — share trip photos, tips, favorite stops.
+- [~] Road trip social feed — share trip photos, tips, favorite stops. **Built** (branch
+      `feature/social-feed`): follow-based feed + Discover, a composer (text / photo /
+      attach a saved trip / share a stop), likes, comments, follow/unfollow, user profiles,
+      and report → auto-hide moderation. Follow-ons: a notifications center (likes/comments/
+      new-follower), algorithmic ranking, hashtags/mentions, image moderation, blocking.
+      Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §12.
 - [x] Ratings on recommendations — users rate hotels/restaurants Wayvue suggested; feeds
       back into recommendation quality and builds trust. **Shipped**: star ratings on stops
       & hotels, community reviews with author names/avatars, and a "Top rated" sort.

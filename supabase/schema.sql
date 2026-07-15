@@ -442,6 +442,205 @@ create policy trip_item_votes_write on public.trip_item_votes
   with check (auth.uid() = user_id and public.is_trip_member(trip_id));
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 11. Road-trip social feed — follow-based feed of posts (photos / tips / favorite
+--     stops), with likes, comments, follows, and basic moderation (author delete +
+--     report → auto-hide). Posts/follows reference profiles/auth.users only, so there is
+--     no cyclic table dependency and thus no RLS recursion.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 11a. Posts. A post is a photo, a tip, a favorite stop, or a shared trip — one flexible
+--      row with optional image / trip link / place reference.
+create table if not exists public.posts (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  kind       text not null default 'tip',   -- 'tip' | 'photo' | 'stop' | 'trip'
+  body       text check (char_length(body) <= 2000),
+  image_url  text,
+  trip_id    uuid references public.trips(id) on delete set null,
+  place_key  text,
+  place_name text,
+  hidden     boolean not null default false, -- auto-set once reports cross the threshold
+  created_at timestamptz not null default now()
+);
+create index if not exists posts_user_idx    on public.posts (user_id, created_at desc);
+create index if not exists posts_created_idx on public.posts (created_at desc);
+
+-- 11b. Follow graph (directed). The feed shows posts from a user's followees (+ self).
+create table if not exists public.follows (
+  follower_id uuid not null references auth.users(id) on delete cascade,
+  followee_id uuid not null references auth.users(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (follower_id, followee_id),
+  check (follower_id <> followee_id)
+);
+create index if not exists follows_follower_idx on public.follows (follower_id);
+create index if not exists follows_followee_idx on public.follows (followee_id);
+
+-- 11c. Likes + comments.
+create table if not exists public.post_likes (
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+create table if not exists public.post_comments (
+  id         uuid primary key default gen_random_uuid(),
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 1000),
+  created_at timestamptz not null default now()
+);
+create index if not exists post_comments_post_idx on public.post_comments (post_id, created_at);
+
+-- 11d. Reports (moderation). One per user per post.
+create table if not exists public.post_reports (
+  id         uuid primary key default gen_random_uuid(),
+  post_id    uuid not null references public.posts(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  reason     text,
+  created_at timestamptz not null default now(),
+  unique (post_id, user_id)
+);
+
+-- 11e. Cheap like/comment counts for feed rendering (mirrors place_rating_stats).
+create or replace view public.post_stats as
+select
+  p.id as post_id,
+  (select count(*) from public.post_likes    l where l.post_id = p.id) as like_count,
+  (select count(*) from public.post_comments c where c.post_id = p.id) as comment_count
+from public.posts p;
+
+-- 11f. Auto-hide a post once it collects enough reports. SECURITY DEFINER so the reporter
+--      (not the author) can flip posts.hidden.
+create or replace function public.apply_report_hide()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from public.post_reports where post_id = new.post_id) >= 3 then
+    update public.posts set hidden = true where id = new.post_id;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists post_reports_autohide on public.post_reports;
+create trigger post_reports_autohide
+  after insert on public.post_reports
+  for each row execute function public.apply_report_hide();
+
+-- Helper: is the caller the author of the post this comment belongs to (lets a post's
+-- author moderate comments on their own post). SECURITY DEFINER to read past RLS.
+create or replace function public.is_post_author(_post_id uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from public.posts where id = _post_id and user_id = auth.uid());
+$$;
+
+-- Profile privacy: public (default) → anyone can see the user's posts; private → only the
+-- user's followers (and the user) can. Column lives on profiles.
+alter table public.profiles add column if not exists is_private boolean not null default false;
+
+-- Helper: may the caller view _author's posts? True if the author is public, or the caller
+-- follows them. (Self-visibility is handled directly in the posts policy.) SECURITY DEFINER
+-- so it reads profiles/follows past RLS — no recursion with the posts policy.
+create or replace function public.can_view_author(_author uuid)
+returns boolean language sql security definer stable set search_path = public as $$
+  select
+    not coalesce((select is_private from public.profiles where id = _author), false)
+    or exists (select 1 from public.follows where follower_id = auth.uid() and followee_id = _author);
+$$;
+
+-- 11g. RLS.
+alter table public.posts         enable row level security;
+alter table public.follows       enable row level security;
+alter table public.post_likes    enable row level security;
+alter table public.post_comments enable row level security;
+alter table public.post_reports  enable row level security;
+
+-- posts: the author always sees their own; others see a post when it isn't hidden AND they
+-- may view the author (author is public, or they follow a private author).
+drop policy if exists posts_select on public.posts;
+create policy posts_select on public.posts
+  for select using (
+    auth.uid() = user_id
+    or (not hidden and public.can_view_author(user_id))
+  );
+
+drop policy if exists posts_insert_own on public.posts;
+create policy posts_insert_own on public.posts
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists posts_update_own on public.posts;
+create policy posts_update_own on public.posts
+  for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists posts_delete_own on public.posts;
+create policy posts_delete_own on public.posts
+  for delete to authenticated using (auth.uid() = user_id);
+
+-- follows: public read (counts + follow state); a user manages only their own follows.
+drop policy if exists follows_select on public.follows;
+create policy follows_select on public.follows
+  for select using (true);
+
+drop policy if exists follows_write on public.follows;
+create policy follows_write on public.follows
+  for all to authenticated
+  using (auth.uid() = follower_id) with check (auth.uid() = follower_id);
+
+-- likes: public read; write own.
+drop policy if exists post_likes_select on public.post_likes;
+create policy post_likes_select on public.post_likes
+  for select using (true);
+
+drop policy if exists post_likes_write on public.post_likes;
+create policy post_likes_write on public.post_likes
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- comments: public read; author writes own; delete by comment author OR the post's author.
+drop policy if exists post_comments_select on public.post_comments;
+create policy post_comments_select on public.post_comments
+  for select using (true);
+
+drop policy if exists post_comments_insert_own on public.post_comments;
+create policy post_comments_insert_own on public.post_comments
+  for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists post_comments_delete on public.post_comments;
+create policy post_comments_delete on public.post_comments
+  for delete to authenticated using (auth.uid() = user_id or public.is_post_author(post_id));
+
+-- reports: a user may file their own report; clients may NOT read reports (counts stay
+-- private; the trigger handles hiding).
+drop policy if exists post_reports_insert_own on public.post_reports;
+create policy post_reports_insert_own on public.post_reports
+  for insert to authenticated with check (auth.uid() = user_id);
+
+-- 11h. Storage: post-photos bucket. Public read; each user writes only within their own
+--      uid folder (path: <uid>/<file>). Same shape as the avatars bucket.
+insert into storage.buckets (id, name, public)
+values ('post-photos', 'post-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists post_photos_public_read on storage.objects;
+create policy post_photos_public_read on storage.objects
+  for select using (bucket_id = 'post-photos');
+
+drop policy if exists post_photos_user_insert on storage.objects;
+create policy post_photos_user_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'post-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists post_photos_user_update on storage.objects;
+create policy post_photos_user_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'post-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists post_photos_user_delete on storage.objects;
+create policy post_photos_user_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'post-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 12. Trip playlist — collaborative Spotify song list per trip. Mirrors trip_items and
 --     reuses the is_trip_member() helper, so any trip member may add/remove tracks (that
 --     is the collaborative playlist for shared trips). Tracks come from Spotify's catalog
@@ -488,8 +687,9 @@ create policy trip_tracks_delete_member on public.trip_tracks
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
 --   • Email invites (needs an email provider) + Realtime live sync + cost-split.
---   • posts + post_likes (+ Storage photos) for the social feed.
 --   • Spotify: export/sync to a real Spotify playlist (owner OAuth); AI "fill to trip length".
+--   • Social feed: notifications center, algorithmic ranking, hashtags/mentions,
+--     image moderation, user blocking, reposts.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.
 --   • periodic refresh/TTL for route_recommendations (places change over time).
 -- ─────────────────────────────────────────────────────────────────────────────
