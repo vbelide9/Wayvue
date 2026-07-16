@@ -258,6 +258,34 @@ Turns owner-only trips into **participant-based** collaboration.
 
 ---
 
+## 7. Hotel / rental booking — affiliate deep links (Tier 1)
+
+### Status — built (branch `feature/booking-affiliates`)
+- **Client-only**: `lib/bookingPartners.ts` turns the existing search deep links
+  (`utils/deepLinks.ts`) into **affiliate-aware** links. `hotelPartners()` → Booking.com,
+  Expedia, Vrbo, Kayak; `rentalPartners()` → Expedia, Kayak, Booking.com Cars. The hotel &
+  rental cards render a primary **Book** button + secondary store pills; disclosure shows when
+  an affiliate ID is set.
+- **Booking.com** earns natively — `withBookingAid()` appends `aid` (+ `label`) from
+  `VITE_BOOKING_AFFILIATE_ID`. **Expedia/Vrbo** need an affiliate-network deep-link wrap
+  (`wrapExpedia()` is the seam; set `VITE_EXPEDIA_AFFILIATE_ID` and implement the
+  Impact/Partnerize tracking URL). Links always work; they just don't earn until wired.
+
+### Requires from you
+- [ ] **Booking.com affiliate** (partner.booking.com or via Travelpayouts) → set
+      `VITE_BOOKING_AFFILIATE_ID`.
+- [ ] **Expedia Group** (Impact/Partnerize) → set `VITE_EXPEDIA_AFFILIATE_ID` **and**
+      implement `wrapExpedia()` with the network's deep-link format.
+
+### Follow-ons
+- [ ] **Tier 2** — embed a Travelpayouts/Stay22 "where to stay" search widget in the Stay tab
+      (Stay22 also monetizes Airbnb, which has no direct affiliate program).
+- [ ] **Tier 3** — true in-app booking via the **Amadeus Self-Service Hotel Booking API**
+      (already used for pricing) or **Expedia Rapid**: real inventory + payments (Stripe) +
+      cancellation/support. Needs a signed agreement + PCI handling.
+
+---
+
 ## 12. Road-trip social feed — follow-based feed, likes, comments, moderation
 
 ### Status — built (branch `feature/social-feed`)

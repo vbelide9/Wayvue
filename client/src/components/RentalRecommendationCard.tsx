@@ -1,6 +1,7 @@
 import { Car, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { hasBookingAffiliate, type BookingLink } from '@/lib/bookingPartners';
 
 interface RentalOption {
     name: string;
@@ -19,13 +20,11 @@ interface RentalRecommendationProps {
         priceSource?: string;
         options: RentalOption[];
     } | null;
-    links?: {
-        kayak: string;
-        expedia: string;
-    } | null;
+    /** Affiliate-aware booking links (Expedia, Kayak, Booking.com). */
+    partners?: BookingLink[] | null;
 }
 
-export function RentalRecommendationCard({ data, links }: RentalRecommendationProps) {
+export function RentalRecommendationCard({ data, partners }: RentalRecommendationProps) {
     if (!data || !data.showRecommendation) return null;
 
     return (
@@ -85,7 +84,7 @@ export function RentalRecommendationCard({ data, links }: RentalRecommendationPr
                         transition={{ delay: i * 0.1, duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
                         key={i}
                         className="group/item flex flex-col md:flex-row md:items-center justify-between p-5 bg-secondary/50 hover:bg-secondary border border-border hover:border-primary/40 transition-all duration-300 rounded-2xl cursor-pointer"
-                        onClick={() => window.open(option.link, '_blank')}
+                        onClick={() => window.open(partners?.[0]?.url || option.link, '_blank')}
                     >
                         <div className="flex flex-col gap-2 overflow-hidden md:mr-6 mb-4 md:mb-0">
                             <h4 className="font-bold text-lg text-foreground group-hover/item:text-primary transition-colors tracking-tight">
@@ -116,26 +115,28 @@ export function RentalRecommendationCard({ data, links }: RentalRecommendationPr
                         </div>
 
                         <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
-                            <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto">
+                            <div className="flex flex-col items-start md:items-end gap-2 w-full md:w-auto">
                                 <Button
                                     className="h-10 text-sm bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full md:w-auto shadow-orange-glow border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        window.open(links?.kayak || option.link, '_blank');
+                                        window.open(partners?.[0]?.url || option.link, '_blank');
                                     }}
                                 >
-                                    Book Kayak <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
+                                    Book · {partners?.[0]?.name || 'Expedia'} <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
                                 </Button>
-                                {links?.expedia && (
-                                    <Button
-                                        className="h-10 text-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-foreground font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(37,99,235,0.3)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.4)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            window.open(links.expedia, '_blank');
-                                        }}
-                                    >
-                                        Expedia <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
-                                    </Button>
+                                {(partners || []).slice(1).length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 justify-start md:justify-end">
+                                        {(partners || []).slice(1).map(pt => (
+                                            <button
+                                                key={pt.id}
+                                                onClick={(e) => { e.stopPropagation(); window.open(pt.url, '_blank'); }}
+                                                className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-bold bg-secondary border border-border text-foreground hover:border-primary/40 transition-colors"
+                                            >
+                                                {pt.name} <ArrowUpRight className="w-3 h-3 opacity-70" />
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -155,6 +156,7 @@ export function RentalRecommendationCard({ data, links }: RentalRecommendationPr
                 <ShieldCheck className="w-4 h-4 mt-0.5 text-[#10b981]/70 flex-shrink-0" />
                 <p className="leading-relaxed font-light">
                     Wayvue AI analyzes route geometry, gradients, and historical weather data to suggest optimal, safer vehicle categories. Bookings fulfilled securely by verified partners.
+                    {hasBookingAffiliate && ' Wayvue may earn a commission from bookings made through these links, at no extra cost to you.'}
                 </p>
             </div>
         </motion.div>
