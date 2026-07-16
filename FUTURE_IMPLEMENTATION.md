@@ -422,6 +422,30 @@ Turns owner-only trips into **participant-based** collaboration.
 
 ---
 
+## 15. Trip checklist — shared to-do list (group trips)
+
+### Status — built (branch `feature/expense-splitting`)
+- **Schema** (`supabase/schema.sql` §14): `trip_checklist_items` (title, `done`,
+  `completed_by` / `completed_at`), participant RLS via `is_trip_member` — **any member adds
+  items and checks them off**.
+- **Client** `lib/tripChecklist.ts` (list / add / toggle-done / remove) + a **Checklist tab**
+  (`components/trip-view/tabs/ChecklistTab.tsx`, group-only): add box, tap-to-complete with a
+  progress bar and `done`-count, strike-through for finished items (sorted to the bottom),
+  "Added by / Done by" attribution avatars, and delete. Toggling is optimistic and reconciles
+  with the server row (which stamps who completed it).
+- **Collaborative awareness**: `GroupTripContext` notifies **"X added a checklist item"** on
+  shared trips (same activity poll as stops / songs / expenses).
+
+### Remaining (blocked on you)
+- [ ] Run `supabase/schema.sql` §14 (creates `trip_checklist_items` + RLS).
+
+### Follow-ons
+- [ ] Assign an item to a specific member; due dates; reorder (drag).
+- [ ] Seed suggested items from the trip (e.g. "book campsite" when the plan has a campground,
+      "charge adapter" for an EV) — ties into the "Pack for this trip" signals.
+
+---
+
 ## Notes / backlog
 - [ ] **Refine user avatars.** The "Choose an avatar" presets in
       `client/src/lib/presetAvatars.ts` are currently code-generated SVG data URIs

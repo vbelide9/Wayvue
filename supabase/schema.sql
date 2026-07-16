@@ -761,6 +761,43 @@ create policy trip_expense_shares_delete_member on public.trip_expense_shares
   for delete to authenticated using (public.is_trip_member(trip_id));
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 14. Trip checklist — a shared to-do list per trip (pack the tent, book the campsite, …).
+--     Any member can add items and check them off; `completed_by` / `completed_at` record
+--     who ticked each one. Participant RLS via is_trip_member, same shape as trip_items.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_checklist_items (
+  id            uuid primary key default gen_random_uuid(),
+  trip_id       uuid not null references public.trips(id) on delete cascade,
+  created_by    uuid not null references auth.users(id) on delete cascade,
+  title         text not null,
+  done          boolean not null default false,
+  completed_by  uuid references auth.users(id) on delete set null,
+  completed_at  timestamptz,
+  position      integer not null default 0,
+  created_at    timestamptz not null default now()
+);
+create index if not exists trip_checklist_trip_idx on public.trip_checklist_items (trip_id, position);
+
+alter table public.trip_checklist_items enable row level security;
+
+-- Participant-based (any trip member collaborates), same pattern as trip_tracks.
+drop policy if exists trip_checklist_select_member on public.trip_checklist_items;
+create policy trip_checklist_select_member on public.trip_checklist_items
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_checklist_insert_member on public.trip_checklist_items;
+create policy trip_checklist_insert_member on public.trip_checklist_items
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = created_by);
+
+drop policy if exists trip_checklist_update_member on public.trip_checklist_items;
+create policy trip_checklist_update_member on public.trip_checklist_items
+  for update to authenticated using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_checklist_delete_member on public.trip_checklist_items;
+create policy trip_checklist_delete_member on public.trip_checklist_items
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
 --   • Email invites (needs an email provider) + Realtime live sync.
 --   • Spotify: export/sync to a real Spotify playlist (owner OAuth); AI "fill to trip length".

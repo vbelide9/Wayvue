@@ -33,6 +33,8 @@ Last updated: 2026-07-14.
 - **Expense splitting** — a Splitwise-style **Expenses** tab on shared trips: log a cost,
   split it **equally / by exact amounts / by shares / by percentage**, see everyone's running
   **balance**, and **settle up** via a minimized set of payments (debt simplification).
+- **Shared checklist** — a group **Checklist** tab: any member adds to-dos and checks them
+  off, with a progress bar and "added by / done by" attribution.
 
 **Known follow-ons** (see [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md)): email
 invites, realtime sync (currently ~10s polling), a self-hosted Overpass /
