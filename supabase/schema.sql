@@ -641,8 +641,53 @@ create policy post_photos_user_delete on storage.objects
   using (bucket_id = 'post-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 12. Trip playlist — collaborative Spotify song list per trip. Mirrors trip_items and
+--     reuses the is_trip_member() helper, so any trip member may add/remove tracks (that
+--     is the collaborative playlist for shared trips). Tracks come from Spotify's catalog
+--     search; the list itself lives here. (Section 11 is the social feed on another branch;
+--     numbered 12 so they merge without collision.)
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_tracks (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  added_by     uuid not null references auth.users(id) on delete cascade,
+  spotify_id   text not null,
+  uri          text,
+  name         text not null,
+  artists      text,
+  album        text,
+  image_url    text,
+  preview_url  text,
+  external_url text,
+  duration_ms  integer,
+  position     integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+create index if not exists trip_tracks_trip_idx on public.trip_tracks (trip_id, position);
+
+alter table public.trip_tracks enable row level security;
+
+-- Participant-based (any trip member collaborates), same shape as trip_items.
+drop policy if exists trip_tracks_select_member on public.trip_tracks;
+create policy trip_tracks_select_member on public.trip_tracks
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_tracks_insert_member on public.trip_tracks;
+create policy trip_tracks_insert_member on public.trip_tracks
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = added_by);
+
+drop policy if exists trip_tracks_update_member on public.trip_tracks;
+create policy trip_tracks_update_member on public.trip_tracks
+  for update to authenticated using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_tracks_delete_member on public.trip_tracks;
+create policy trip_tracks_delete_member on public.trip_tracks
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
 --   • Email invites (needs an email provider) + Realtime live sync + cost-split.
+--   • Spotify: export/sync to a real Spotify playlist (owner OAuth); AI "fill to trip length".
 --   • Social feed: notifications center, algorithmic ranking, hashtags/mentions,
 --     image moderation, user blocking, reposts.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.

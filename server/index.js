@@ -683,6 +683,19 @@ app.get('/api/trip/activity-recommendations', async (req, res) => {
   }
 });
 
+// Spotify catalog search for the collaborative trip playlist (app-level token; no user
+// login). Returns { configured, tracks }. Degrades to configured:false when keys are unset.
+app.get('/api/spotify/search', async (req, res) => {
+  try {
+    const { searchTracks } = require('./services/spotifyService');
+    const result = await searchTracks(req.query.q);
+    res.json(result);
+  } catch (error) {
+    console.error('[spotify] error:', error.message);
+    res.status(500).json({ configured: false, tracks: [], error: error.message });
+  }
+});
+
 app.listen(5001, () => {
   console.log(`Server running on port 5001`);
 });
