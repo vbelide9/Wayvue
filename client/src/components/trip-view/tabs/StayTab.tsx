@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { HotelRecommendationCard } from '../../HotelRecommendationCard';
 import { Moon, Wallet, Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { generateHotelLinks } from '@/utils/deepLinks';
+import { hotelPartners, type BookingLink } from '@/lib/bookingPartners';
 
 interface StayTabProps {
     metrics: { distance: string; time: string };
@@ -62,8 +62,8 @@ export function StayTab({ metrics, start, destination, depDate, returnDate }: St
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
 
-    // Deep Link State
-    const [links, setLinks] = useState<{ booking: string, kayak: string } | null>(null);
+    // Affiliate-aware booking partner links (Booking.com, Expedia, Vrbo, Kayak).
+    const [partners, setPartners] = useState<BookingLink[] | null>(null);
 
     // Update booking links when trip context or nights change
     useEffect(() => {
@@ -74,12 +74,7 @@ export function StayTab({ metrics, start, destination, depDate, returnDate }: St
             if (!checkOut || checkOut <= checkIn) {
                 checkOut = addDays(checkIn, nights);
             }
-            setLinks(generateHotelLinks({
-                city: extractCity(destination),
-                checkIn,
-                checkOut,
-                guests
-            }));
+            setPartners(hotelPartners({ city: extractCity(destination), checkIn, checkOut, guests }));
         }
     }, [start, destination, depDate, returnDate, nights, guests]);
 
@@ -200,7 +195,7 @@ export function StayTab({ metrics, start, destination, depDate, returnDate }: St
                     </div>
                 )}
 
-                {data && <HotelRecommendationCard data={data} links={links} city={extractCity(destination)} />}
+                {data && <HotelRecommendationCard data={data} partners={partners} city={extractCity(destination)} />}
 
                 {!data && !loading && (
                     <div className="text-center text-sm text-muted-foreground py-10">

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { RentalRecommendationCard } from '../../RentalRecommendationCard';
 import { Users, Briefcase, Map, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { generateRentalLinks } from '@/utils/deepLinks';
+import { rentalPartners, type BookingLink } from '@/lib/bookingPartners';
 
 interface RentalTabProps {
     metrics: { distance: string; time: string };
@@ -80,7 +80,7 @@ export function RentalTab({ metrics, weatherData, start, destination, depDate, r
     const [loading, setLoading] = useState(false);
 
     // Deep Link State
-    const [links, setLinks] = useState<{ kayak: string, expedia: string } | null>(null);
+    const [partners, setPartners] = useState<BookingLink[] | null>(null);
 
     // Update links when data changes
     useEffect(() => {
@@ -104,7 +104,7 @@ export function RentalTab({ metrics, weatherData, start, destination, depDate, r
                 pickupTime: depTime || "10:00",
                 dropoffTime: returnTime || "10:00"
             };
-            setLinks(generateRentalLinks(linkParams));
+            setPartners(rentalPartners(linkParams));
         }
     }, [start, destination, depDate, returnDate, depTime, returnTime]);
 
@@ -221,8 +221,8 @@ export function RentalTab({ metrics, weatherData, start, destination, depDate, r
                     </div>
                 )}
 
-                {/* Pass links to card if available */}
-                {data && <RentalRecommendationCard data={data} links={links} />}
+                {/* Pass affiliate booking partners to the card if available */}
+                {data && <RentalRecommendationCard data={data} partners={partners} />}
 
                 {!data && !loading && (
                     <div className="text-center text-sm text-muted-foreground py-10">

@@ -84,8 +84,14 @@ pull from, not a sprint plan.
 - [ ] Spotify/Apple Music — curated playlist sized to the trip duration.
 - [ ] Gas/EV charging payment — partner with fuel networks (Shell, Tesla, Electrify
       America) for in-app payment; affiliate revenue.
-- [ ] Hotel/rental booking — book directly instead of just recommending (Booking.com,
-      Airbnb affiliate links).
+- [~] Hotel/rental booking — **Tier 1 built** (branch `feature/booking-affiliates`): the
+      existing hotel & rental cards now deep-link to **Booking.com, Expedia, Vrbo, and Kayak**
+      via an affiliate-aware `bookingPartners` registry (env-gated IDs; links work
+      un-monetized until set, with disclosure). Booking.com earns natively via `aid`; Expedia/
+      Vrbo have a network-wrap seam (Impact/Partnerize) to fill in. (Airbnb has no affiliate
+      program since 2021 — use Vrbo/Stay22.) Follow-ons: turn on the Expedia network wrap;
+      Tier 2 embedded search widget; Tier 3 true in-app booking (Amadeus/Expedia Rapid).
+      Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §7.
 - [ ] Insurance & roadside assistance partnerships — trip-specific coverage
       recommendations.
 - [ ] **Travel shopping recommendations** — surface trip-relevant gear/products with

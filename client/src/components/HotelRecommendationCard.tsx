@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { AddToPlanButton } from './AddToPlanButton';
 import { RatingStars } from './RatingStars';
+import { hasBookingAffiliate, type BookingLink } from '@/lib/bookingPartners';
 
 // Stable rating key for a hotel = name + city (case/space-insensitive).
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -28,14 +29,12 @@ interface HotelRecommendationProps {
         livePricingAvailable?: boolean;
         options: HotelOption[];
     } | null;
-    links?: {
-        booking: string;
-        kayak: string;
-    } | null;
+    /** Affiliate-aware booking links (Booking.com, Expedia, Vrbo, Kayak). */
+    partners?: BookingLink[] | null;
     city?: string;
 }
 
-export function HotelRecommendationCard({ data, links, city }: HotelRecommendationProps) {
+export function HotelRecommendationCard({ data, partners, city }: HotelRecommendationProps) {
     if (!data || !data.showRecommendation) return null;
 
     return (
@@ -95,7 +94,7 @@ export function HotelRecommendationCard({ data, links, city }: HotelRecommendati
                         transition={{ delay: i * 0.1, duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
                         key={i}
                         className="group/item flex flex-col md:flex-row md:items-center justify-between p-5 bg-secondary/50 hover:bg-secondary border border-border hover:border-primary/40 transition-all duration-300 rounded-2xl cursor-pointer"
-                        onClick={() => window.open(links?.booking || option.link, '_blank')}
+                        onClick={() => window.open(partners?.[0]?.url || option.link, '_blank')}
                     >
                         <div className="flex flex-col gap-2 overflow-hidden md:mr-6 mb-4 md:mb-0">
                             <h4 className="font-bold text-lg text-foreground group-hover/item:text-primary transition-colors tracking-tight">
@@ -132,33 +131,35 @@ export function HotelRecommendationCard({ data, links, city }: HotelRecommendati
                         </div>
 
                         <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
-                            <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto">
+                            <div className="flex flex-col items-start md:items-end gap-2 w-full md:w-auto">
                                 <Button
-                                    className="h-10 text-sm bg-gradient-to-r from-[#003580] to-[#00224f] hover:from-[#00509e] hover:to-[#003580] text-foreground font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(0,53,128,0.35)] hover:shadow-[0_6px_20px_rgba(0,53,128,0.5)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                                    className="h-10 text-sm bg-gradient-to-r from-[#003580] to-[#00224f] hover:from-[#00509e] hover:to-[#003580] text-white font-bold w-full md:w-auto shadow-[0_4px_14px_rgba(0,53,128,0.35)] hover:shadow-[0_6px_20px_rgba(0,53,128,0.5)] border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        window.open(links?.booking || option.link, '_blank');
+                                        window.open(partners?.[0]?.url || option.link, '_blank');
                                     }}
                                 >
-                                    Book.com <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
+                                    Book · {partners?.[0]?.name || 'Booking.com'} <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
                                 </Button>
-                                {links?.kayak && (
-                                    <Button
-                                        className="h-10 text-sm bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full md:w-auto shadow-orange-glow border-none rounded-xl transition-all duration-300 transform hover:-translate-y-0.5"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            window.open(links.kayak, '_blank');
-                                        }}
-                                    >
-                                        Kayak <ArrowUpRight className="w-4 h-4 ml-2 opacity-80" />
-                                    </Button>
+                                {(partners || []).slice(1).length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 justify-start md:justify-end">
+                                        {(partners || []).slice(1).map(pt => (
+                                            <button
+                                                key={pt.id}
+                                                onClick={(e) => { e.stopPropagation(); window.open(pt.url, '_blank'); }}
+                                                className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-bold bg-secondary border border-border text-foreground hover:border-primary/40 transition-colors"
+                                            >
+                                                {pt.name} <ArrowUpRight className="w-3 h-3 opacity-70" />
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                             <AddToPlanButton item={{
                                 kind: 'hotel',
                                 title: option.name,
                                 detail: option.features,
-                                external_url: links?.booking || option.link,
+                                external_url: partners?.[0]?.url || option.link,
                             }} />
                         </div>
                     </motion.div>
@@ -179,6 +180,7 @@ export function HotelRecommendationCard({ data, links, city }: HotelRecommendati
                     {data.isLive
                         ? 'Live nightly rates retrieved for your dates. Final availability and total confirmed at checkout by the booking partner.'
                         : 'Prices are shown only when live rates are available. These are suggested properties for your route. Tap to see real-time availability and pricing on the booking partner.'}
+                    {hasBookingAffiliate && ' Wayvue may earn a commission from bookings made through these links, at no extra cost to you.'}
                 </p>
             </div>
         </motion.div>
