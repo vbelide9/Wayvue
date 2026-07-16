@@ -10,6 +10,7 @@ import { useTripPlan } from './TripPlanContext';
 import { useNotify } from './Notifications';
 import { listTripItems } from './tripItems';
 import { listTracks } from './tripTracks';
+import { listExpenses, formatMoney } from './tripExpenses';
 import {
     listMembers, getRouteVotes, getItemVotes, getItemVoteRows, castRouteVote, castItemVote,
     removeMember, leaveTrip, getInviteToken, inviteLink,
@@ -72,6 +73,8 @@ interface Snapshot {
     itemAuthor: Map<string, string>;
     trackTitle: Map<string, string>;        // trackId -> name
     trackAuthor: Map<string, string>;       // trackId -> added_by
+    expenseDesc: Map<string, string>;       // expenseId -> "description · $amount"
+    expenseAuthor: Map<string, string>;     // expenseId -> created_by
     routeVote: Map<string, RouteChoice>;   // userId -> choice
     itemVote: Map<string, number>;          // `${itemId}:${userId}` -> value
     memberIds: Set<string>;
@@ -79,7 +82,9 @@ interface Snapshot {
 }
 const emptySnapshot = (): Snapshot => ({
     itemTitle: new Map(), itemKind: new Map(), itemAuthor: new Map(),
-    trackTitle: new Map(), trackAuthor: new Map(), routeVote: new Map(), itemVote: new Map(),
+    trackTitle: new Map(), trackAuthor: new Map(),
+    expenseDesc: new Map(), expenseAuthor: new Map(),
+    routeVote: new Map(), itemVote: new Map(),
     memberIds: new Set(), primed: false,
 });
 
@@ -105,9 +110,9 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
             seen.current = emptySnapshot();
             return;
         }
-        const [m, rv, iv, items, voteRows, tracks] = await Promise.all([
+        const [m, rv, iv, items, voteRows, tracks, expenses] = await Promise.all([
             listMembers(tripId), getRouteVotes(tripId), getItemVotes(tripId),
-            listTripItems(tripId), getItemVoteRows(tripId), listTracks(tripId),
+            listTripItems(tripId), getItemVoteRows(tripId), listTracks(tripId), listExpenses(tripId),
         ]);
         setMembers(m); setRouteVotes(rv); setItemVotes(iv);
 
@@ -122,6 +127,8 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
             itemAuthor: new Map(items.map(i => [i.id, i.user_id])),
             trackTitle: new Map(tracks.map(t => [t.id, t.name])),
             trackAuthor: new Map(tracks.map(t => [t.id, t.added_by])),
+            expenseDesc: new Map(expenses.map(e => [e.id, `${e.description} · ${formatMoney(e.amount_cents, e.currency)}`])),
+            expenseAuthor: new Map(expenses.map(e => [e.id, e.created_by])),
             routeVote: new Map(rv.votes.map(v => [v.userId, v.choice])),
             itemVote: new Map(voteRows.map(v => [`${v.tripItemId}:${v.userId}`, v.value])),
             memberIds: new Set(m.map(x => x.userId)),
@@ -135,6 +142,12 @@ export function GroupTripProvider({ tripId, children }: { tripId: string | null;
             for (const t of tracks) {
                 if (!prev.trackTitle.has(t.id) && t.added_by !== user.id) {
                     events.push({ message: `${nameOf(t.added_by)} added a song`, detail: t.name, avatar: avatarOf(t.added_by), toast: true });
+                }
+            }
+            // Expenses logged by someone else (Splitwise-style shared costs).
+            for (const e of expenses) {
+                if (!prev.expenseDesc.has(e.id) && e.created_by !== user.id) {
+                    events.push({ message: `${nameOf(e.created_by)} added an expense`, detail: e.description, avatar: avatarOf(e.created_by), toast: true });
                 }
             }
             // Itinerary items added by someone else (kind-aware: stop / note / hotel / …).

@@ -13,6 +13,7 @@ import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { PackTab } from './tabs/PackTab';
 import { MyPlanTab } from './tabs/MyPlanTab';
 import { PlaylistTab } from './tabs/PlaylistTab';
+import { ExpensesTab } from './tabs/ExpensesTab';
 import { InsightsAccordion } from './InsightsAccordion';
 import { useGroupTrip } from '@/lib/GroupTripContext';
 import { type Waypoint } from '@/components/WaypointsEditor';
@@ -115,7 +116,7 @@ export function TripViewLayout({
 }: TripViewLayoutProps) {
     const [activeTab, setActiveTab] = useState('overview');
     // Unread collaborator-activity count → badge on the "My Plan" section header.
-    const { unreadCount } = useGroupTrip();
+    const { unreadCount, isGroup } = useGroupTrip();
     // Insights panel — open by default, collapsible to reveal the full-screen map.
     const [panelOpen, setPanelOpen] = useState(true);
     // Only reserve map space / offset the toolbar when the panel docks (sm+); on
@@ -210,6 +211,8 @@ export function TripViewLayout({
         { id: 'overview', title: 'Overview', subtitle: 'AI journey confidence and insights' },
         { id: 'plan', title: 'My Plan', subtitle: 'Your saved itinerary for this trip' },
         { id: 'playlist', title: 'Playlist', subtitle: 'Road-trip music, together' },
+        // Expense splitting is only meaningful once the trip is shared with others.
+        ...(isGroup ? [{ id: 'expenses', title: 'Expenses', subtitle: 'Split trip costs, settle up' }] : []),
         { id: 'weather', title: 'Weather forecast', subtitle: 'Local forecasts along your route' },
         { id: 'stops', title: 'Stops', subtitle: 'Dining, fuel, and rest stops along the way' },
         { id: 'road', title: 'Road conditions', subtitle: 'Live alerts and driving logistics' },
@@ -224,6 +227,8 @@ export function TripViewLayout({
                 return <MyPlanTab start={start} destination={destination} waypoints={waypoints} />;
             case 'playlist':
                 return <PlaylistTab />;
+            case 'expenses':
+                return <ExpensesTab />;
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />
