@@ -252,7 +252,7 @@ Turns owner-only trips into **participant-based** collaboration.
       "Email invites — Soon" row as the seam.
 - [ ] **Realtime live sync.** MVP refetches after each action; subscribe to
       `postgres_changes` on `trip_items` / votes / members for live collaboration.
-- [ ] **Cost splitting** for group trips (expenses + per-member share).
+- [x] **Cost splitting** for group trips (expenses + per-member share) — **shipped**, see §14.
 - [ ] "Apply winning route vote" is currently manual (organizer re-searches); could
       auto-apply the winner to `trips.preference`.
 
@@ -379,6 +379,70 @@ Turns owner-only trips into **participant-based** collaboration.
 - [ ] **AI "fill to trip length"** — auto-suggest tracks sized to the drive duration
       (Spotify recommendations seeded from the added songs). Note: Spotify `preview_url` is
       null for many tracks now, so previews are best-effort; "Open in Spotify" is primary.
+
+---
+
+## 14. Trip expense splitting — Splitwise-style cost sharing (group trips)
+
+### Status — built (branch `feature/expense-splitting`)
+- **Schema** (`supabase/schema.sql` §13): `trip_expenses` (one payer + total, `split_type`)
+  and `trip_expense_shares` (the resolved owed amount per member + the raw split input). Both
+  use participant RLS via `is_trip_member`, so **any trip member can add/edit/delete** — the
+  ledger is shared. **Money is integer cents everywhere** (never floats), so splits sum back
+  to the total exactly.
+- **Client** `lib/tripExpenses.ts`:
+  - `splitByWeight(total, weights)` — proportional split with the **largest-remainder**
+    method; leftover cents go to the biggest fractional remainders so parts always sum to the
+    total. All four split modes route through it: **equal** (weights = 1), **by shares**
+    (weights = share counts), **by percentage** (weights = %), and **exact** (owed cents given
+    directly, validated to sum to the total).
+  - `computeBalances` → each member's net (`Σ paid − Σ owed`).
+  - `simplifyDebts` → **greedy min-cash-flow** (match biggest creditor with biggest debtor);
+    produces ≤ n−1 "A pays B $X" transfers that clear every balance.
+- **UI** `components/trip-view/tabs/ExpensesTab.tsx` — an **Expenses** tab (group-only; hidden
+  on solo trips) with: add-expense form (description, amount, category, payer, split-method
+  segmented control + live per-person preview and validation), the expense list with payer
+  avatars, a **Balances** panel, and a **Settle up** panel driven by `simplifyDebts`.
+- **Collaborative awareness**: `GroupTripContext` polls `trip_expenses` and emits an
+  activity-feed item + toast **"X added an expense"** on shared trips (same diff pattern as
+  stops/songs).
+
+### Remaining (blocked on you)
+- [ ] Run `supabase/schema.sql` §13 (creates `trip_expenses` + `trip_expense_shares` + RLS).
+
+### Follow-ons
+- [ ] **Record settlements** — a "mark as paid" that writes a settlement row so balances zero
+      out after someone actually pays (today Settle-up is advisory; deleting/adding expenses
+      is how the ledger changes).
+- [ ] **Edit an expense** in place (the shares table already stores the raw `weight` input to
+      rehydrate the form).
+- [ ] **Multi-currency** (per-expense currency + FX) — today balances assume one trip
+      currency (the first expense's), which covers the common case.
+- [ ] Per-member spend summary / category breakdown; export to the trip PDF.
+
+---
+
+## 15. Trip checklist — shared to-do list (group trips)
+
+### Status — built (branch `feature/expense-splitting`)
+- **Schema** (`supabase/schema.sql` §14): `trip_checklist_items` (title, `done`,
+  `completed_by` / `completed_at`), participant RLS via `is_trip_member` — **any member adds
+  items and checks them off**.
+- **Client** `lib/tripChecklist.ts` (list / add / toggle-done / remove) + a **Checklist tab**
+  (`components/trip-view/tabs/ChecklistTab.tsx`, group-only): add box, tap-to-complete with a
+  progress bar and `done`-count, strike-through for finished items (sorted to the bottom),
+  "Added by / Done by" attribution avatars, and delete. Toggling is optimistic and reconciles
+  with the server row (which stamps who completed it).
+- **Collaborative awareness**: `GroupTripContext` notifies **"X added a checklist item"** on
+  shared trips (same activity poll as stops / songs / expenses).
+
+### Remaining (blocked on you)
+- [ ] Run `supabase/schema.sql` §14 (creates `trip_checklist_items` + RLS).
+
+### Follow-ons
+- [ ] Assign an item to a specific member; due dates; reorder (drag).
+- [ ] Seed suggested items from the trip (e.g. "book campsite" when the plan has a campground,
+      "charge adapter" for an EV) — ties into the "Pack for this trip" signals.
 
 ---
 

@@ -685,8 +685,121 @@ create policy trip_tracks_delete_member on public.trip_tracks
   for delete to authenticated using (public.is_trip_member(trip_id));
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 13. Trip expenses — Splitwise-style cost splitting for group trips. An expense has ONE
+--     payer and a total; the split is materialized into per-member `trip_expense_shares`
+--     (the amount each member owes for that expense), so balances = Σ(paid) − Σ(owed) is a
+--     pure aggregation regardless of split method. Any trip member can add/edit/delete
+--     expenses (participant RLS via is_trip_member), same shape as trip_items/trip_tracks.
+--
+--     Money is stored as INTEGER minor units (cents) — never floats — so splits sum back to
+--     the total exactly; the client distributes any rounding remainder deterministically.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_expenses (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  created_by   uuid not null references auth.users(id) on delete cascade,
+  paid_by      uuid not null references auth.users(id) on delete cascade,
+  description  text not null,
+  amount_cents integer not null check (amount_cents > 0),
+  currency     text not null default 'USD',
+  category     text,                    -- 'food' | 'fuel' | 'lodging' | 'activity' | 'other'
+  split_type   text not null default 'equal' check (split_type in ('equal','exact','shares','percent')),
+  created_at   timestamptz not null default now()
+);
+create index if not exists trip_expenses_trip_idx on public.trip_expenses (trip_id, created_at);
+
+-- One row per participant in an expense: the resolved amount they owe (`amount_cents`) plus
+-- the raw split input (`weight` = share count / percent / exact cents) so the form can be
+-- re-edited. `trip_id` is denormalized so RLS authorizes without joining back to the parent.
+create table if not exists public.trip_expense_shares (
+  id           uuid primary key default gen_random_uuid(),
+  expense_id   uuid not null references public.trip_expenses(id) on delete cascade,
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  amount_cents integer not null default 0 check (amount_cents >= 0),
+  weight       numeric not null default 1,
+  created_at   timestamptz not null default now(),
+  unique (expense_id, user_id)
+);
+create index if not exists trip_expense_shares_expense_idx on public.trip_expense_shares (expense_id);
+create index if not exists trip_expense_shares_trip_idx on public.trip_expense_shares (trip_id);
+
+alter table public.trip_expenses       enable row level security;
+alter table public.trip_expense_shares enable row level security;
+
+-- Participant-based RLS (any trip member collaborates), same pattern as trip_tracks.
+drop policy if exists trip_expenses_select_member on public.trip_expenses;
+create policy trip_expenses_select_member on public.trip_expenses
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expenses_insert_member on public.trip_expenses;
+create policy trip_expenses_insert_member on public.trip_expenses
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = created_by);
+
+drop policy if exists trip_expenses_update_member on public.trip_expenses;
+create policy trip_expenses_update_member on public.trip_expenses
+  for update to authenticated using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expenses_delete_member on public.trip_expenses;
+create policy trip_expenses_delete_member on public.trip_expenses
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expense_shares_select_member on public.trip_expense_shares;
+create policy trip_expense_shares_select_member on public.trip_expense_shares
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expense_shares_insert_member on public.trip_expense_shares;
+create policy trip_expense_shares_insert_member on public.trip_expense_shares
+  for insert to authenticated with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expense_shares_update_member on public.trip_expense_shares;
+create policy trip_expense_shares_update_member on public.trip_expense_shares
+  for update to authenticated using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_expense_shares_delete_member on public.trip_expense_shares;
+create policy trip_expense_shares_delete_member on public.trip_expense_shares
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 14. Trip checklist — a shared to-do list per trip (pack the tent, book the campsite, …).
+--     Any member can add items and check them off; `completed_by` / `completed_at` record
+--     who ticked each one. Participant RLS via is_trip_member, same shape as trip_items.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.trip_checklist_items (
+  id            uuid primary key default gen_random_uuid(),
+  trip_id       uuid not null references public.trips(id) on delete cascade,
+  created_by    uuid not null references auth.users(id) on delete cascade,
+  title         text not null,
+  done          boolean not null default false,
+  completed_by  uuid references auth.users(id) on delete set null,
+  completed_at  timestamptz,
+  position      integer not null default 0,
+  created_at    timestamptz not null default now()
+);
+create index if not exists trip_checklist_trip_idx on public.trip_checklist_items (trip_id, position);
+
+alter table public.trip_checklist_items enable row level security;
+
+-- Participant-based (any trip member collaborates), same pattern as trip_tracks.
+drop policy if exists trip_checklist_select_member on public.trip_checklist_items;
+create policy trip_checklist_select_member on public.trip_checklist_items
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_checklist_insert_member on public.trip_checklist_items;
+create policy trip_checklist_insert_member on public.trip_checklist_items
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = created_by);
+
+drop policy if exists trip_checklist_update_member on public.trip_checklist_items;
+create policy trip_checklist_update_member on public.trip_checklist_items
+  for update to authenticated using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+
+drop policy if exists trip_checklist_delete_member on public.trip_checklist_items;
+create policy trip_checklist_delete_member on public.trip_checklist_items
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
---   • Email invites (needs an email provider) + Realtime live sync + cost-split.
+--   • Email invites (needs an email provider) + Realtime live sync.
 --   • Spotify: export/sync to a real Spotify playlist (owner OAuth); AI "fill to trip length".
 --   • Social feed: notifications center, algorithmic ranking, hashtags/mentions,
 --     image moderation, user blocking, reposts.

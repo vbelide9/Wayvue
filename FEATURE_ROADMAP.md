@@ -30,9 +30,14 @@ Last updated: 2026-07-14.
 - **Group trip planning** — shareable invite links, shared member-editable itinerary,
   **voting** (route style + per-stop like/dislike with "view results"), a **collaborator
   activity feed** with an unread counter, and member avatars + activity badges on My Trips.
+- **Expense splitting** — a Splitwise-style **Expenses** tab on shared trips: log a cost,
+  split it **equally / by exact amounts / by shares / by percentage**, see everyone's running
+  **balance**, and **settle up** via a minimized set of payments (debt simplification).
+- **Shared checklist** — a group **Checklist** tab: any member adds to-dos and checks them
+  off, with a progress bar and "added by / done by" attribution.
 
 **Known follow-ons** (see [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md)): email
-invites, realtime sync (currently ~10s polling), cost-splitting, a self-hosted Overpass /
+invites, realtime sync (currently ~10s polling), a self-hosted Overpass /
 POI provider for reliable stops (esp. rest areas), and the Viator activities API key.
 
 ---
@@ -69,8 +74,9 @@ pull from, not a sprint plan.
 - [x] Group trip planning — **shipped** (merged to `main`): shareable invite links, shared
       member-editable itinerary, voting (route style + per-stop), a collaborator activity
       feed + unread notifications, and member avatars/activity badges on My Trips. Follow-ons:
-      email invites, realtime sync (currently ~10s polling), and cost-splitting (**deferred**).
-      Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §6.
+      email invites and realtime sync (currently ~10s polling). **Cost-splitting shipped** —
+      a Splitwise-style Expenses tab (equal / exact / shares / % + settle-up), branch
+      `feature/expense-splitting`, detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §6/§14.
 
 ### Integrations & partnerships
 - [~] **Activities / things-to-do — Viator (TripAdvisor)**, affiliate. Surface bookable
