@@ -94,12 +94,16 @@ pull from, not a sprint plan.
       Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §7.
 - [ ] Insurance & roadside assistance partnerships — trip-specific coverage
       recommendations.
-- [ ] **Travel shopping recommendations** — surface trip-relevant gear/products with
-      affiliate links (Amazon Associates, etc.), tailored to the trip: rain gear for a
-      wet forecast, a cooler / sunshade for a long summer drive, dash cam, phone mount,
-      EV adapter, camping gear when the plan has campsites. Could live as its own
-      insights section ("Pack for this trip") and/or "Add to plan" items. High-intent,
-      low-friction affiliate revenue.
+- [~] **Travel shopping recommendations** — **built** (branch `feature/travel-shopping`): a
+      **"Pack for this trip"** tab that recommends trip-tailored gear with **Amazon Associates**
+      affiliate links — rain gear on a wet forecast, sunshade/cooler for warm weather, a
+      thermal blanket/ice scraper for cold, travel pillow/snacks for long drives, and camp
+      gear for outdoorsy routes, on top of always-on essentials (phone mount, charger, dash
+      cam, first-aid). Rules-based off the route's weather/duration/season; each product
+      carries its own search query so specific categories can later point at higher-commission
+      merchants (REI/YETI, via AvantLink/ShareASale). Follow-ons: Amazon PA-API for live
+      prices/images, "Add to plan", more merchants. Detail in
+      [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §7.
 
 ### Monetization
 - [ ] **Freemium tiers**
