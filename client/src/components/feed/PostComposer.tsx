@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, X, Route, MapPin, Loader2, Send, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { createPost, uploadPostPhoto, type FeedPost } from '@/lib/feed';
+import { createPost, uploadPostPhoto, searchUsers, type FeedPost, type PostAuthor } from '@/lib/feed';
 import { listTrips, type SavedTrip } from '@/lib/trips';
 import { shortPlace } from '@/lib/placeFormat';
+import { Avatar } from './PostCard';
 
 export interface ComposerPrefill {
     body?: string;
@@ -27,8 +28,40 @@ export function PostComposer({ onPosted, prefill }: { onPosted: (p: FeedPost) =>
     const [trips, setTrips] = useState<SavedTrip[]>([]);
     const [tripPicker, setTripPicker] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
+    const taRef = useRef<HTMLTextAreaElement>(null);
+
+    // @-mention picker: the query is the @token immediately left of the caret.
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionResults, setMentionResults] = useState<PostAuthor[]>([]);
+    const [mentions, setMentions] = useState<PostAuthor[]>([]);   // people picked so far
 
     useEffect(() => { if (user) listTrips().then(setTrips).catch(() => {}); }, [user]);
+
+    // Debounced search for the active @mention token.
+    useEffect(() => {
+        if (mentionQuery === null || mentionQuery.length < 1) { setMentionResults([]); return; }
+        const t = setTimeout(() => { searchUsers(mentionQuery).then(setMentionResults).catch(() => setMentionResults([])); }, 250);
+        return () => clearTimeout(t);
+    }, [mentionQuery]);
+
+    // Detect an @token ending at the caret so we know when to show the picker.
+    const onBodyChange = (value: string) => {
+        setBody(value);
+        const caret = taRef.current?.selectionStart ?? value.length;
+        const m = /(?:^|\s)@(\w{0,20})$/.exec(value.slice(0, caret));
+        setMentionQuery(m ? m[1] : null);
+    };
+
+    const pickMention = (a: PostAuthor) => {
+        const ta = taRef.current;
+        const caret = ta?.selectionStart ?? body.length;
+        const before = body.slice(0, caret).replace(/(^|\s)@(\w{0,20})$/, `$1@${a.name} `);
+        const next = before + body.slice(caret);
+        setBody(next);
+        setMentions(prev => prev.some(p => p.userId === a.userId) ? prev : [...prev, a]);
+        setMentionQuery(null); setMentionResults([]);
+        setTimeout(() => ta?.focus(), 0);
+    };
 
     if (!enabled) return null;
 
@@ -46,10 +79,12 @@ export function PostComposer({ onPosted, prefill }: { onPosted: (p: FeedPost) =>
         setPosting(true); setError(null);
         try {
             const kind = imageUrl ? 'photo' : placeKey ? 'stop' : tripId ? 'trip' : 'tip';
-            const created = await createPost({ kind, body, imageUrl, tripId, placeKey, placeName });
+            // Only keep mentions whose "@Name" survived in the final text.
+            const mentionUserIds = mentions.filter(m => body.includes(`@${m.name}`)).map(m => m.userId);
+            const created = await createPost({ kind, body, imageUrl, tripId, placeKey, placeName, mentionUserIds });
             if (created) {
                 onPosted(created);
-                setBody(''); setImageUrl(null); setTripId(prefill?.tripId || null);
+                setBody(''); setImageUrl(null); setTripId(prefill?.tripId || null); setMentions([]);
             }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not post');
@@ -65,15 +100,28 @@ export function PostComposer({ onPosted, prefill }: { onPosted: (p: FeedPost) =>
                     {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span>{(profile?.display_name || 'You')[0]}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <textarea
-                        value={body}
-                        onChange={e => setBody(e.target.value)}
-                        onFocus={() => { if (!user) signInWithGoogle(); }}
-                        placeholder="Share a tip, a photo, or a favorite stop…"
-                        rows={2}
-                        maxLength={2000}
-                        className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/70"
-                    />
+                    <div className="relative">
+                        <textarea
+                            ref={taRef}
+                            value={body}
+                            onChange={e => onBodyChange(e.target.value)}
+                            onFocus={() => { if (!user) signInWithGoogle(); }}
+                            placeholder="Share a tip, a photo, or a favorite stop… use #tags and @mentions"
+                            rows={2}
+                            maxLength={2000}
+                            className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/70"
+                        />
+                        {mentionQuery !== null && mentionResults.length > 0 && (
+                            <div className="absolute left-0 top-full z-30 mt-1 w-64 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
+                                {mentionResults.map(a => (
+                                    <button key={a.userId} onClick={() => pickMention(a)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary">
+                                        <Avatar author={a} size={26} />
+                                        <span className="text-sm font-medium text-foreground truncate">{a.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Stop chip (from a share action) */}
                     {placeName && (

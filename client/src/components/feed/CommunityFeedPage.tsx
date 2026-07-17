@@ -2,16 +2,17 @@
 // anyone, so the feed isn't empty before you follow people), a composer, and suggested
 // users to follow. Structured like SavedTripsPage.
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, Loader2, Users, Compass, UserPlus, Lock, Globe, Search, X } from 'lucide-react';
+import { ChevronLeft, Loader2, Users, Compass, UserPlus, Lock, Globe, Search, X, Hash } from 'lucide-react';
 import { WayvueBrand } from '../WayvueBrand';
 import { AccountMenu } from '../AccountMenu';
 import { useAuth } from '@/lib/AuthContext';
-import { getFeed, getDiscover, getSuggestedUsers, getFollowCounts, getUserPosts, getFollowingSet, searchUsers, follow, unfollow, type FeedPost, type PostAuthor } from '@/lib/feed';
+import { getFeed, getDiscover, getDiscoverRanked, getPostsByHashtag, getSuggestedUsers, getFollowCounts, getUserPosts, getFollowingSet, searchUsers, follow, unfollow, type FeedPost, type PostAuthor } from '@/lib/feed';
 import { PostComposer } from './PostComposer';
 import { PostCard, Avatar } from './PostCard';
 import { UserProfilePanel } from './UserProfilePanel';
 import { FollowListModal } from './FollowListModal';
 import { UserRow } from './UserRow';
+import { NotificationsBell } from './NotificationsBell';
 
 type Tab = 'following' | 'discover';
 
@@ -30,6 +31,23 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
     const [results, setResults] = useState<PostAuthor[]>([]);
     const [searching, setSearching] = useState(false);
     const [followingSet, setFollowingSet] = useState<Set<string>>(new Set());
+    const [activeTag, setActiveTag] = useState<string | null>(null);
+    const [tagPosts, setTagPosts] = useState<FeedPost[]>([]);
+    const [tagLoading, setTagLoading] = useState(false);
+
+    // Load posts for a clicked #hashtag.
+    useEffect(() => {
+        if (!activeTag) { setTagPosts([]); return; }
+        let cancelled = false;
+        setTagLoading(true);
+        getPostsByHashtag(activeTag).then(p => { if (!cancelled) setTagPosts(p); }).finally(() => { if (!cancelled) setTagLoading(false); });
+        return () => { cancelled = true; };
+    }, [activeTag]);
+
+    const removeAuthorPosts = (userId: string) => {
+        setPosts(ps => ps.filter(p => p.userId !== userId));
+        setTagPosts(ps => ps.filter(p => p.userId !== userId));
+    };
 
     // Your own stats for the Instagram-style profile header + who you follow (for buttons).
     useEffect(() => {
@@ -57,7 +75,7 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
         catch { setFollowingSet(s => { const n = new Set(s); isF ? n.add(a.userId) : n.delete(a.userId); return n; }); }
     };
 
-    const fetchTab = useCallback(async (t: Tab): Promise<FeedPost[]> => (t === 'following' ? getFeed() : getDiscover()), []);
+    const fetchTab = useCallback(async (t: Tab): Promise<FeedPost[]> => (t === 'following' ? getFeed() : getDiscoverRanked()), []);
 
     // Load the active tab. Signed-out users only get Discover.
     useEffect(() => {
@@ -81,9 +99,11 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
     const loadMore = async () => {
         if (loadingMore || posts.length === 0) return;
         setLoadingMore(true);
-        const cursor = posts[posts.length - 1].createdAt;
+        // Use the OLDEST loaded post as the cursor (the first Discover page is ranked, not
+        // strictly chronological), and dedupe so a ranked post isn't repeated.
+        const cursor = posts.reduce((min, p) => (p.createdAt < min ? p.createdAt : min), posts[0].createdAt);
         const more = (user && tab === 'following') ? await getFeed(cursor) : await getDiscover(cursor);
-        setPosts(p => [...p, ...more]);
+        setPosts(p => { const seen = new Set(p.map(x => x.id)); return [...p, ...more.filter(m => !seen.has(m.id))]; });
         setHasMore(more.length >= 20);
         setLoadingMore(false);
     };
@@ -112,7 +132,10 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
                     </button>
                     <WayvueBrand size="md" tagline onClick={onBack} />
                 </div>
-                <AccountMenu />
+                <div className="flex items-center gap-1">
+                    <NotificationsBell onOpenProfile={setViewingProfile} />
+                    <AccountMenu />
+                </div>
             </nav>
 
             <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-24">
@@ -185,7 +208,31 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
                             </div>
                         )}
 
-                        {query.trim() ? (
+                        {activeTag ? (
+                            /* Hashtag filter view */
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="flex items-center gap-1.5 text-lg font-black text-foreground">
+                                        <Hash className="w-5 h-5 text-primary" />{activeTag}
+                                    </div>
+                                    <button onClick={() => setActiveTag(null)} className="ml-auto flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground">
+                                        <X className="w-3.5 h-3.5" /> Clear
+                                    </button>
+                                </div>
+                                {tagLoading ? (
+                                    <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
+                                ) : tagPosts.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center py-16">No posts tagged #{activeTag} yet.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {tagPosts.map(p => (
+                                            <PostCard key={p.id} post={p} onOpenProfile={setViewingProfile} onHashtag={setActiveTag} onBlocked={removeAuthorPosts}
+                                                onDeleted={id => setTagPosts(ps => ps.filter(x => x.id !== id))} />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : query.trim() ? (
                             /* Search results */
                             <div className="bg-card border border-border rounded-2xl p-2 min-h-[120px]">
                                 {searching ? (
@@ -249,7 +296,8 @@ export function CommunityFeedPage({ onBack, prefill }: { onBack: () => void; pre
                         ) : (
                             <div className="space-y-4">
                                 {posts.map(p => (
-                                    <PostCard key={p.id} post={p} onOpenProfile={setViewingProfile} onDeleted={id => setPosts(ps => ps.filter(x => x.id !== id))} />
+                                    <PostCard key={p.id} post={p} onOpenProfile={setViewingProfile} onHashtag={setActiveTag} onBlocked={removeAuthorPosts}
+                                        onDeleted={id => setPosts(ps => ps.filter(x => x.id !== id))} />
                                 ))}
                                 {hasMore && (
                                     <button onClick={loadMore} disabled={loadingMore} className="w-full py-3 text-sm font-bold text-primary hover:text-primary/80 flex items-center justify-center gap-2">

@@ -346,10 +346,24 @@ Turns owner-only trips into **participant-based** collaboration.
 - [ ] Two-account end-to-end test (post → follow → like/comment → report auto-hide).
 
 ### Follow-ons
-- [ ] **Notifications center** — notify the recipient of new followers / likes / comments
-      (same "since last seen" idea as the group activity feed). Deferred from this build.
-- [ ] Algorithmic / recency ranking, hashtags & @mentions, image moderation (NSFW),
-      user blocking, reposts, and a signed-out entry point to the feed.
+- [x] **Notifications center** — **shipped** (`feature/feed-and-trip-enhancements`, schema §15):
+      `notifications` table written by the actor on like / comment / follow / @mention; a bell
+      with unread badge (`NotificationsBell`) polls the count and marks read on open.
+- [x] **@mentions + #hashtags** — **shipped**: extracted at post time into `post_mentions` /
+      `post_hashtags`; a mention picker in the composer, clickable hashtags that filter the feed
+      (`getPostsByHashtag`), highlighted rendering (`RichText`). Mentions notify the mentioned user.
+- [x] **User blocking** — **shipped**: `user_blocks` (mutual unfollow on block); `getBlockedIds`
+      filters feed / discover / comments / search / suggestions; block from a post's ⋯ menu or the
+      profile panel.
+- [x] **Ranked Discover** — **shipped**: `getDiscoverRanked` scores recent posts by
+      engagement-over-time `(likes + 2·comments + 1) / (hours + 2)^1.4`; load-more falls back to
+      recency with dedupe.
+- [ ] **NSFW image moderation** — **seam shipped** (`server/services/moderationService.js` +
+      `POST /api/moderate/image`; the composer screens uploads by URL and removes flagged ones).
+      No-op until `MODERATION_PROVIDER` + its key is set — real detection needs an ML provider
+      (AWS Rekognition / Google Vision SafeSearch / Sightengine / Hive). Report → auto-hide (§11f)
+      stays the active protection until then.
+- [ ] Reposts, mention autocomplete for multi-word display names, and a signed-out feed entry.
 
 ---
 
@@ -411,14 +425,17 @@ Turns owner-only trips into **participant-based** collaboration.
 - [ ] Run `supabase/schema.sql` §13 (creates `trip_expenses` + `trip_expense_shares` + RLS).
 
 ### Follow-ons
-- [ ] **Record settlements** — a "mark as paid" that writes a settlement row so balances zero
-      out after someone actually pays (today Settle-up is advisory; deleting/adding expenses
-      is how the ledger changes).
-- [ ] **Edit an expense** in place (the shares table already stores the raw `weight` input to
-      rehydrate the form).
-- [ ] **Multi-currency** (per-expense currency + FX) — today balances assume one trip
-      currency (the first expense's), which covers the common case.
-- [ ] Per-member spend summary / category breakdown; export to the trip PDF.
+- [x] **Record settlements** — **shipped** (`feature/feed-and-trip-enhancements`, schema §13b):
+      `trip_settlements` + a "Mark paid" button on each settle-up suggestion; `computeBalances`
+      folds them in so balances zero out (with undo + a recorded-payments list).
+- [x] **Edit an expense** in place — **shipped**: pencil on each row reopens the form prefilled
+      (shares rehydrated from stored `weight`); `updateExpense` replaces the shares.
+- [x] **Multi-currency** — **shipped**: a currency picker on the form; `groupByCurrency` slices
+      the ledger so balances / settle-up / summary compute per currency (no FX needed — the
+      uniform ×100 fixed-point keeps splits exact). FX conversion between currencies is the only
+      remaining piece.
+- [x] **Category + per-member summary** — **shipped**: a Summary panel (`categoryTotals` bars +
+      `memberSpend` paid-vs-share per person). Export to the trip PDF still open.
 
 ---
 
@@ -440,9 +457,12 @@ Turns owner-only trips into **participant-based** collaboration.
 - [ ] Run `supabase/schema.sql` §14 (creates `trip_checklist_items` + RLS).
 
 ### Follow-ons
-- [ ] Assign an item to a specific member; due dates; reorder (drag).
-- [ ] Seed suggested items from the trip (e.g. "book campsite" when the plan has a campground,
-      "charge adapter" for an EV) — ties into the "Pack for this trip" signals.
+- [x] **Assignees, due dates, drag-reorder, seeded suggestions** — **shipped**
+      (`feature/feed-and-trip-enhancements`, schema §14 `assigned_to` + `due_date`): assign to a
+      member (inline picker), due dates with overdue styling, HTML5 drag-reorder (persisted
+      `position`), All/Assigned-to-me/Open filters, and a one-tap "Suggested items" row derived
+      from destination/waypoints/season (`suggestedChecklistItems`).
+- [ ] Recurring templates, per-item notes/subtasks, and reminder notifications on due dates.
 
 ---
 

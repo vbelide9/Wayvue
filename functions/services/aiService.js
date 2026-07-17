@@ -1,3 +1,62 @@
+// ---------------------------------------------------------------------------
+// Utilities — deterministic copy, null-safe coercion, robust time parsing.
+// These fix three real issues without touching any scoring threshold, insight
+// priority, or the output shape:
+//   1. Copy is seeded on the trip, so the same trip renders identical wording
+//      every call — cacheable, testable, and no reshuffle on re-fetch.
+//   2. Missing temps no longer render "undefined° - undefined°".
+//   3. "7:30 PM" parses as hour 19, not hour 7 (was mislabeled a morning run).
+// ---------------------------------------------------------------------------
+
+/** FNV-1a. Stable across processes, unlike Math.random(). */
+function hashString(str) {
+    let h = 0x811c9dc5;
+    const s = String(str);
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+}
+
+/** Seeded PRNG so the same trip always picks the same copy variant. */
+function makePicker(seed) {
+    let s = seed >>> 0;
+    return function pick(arr) {
+        if (!arr || arr.length === 0) return null;
+        s = (s + 0x6d2b79f5) >>> 0;
+        let t = s;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        const r = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        return arr[Math.floor(r * arr.length)];
+    };
+}
+
+/** Coerce to a finite number or null. No NaN/undefined leaks to the UI. */
+function num(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Normalize a departure time to a 0-23 hour. Handles "19:30", "7:30 PM",
+ * "07:05", "7 PM". Returns null if unparseable rather than silently calling
+ * 7:30 PM a morning commute.
+ */
+function parseHour24(timeStr) {
+    if (typeof timeStr !== 'string') return null;
+    const m = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])?/);
+    if (!m) return null;
+    let hour = parseInt(m[1], 10);
+    if (!Number.isFinite(hour)) return null;
+    const meridiem = m[3] ? m[3].toLowerCase() : null;
+    if (meridiem === 'pm' && hour < 12) hour += 12;
+    if (meridiem === 'am' && hour === 12) hour = 0;
+    return hour >= 0 && hour <= 23 ? hour : null;
+}
+
 /**
  * Generates a concise, premium Wayvue AI Analysis.
  * Persona: Wayvue Trip Intelligence Assistant.
@@ -7,7 +66,10 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     const {
         fuelCost, evCost, minTemp, maxTemp,
         trafficDelay, maxWind, precipChance, recommendations,
-        departureDate, departureTime
+        departureDate, departureTime,
+        tollCost, tollDisplay, tollEstimated,
+        incidents, incidentCounts,
+        durationMinutes, distanceMiles
     } = context;
 
     const cleanCity = (c) => c.split(',')[0].trim();
@@ -23,12 +85,14 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
     // 2. Fuel
     const fuel = {
         gas: fuelCost || "N/A",
-        ev: evCost || null
+        ev: evCost || null,
+        toll: (tollCost && tollCost > 0) ? tollDisplay : null,
+        tollEstimated: !!tollEstimated
     };
 
     // 3. Weather
     const weather = {
-        tempRange: `${minTemp}° - ${maxTemp}°`,
+        tempRange: (num(minTemp) !== null && num(maxTemp) !== null) ? `${minTemp}° - ${maxTemp}°` : null,
         wind: maxWind > 15 ? `${maxWind} mph` : null,
         precipChance: precipChance > 0 ? `${precipChance}%` : null,
         condition: precipChance > 50 ? "Rain/Snow" : "Clear"
@@ -49,97 +113,134 @@ function generateTripAnalysis(start, dest, weatherData, distance, duration, road
         reason: r.reason.replace(/_/g, ' ')
     }));
 
-    // 6. Natural Language Insights
-    const items = [];
+    // 6. Natural-language insights — ranked by how noteworthy/trip-specific each fact is,
+    //    then the top few are shown. Every line is data-driven so trips read differently.
+    // Seed the copy on the trip identity: same trip -> same wording every call,
+    // so re-fetches don't reshuffle the bullets and results stay cacheable/testable.
+    const pick = makePicker(hashString(
+        [start, dest, departureDate, departureTime, trafficDelay, precipChance].join('|')
+    ));
+    const candidates = []; // { p: priority, text }
 
-    // Timing advice
-    const datePart = departureDate ? `on ${departureDate}` : "today";
-    const timePart = departureTime ? `at ${departureTime}` : "";
-    const timingPrefix = `Departing ${datePart} ${timePart}: `;
+    // Use the real numeric duration/distance from context — never parse the display
+    // strings ("28 min" would be read as 28 *hours*, breaking short trips).
+    const distNum = Math.round(distanceMiles != null ? distanceMiles : (parseFloat(String(distance)) || 0));
+    const durHrs = (durationMinutes != null ? durationMinutes : 0) / 60;
+    const c = incidentCounts || {};
 
-    // Display delay with a tiny bit of jitter for "human" feel if it's very static
-    const displayDelay = trafficDelay > 0 ? (trafficDelay + (Math.random() > 0.5 ? 1 : -1) * (trafficDelay % 3)) : 0;
-    const finalDelay = Math.max(0, displayDelay);
+    // A) Critical — closures / accidents on the route
+    if (c.closure > 0) {
+        candidates.push({ p: 100, text: pick([
+            `Heads up: ${c.closure} road closure${c.closure > 1 ? 's' : ''} reported on your route. Check the map for reroutes before you leave.`,
+            `${c.closure} closure${c.closure > 1 ? 's' : ''} flagged along the way. Build in a little buffer just in case.`
+        ]) });
+    }
+    if (c.accident > 0) {
+        candidates.push({ p: 92, text: pick([
+            `${c.accident} accident${c.accident > 1 ? 's' : ''} currently reported on your path. Ease off and leave extra following distance.`,
+            `Live traffic shows ${c.accident} accident${c.accident > 1 ? 's' : ''} ahead. Stay sharp through those stretches.`
+        ]) });
+    }
 
+    // B) Snow / ice on a road segment
+    const snowSeg = roadConditions.find(r => r.description && r.description.includes('Snow'));
+    if (snowSeg) {
+        candidates.push({ p: 96, text: `Winter conditions near ${cleanCity(snowSeg.segment)}: snow or ice on the road, so keep the speed down.` });
+    }
+
+    // C) Traffic
     if (trafficDelay > 45) {
-        const heavyMessages = [
-            `${timingPrefix}Expect significant heavy volume. Adjusting your departure by 30 minutes could evade the peak.`,
-            `${timingPrefix}Substantial congestion detected. The route is currently under heavy load—patience is key.`,
-            `${timingPrefix}Heavy traffic alert. Your arrival window is shifting due to dense volumes ahead.`
-        ];
-        items.push(heavyMessages[Math.floor(Math.random() * heavyMessages.length)]);
-    } else if (trafficDelay > 20) {
-        const moderateMessages = [
-            `${timingPrefix}Moderate traffic ahead. You're roughly ${finalDelay} minutes behind the optimal pace.`,
-            `${timingPrefix}Flow is slightly throttled. You're seeing a ${finalDelay}-minute variance from clear conditions.`,
-            `${timingPrefix}Expect some periodic braking. Current conditions add about ${finalDelay} minutes to the sprint.`
-        ];
-        items.push(moderateMessages[Math.floor(Math.random() * moderateMessages.length)]);
-    } else if (trafficDelay > 5) {
-        const minorMessages = [
-            `${timingPrefix}Minor fluctuations in flow, but your arrival window remains stable.`,
-            `${timingPrefix}Light activity detected. The route is mostly clear with negligible resistance.`,
-            `${timingPrefix}A few busy stretches, but nothing that significantly impacts your rhythm.`
-        ];
-        items.push(minorMessages[Math.floor(Math.random() * minorMessages.length)]);
-    } else {
-        const clearMessages = [
-            `${timingPrefix}Pristine road conditions ahead—perfect for an efficient cruise.`,
-            `${timingPrefix}Zero congestion detected. You’re on track for a remarkably smooth arrival.`,
-            `${timingPrefix}Green corridors all the way! Great timing to stay ahead of schedule.`,
-            `${timingPrefix}The road is entirely yours. Optimal flow reported across all segments.`
-        ];
-        items.push(clearMessages[Math.floor(Math.random() * clearMessages.length)]);
+        candidates.push({ p: 80, text: pick([
+            `Traffic's heavy right now: about ${trafficDelay} extra minutes. Shifting your start by 30 could dodge the worst of it.`,
+            `Dense volume ahead is adding roughly ${trafficDelay} min. A slightly later departure pays off.`
+        ]) });
+    } else if (trafficDelay > 15) {
+        candidates.push({ p: 55, text: pick([
+            `Moderate traffic: around ${trafficDelay} min slower than a clear run.`,
+            `Some stop-and-go expected; figure ~${trafficDelay} min of added time.`
+        ]) });
     }
 
-    // Time of day awareness
-    if (departureTime) {
-        const hour = parseInt(departureTime.split(':')[0]);
-        if (hour >= 20 || hour <= 5) {
-            items.push("Night driving ahead—ensure your lighting is optimal and watch for reduced visibility.");
-        } else if (hour >= 6 && hour <= 9) {
-            items.push("Morning departure: Watch for commuter traffic peaks as you bypass major hubs.");
-        }
+    // D) Tolls (real number)
+    if (tollCost && tollCost >= 3) {
+        const estNote = tollEstimated ? ' (est.)' : '';
+        candidates.push({ p: 70, text: pick([
+            `Budget about ${tollDisplay}${estNote} for tolls. A transponder keeps you moving through the booths.`,
+            `Tolls run roughly ${tollDisplay}${estNote} on this route. Keep a card within reach.`
+        ]) });
     }
 
-    // Weather/Comfort trends
-    if (precipChance > 60) {
-        items.push("High confidence of rain/snow—ensure your wipers are ready for the stretch ahead.");
-    } else if (precipChance > 30) {
-        items.push("Variable precipitation expected; keep a safe following distance as roads dampen.");
-    }
-
-    if (maxWind > 30) {
-        items.push("Strong gusts ahead—hold a steady line, especially when exiting tunnels or bridges.");
-    } else if (maxWind > 15) {
-        items.push("Noticeable wind activity detected; stay alert for minor steering adjustments.");
-    }
-
-    // Gas Price Analysis
+    // E) Gas — cheapest stop + how much you save vs the priciest
     const gasPrices = weatherData.filter(w => w.gasPrice).map(w => ({ price: parseFloat(w.gasPrice), loc: w.location }));
     if (gasPrices.length > 0) {
         gasPrices.sort((a, b) => a.price - b.price);
-        const bestGas = gasPrices[0];
-        items.push(`Fuel Tip: Lowest gas estimated at $${bestGas.price} near ${bestGas.loc}.`);
+        const cheapest = gasPrices[0];
+        const priciest = gasPrices[gasPrices.length - 1];
+        const spread = priciest.price - cheapest.price;
+        if (spread >= 0.15) {
+            candidates.push({ p: 66, text: `Fuel's cheapest near ${cheapest.loc} at $${cheapest.price.toFixed(2)}/gal: about $${spread.toFixed(2)}/gal less than the priciest stretch. Worth timing your fill-up there.` });
+        } else {
+            candidates.push({ p: 52, text: `Gas is averaging about $${cheapest.price.toFixed(2)}/gal along your route this week (live regional average).` });
+        }
     }
 
-    // Practical/Fatigue
-    const hours = parseInt(duration);
-    if (hours >= 4) {
-        items.push("This is a long haul—aim for a 15-minute stretch break every two hours to stay sharp.");
+    // F) Weather — precip, wind, temperature swing
+    if (precipChance > 60) {
+        candidates.push({ p: 68, text: pick([
+            `High chance of rain or snow (${precipChance}%). Wipers ready and give yourself extra room.`,
+            `Wet weather likely (${precipChance}%); expect slick patches along the way.`
+        ]) });
+    } else if (precipChance > 30) {
+        candidates.push({ p: 46, text: `Passing showers possible (${precipChance}%). Nothing dramatic, just keep it steady.` });
+    }
+    if (maxWind > 30) {
+        candidates.push({ p: 62, text: `Gusts up to ${maxWind} mph. Hold a firm line on bridges and open stretches.` });
+    }
+    const loT = num(minTemp), hiT = num(maxTemp);
+    if (loT !== null && hiT !== null && hiT - loT >= 20) {
+        candidates.push({ p: 44, text: `Temps swing from ${loT}° to ${hiT}° across the drive. Layers are your friend.` });
     }
 
-    // Fun Moment
+    // G) Time of day
+    const insightHour = parseHour24(departureTime);
+    if (insightHour !== null) {
+        if (insightHour >= 20 || insightHour <= 5) {
+            candidates.push({ p: 48, text: `Night drive: keep your lights clean and watch for wildlife on the rural stretches.` });
+        } else if (insightHour >= 6 && insightHour <= 9) {
+            candidates.push({ p: 42, text: `Morning start: you'll brush against commuter traffic near the bigger cities.` });
+        }
+    }
+
+    // H) Long-haul fatigue (framed with the real distance/time)
+    if (durHrs >= 6) {
+        candidates.push({ p: 50, text: `This is a ${distNum}-mile haul (~${durHrs} hrs). Plan a couple of real breaks to stay fresh.` });
+    } else if (durHrs >= 4) {
+        candidates.push({ p: 40, text: `A solid ${distNum}-mile run. A 15-minute stretch every couple of hours keeps you sharp.` });
+    }
+
+    // I) Positive filler (only surfaces if the route is genuinely quiet)
+    candidates.push({ p: 8, text: pick([
+        `Clean conditions across the board. This one's set up for an easy cruise.`,
+        `Nothing major flagged on the route. Good day to just enjoy the drive.`,
+        `Green corridors most of the way. Smooth sailing ahead.`
+    ]) });
+
+    // Rank and keep the most noteworthy handful
+    candidates.sort((a, b) => b.p - a.p);
+    const items = candidates.slice(0, 4).map(x => x.text);
+
+    // Fun Moment — varied, occasionally route-specific
     const funMoments = [
-        `Headed to ${cleanCity(dest)}? Great choice. The drive is half the fun.`,
-        "Windows down, volume up—this stretch is made for a solid road-trip playlist.",
-        "Keep an eye out for local diners along this route; they usually have the best coffee.",
-        "Road trips are about the detours. If a scenic overlook catches your eye, take it."
+        `Headed to ${cleanCity(dest)}? Half the fun is the getting-there.`,
+        `${distNum} miles of open road. Cue the playlist.`,
+        `Keep an eye out for a local diner along this stretch; the coffee's usually worth the stop.`,
+        `If a scenic overlook catches your eye out there, take the exit. That's what road trips are for.`,
+        `Somewhere between ${cleanCity(start)} and ${cleanCity(dest)} is a roadside gem you haven't found yet.`
     ];
-    const funMoment = funMoments[Math.floor(Math.random() * funMoments.length)];
+    const funMoment = pick(funMoments);
 
     // Determine Tone
-    const tone = trafficDelay > 30 || precipChance > 60 ? "caution" : "positive";
+    const tone = (c.closure > 0 || c.accident > 0 || snowSeg || trafficDelay > 30 || precipChance > 60) ? "caution" : "positive";
 
     return {
         structured: {
@@ -164,7 +265,7 @@ function calculateTripScore(context) {
     let score = 100;
     const deductions = [];
 
-    const { precipChance, maxWind, trafficDelay, roadConditions, minTemp } = context;
+    const { precipChance, maxWind, trafficDelay, roadConditions, minTemp, maxTemp, departureTime, durationMinutes, incidentCounts } = context;
 
     // 1. Precip Penalty
     if (precipChance > 70) {
@@ -205,10 +306,63 @@ function calculateTripScore(context) {
         deductions.push({ type: 'Poor Road Conditions', val: -25 });
     }
 
-    // 5. Extreme Temp Penalty
-    if (minTemp < 10) { // < 10F is very cold
+    // 5. Extreme Temperature Penalty (cold or heat)
+    if (minTemp < 10) { // < 10°F — dangerous cold / ice risk
         score -= 10;
         deductions.push({ type: 'Extreme Cold', val: -10 });
+    }
+    if (maxTemp > 100) { // > 100°F — heat stress / overheating risk (e.g. deep-south summer)
+        score -= 10;
+        deductions.push({ type: 'Extreme Heat', val: -10 });
+    } else if (maxTemp > 95) {
+        score -= 5;
+        deductions.push({ type: 'High Heat', val: -5 });
+    }
+
+    // 6. Long-Haul Fatigue Penalty (driving hours — the biggest factor on long trips)
+    const durH = (durationMinutes || 0) / 60;
+    if (durH >= 12) {
+        score -= 15;
+        deductions.push({ type: 'Long-Haul Fatigue Risk', val: -15 });
+    } else if (durH >= 8) {
+        score -= 8;
+        deductions.push({ type: 'Extended Drive Time', val: -8 });
+    } else if (durH >= 5) {
+        score -= 3;
+        deductions.push({ type: 'Long Drive', val: -3 });
+    }
+
+    // 7. Night Driving Penalty (reduced visibility, fatigue)
+    const depHour = parseHour24(departureTime);
+    if (depHour !== null && (depHour >= 22 || depHour <= 4)) {
+        score -= 5;
+        deductions.push({ type: 'Night Driving', val: -5 });
+    }
+
+    // 8. Traffic Incident Penalty — every reported incident type counts (closures,
+    //    accidents, jams, construction, hazards), weighted by severity and SCALED by how
+    //    many there are, so a corridor with many alerts genuinely lowers confidence
+    //    instead of scoring the same as a single one. The combined hit is capped so one
+    //    busy stretch can't zero an otherwise-fine trip.
+    if (incidentCounts) {
+        const closures = incidentCounts.closure || 0;
+        const accidents = incidentCounts.accident || 0;
+        const jams = incidentCounts.jam || 0;
+        const construction = incidentCounts.construction || 0;
+        const hazards = incidentCounts.hazard || 0;
+
+        const raw = closures * 12 + accidents * 8 + jams * 3 + construction * 2 + hazards * 3;
+        if (raw > 0) {
+            const penalty = Math.min(raw, 40); // cap combined incident impact
+            score -= penalty;
+            const parts = [];
+            if (closures) parts.push(`${closures} closure${closures > 1 ? 's' : ''}`);
+            if (accidents) parts.push(`${accidents} accident${accidents > 1 ? 's' : ''}`);
+            if (jams) parts.push(`${jams} jam${jams > 1 ? 's' : ''}`);
+            if (construction) parts.push(`${construction} construction`);
+            if (hazards) parts.push(`${hazards} hazard${hazards > 1 ? 's' : ''}`);
+            deductions.push({ type: `Traffic incidents (${parts.join(', ')})`, val: -penalty });
+        }
     }
 
     // Clamp score
@@ -223,4 +377,9 @@ function calculateTripScore(context) {
     return { score, label, deductions };
 }
 
-module.exports = { generateTripAnalysis, calculateTripScore };
+module.exports = {
+    generateTripAnalysis,
+    calculateTripScore,
+    // exported for unit tests
+    _internals: { hashString, makePicker, num, parseHour24 },
+};

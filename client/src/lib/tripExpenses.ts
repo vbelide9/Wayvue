@@ -50,6 +50,18 @@ export interface Settlement {
     amount: number; // cents
 }
 
+/** A recorded (actually-paid) settlement. */
+export interface TripSettlement {
+    id: string;
+    trip_id: string;
+    from_user: string;
+    to_user: string;
+    amount_cents: number;
+    currency: string;
+    created_by: string;
+    created_at: string;
+}
+
 // ── Split math ────────────────────────────────────────────────────────────────
 // Distribute `total` cents across the given integer/float weights using the
 // largest-remainder method, so the parts always sum back to `total` exactly (any leftover
@@ -84,14 +96,62 @@ export function computeShares(splitType: SplitType, totalCents: number, inputs: 
 }
 
 // ── Balances & debt simplification ─────────────────────────────────────────────
-/** Net position per member: everything they paid minus everything they owe. */
-export function computeBalances(expenses: TripExpense[], memberIds: string[]): Balance[] {
+/** Net position per member: everything they paid minus everything they owe, folding in any
+ *  recorded settlements (a payer's net rises, a receiver's net falls). Operates on a single
+ *  currency slice — group with `groupByCurrency` first for multi-currency trips. */
+export function computeBalances(expenses: TripExpense[], memberIds: string[], settlements: TripSettlement[] = []): Balance[] {
     const net = new Map<string, number>(memberIds.map(id => [id, 0]));
     for (const e of expenses) {
         net.set(e.paid_by, (net.get(e.paid_by) ?? 0) + e.amount_cents);
         for (const s of e.shares) net.set(s.user_id, (net.get(s.user_id) ?? 0) - s.amount_cents);
     }
-    return [...net.entries()].map(([userId, n]) => ({ userId, net: n }));
+    for (const s of settlements) {
+        net.set(s.from_user, (net.get(s.from_user) ?? 0) + s.amount_cents);
+        net.set(s.to_user, (net.get(s.to_user) ?? 0) - s.amount_cents);
+    }
+    // Only surface members who actually appear in this currency's activity.
+    const active = new Set<string>();
+    expenses.forEach(e => { active.add(e.paid_by); e.shares.forEach(s => active.add(s.user_id)); });
+    settlements.forEach(s => { active.add(s.from_user); active.add(s.to_user); });
+    return [...net.entries()].filter(([id]) => active.has(id)).map(([userId, n]) => ({ userId, net: n }));
+}
+
+/** Split expenses + settlements into per-currency slices (most trips have exactly one). */
+export interface CurrencySlice {
+    currency: string;
+    expenses: TripExpense[];
+    settlements: TripSettlement[];
+    total: number;
+}
+export function groupByCurrency(expenses: TripExpense[], settlements: TripSettlement[]): CurrencySlice[] {
+    const map = new Map<string, CurrencySlice>();
+    const slice = (cur: string) => {
+        let s = map.get(cur);
+        if (!s) { s = { currency: cur, expenses: [], settlements: [], total: 0 }; map.set(cur, s); }
+        return s;
+    };
+    for (const e of expenses) { const s = slice(e.currency || 'USD'); s.expenses.push(e); s.total += e.amount_cents; }
+    for (const st of settlements) slice(st.currency || 'USD').settlements.push(st);
+    return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
+/** Spend totals grouped by category (for the summary). */
+export function categoryTotals(expenses: TripExpense[]): { category: string; cents: number }[] {
+    const m = new Map<string, number>();
+    for (const e of expenses) m.set(e.category || 'other', (m.get(e.category || 'other') ?? 0) + e.amount_cents);
+    return [...m.entries()].map(([category, cents]) => ({ category, cents })).sort((a, b) => b.cents - a.cents);
+}
+
+/** Per-member paid vs. share-of-costs (for the summary). */
+export function memberSpend(expenses: TripExpense[], memberIds: string[]): { userId: string; paid: number; share: number }[] {
+    const paid = new Map<string, number>(memberIds.map(id => [id, 0]));
+    const share = new Map<string, number>(memberIds.map(id => [id, 0]));
+    for (const e of expenses) {
+        paid.set(e.paid_by, (paid.get(e.paid_by) ?? 0) + e.amount_cents);
+        for (const s of e.shares) share.set(s.user_id, (share.get(s.user_id) ?? 0) + s.amount_cents);
+    }
+    return memberIds.map(id => ({ userId: id, paid: paid.get(id) ?? 0, share: share.get(id) ?? 0 }))
+        .filter(r => r.paid > 0 || r.share > 0);
 }
 
 /** Minimize the number of transactions that settle everyone up (greedy min-cash-flow):
@@ -165,12 +225,70 @@ export async function addExpense(tripId: string, e: NewExpense): Promise<TripExp
     return { ...(expense as TripExpense), shares: (shares || []) as ExpenseShare[] };
 }
 
+/** Edit an expense in place: update the parent row and replace its shares. */
+export async function updateExpense(id: string, tripId: string, e: NewExpense): Promise<TripExpense | null> {
+    if (!supabase) return null;
+    const { data: expense, error } = await supabase
+        .from('trip_expenses')
+        .update({
+            paid_by: e.paidBy, description: e.description, amount_cents: e.amountCents,
+            currency: e.currency || 'USD', category: e.category ?? null, split_type: e.splitType,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    // Replace shares wholesale (simpler + correct than diffing).
+    await supabase.from('trip_expense_shares').delete().eq('expense_id', id);
+    const rows = e.shares.map(s => ({ expense_id: id, trip_id: tripId, user_id: s.userId, amount_cents: s.amountCents, weight: s.weight }));
+    const { data: shares, error: sErr } = await supabase.from('trip_expense_shares').insert(rows).select();
+    if (sErr) throw sErr;
+    return { ...(expense as TripExpense), shares: (shares || []) as ExpenseShare[] };
+}
+
 export async function removeExpense(id: string): Promise<void> {
     if (!supabase) return;
     // Shares cascade-delete with the parent (FK on delete cascade).
     const { error } = await supabase.from('trip_expenses').delete().eq('id', id);
     if (error) throw error;
 }
+
+// ── Settlements ──────────────────────────────────────────────────────────────────
+export async function listSettlements(tripId: string): Promise<TripSettlement[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase
+        .from('trip_settlements')
+        .select('*')
+        .eq('trip_id', tripId)
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []) as TripSettlement[];
+}
+
+export async function addSettlement(tripId: string, s: { fromUser: string; toUser: string; amountCents: number; currency: string }): Promise<TripSettlement | null> {
+    if (!supabase) return null;
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (!uid) throw new Error('Sign in to record a payment.');
+    const { data, error } = await supabase
+        .from('trip_settlements')
+        .insert({ trip_id: tripId, from_user: s.fromUser, to_user: s.toUser, amount_cents: s.amountCents, currency: s.currency, created_by: uid })
+        .select()
+        .single();
+    if (error) throw error;
+    return data as TripSettlement;
+}
+
+export async function removeSettlement(id: string): Promise<void> {
+    if (!supabase) return;
+    const { error } = await supabase.from('trip_settlements').delete().eq('id', id);
+    if (error) throw error;
+}
+
+/** Common currencies for the picker. Value is the ISO 4217 code passed to Intl. Amounts are
+ *  stored as a uniform ×100 fixed-point integer regardless of currency, so splits sum exactly
+ *  and Intl handles each currency's symbol/decimals at display time. */
+export const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN'] as const;
 
 // ── Formatting ──────────────────────────────────────────────────────────────────
 export function formatMoney(cents: number, currency = 'USD'): string {

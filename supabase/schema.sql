@@ -760,6 +760,35 @@ drop policy if exists trip_expense_shares_delete_member on public.trip_expense_s
 create policy trip_expense_shares_delete_member on public.trip_expense_shares
   for delete to authenticated using (public.is_trip_member(trip_id));
 
+-- 13b. Recorded settlements — a "mark as paid" cash transfer between two members. Balances
+--      fold these in (payer's net rises, receiver's net falls) so a settled debt zeroes out.
+--      Same participant RLS as expenses.
+create table if not exists public.trip_settlements (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  from_user    uuid not null references auth.users(id) on delete cascade,   -- who paid
+  to_user      uuid not null references auth.users(id) on delete cascade,   -- who received
+  amount_cents integer not null check (amount_cents > 0),
+  currency     text not null default 'USD',
+  created_by   uuid not null references auth.users(id) on delete cascade,
+  created_at   timestamptz not null default now()
+);
+create index if not exists trip_settlements_trip_idx on public.trip_settlements (trip_id, created_at);
+
+alter table public.trip_settlements enable row level security;
+
+drop policy if exists trip_settlements_select_member on public.trip_settlements;
+create policy trip_settlements_select_member on public.trip_settlements
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_settlements_insert_member on public.trip_settlements;
+create policy trip_settlements_insert_member on public.trip_settlements
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = created_by);
+
+drop policy if exists trip_settlements_delete_member on public.trip_settlements;
+create policy trip_settlements_delete_member on public.trip_settlements
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 14. Trip checklist — a shared to-do list per trip (pack the tent, book the campsite, …).
 --     Any member can add items and check them off; `completed_by` / `completed_at` record
@@ -773,10 +802,15 @@ create table if not exists public.trip_checklist_items (
   done          boolean not null default false,
   completed_by  uuid references auth.users(id) on delete set null,
   completed_at  timestamptz,
+  assigned_to   uuid references auth.users(id) on delete set null,   -- optional owner
+  due_date      date,                                                -- optional deadline
   position      integer not null default 0,
   created_at    timestamptz not null default now()
 );
 create index if not exists trip_checklist_trip_idx on public.trip_checklist_items (trip_id, position);
+-- Existing deployments (§14 already run): add the assignee + due-date columns.
+alter table public.trip_checklist_items add column if not exists assigned_to uuid references auth.users(id) on delete set null;
+alter table public.trip_checklist_items add column if not exists due_date date;
 
 alter table public.trip_checklist_items enable row level security;
 
@@ -798,11 +832,92 @@ create policy trip_checklist_delete_member on public.trip_checklist_items
   for delete to authenticated using (public.is_trip_member(trip_id));
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 15. Social feed extras — notifications, user blocking, @mentions, #hashtags. Layers on
+--     top of section 11 (posts / follows / likes / comments). Notifications are written by
+--     the ACTOR (the person who liked / commented / followed / mentioned), targeted at the
+--     recipient; the recipient reads + marks them read. Mentions & hashtags are extracted
+--     from a post at create time into join tables (hashtags queryable, mentions notifiable).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 15a. Notifications. actor did <type> to recipient (optionally about a post / comment).
+create table if not exists public.notifications (
+  id           uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  actor_id     uuid not null references auth.users(id) on delete cascade,
+  type         text not null check (type in ('like','comment','follow','mention')),
+  post_id      uuid references public.posts(id) on delete cascade,
+  comment_id   uuid references public.post_comments(id) on delete cascade,
+  read         boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+create index if not exists notifications_recipient_idx on public.notifications (recipient_id, created_at desc);
+alter table public.notifications enable row level security;
+
+-- Recipient reads + marks their own read; the actor inserts a row attributed to themselves.
+drop policy if exists notifications_select_own on public.notifications;
+create policy notifications_select_own on public.notifications
+  for select to authenticated using (auth.uid() = recipient_id);
+drop policy if exists notifications_insert_actor on public.notifications;
+create policy notifications_insert_actor on public.notifications
+  for insert to authenticated with check (auth.uid() = actor_id and actor_id <> recipient_id);
+drop policy if exists notifications_update_own on public.notifications;
+create policy notifications_update_own on public.notifications
+  for update to authenticated using (auth.uid() = recipient_id) with check (auth.uid() = recipient_id);
+drop policy if exists notifications_delete_own on public.notifications;
+create policy notifications_delete_own on public.notifications
+  for delete to authenticated using (auth.uid() = recipient_id);
+
+-- 15b. Blocking. Either party may read a block row involving them; only the blocker writes.
+create table if not exists public.user_blocks (
+  blocker_id uuid not null references auth.users(id) on delete cascade,
+  blocked_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+create index if not exists user_blocks_blocked_idx on public.user_blocks (blocked_id);
+alter table public.user_blocks enable row level security;
+
+drop policy if exists user_blocks_select on public.user_blocks;
+create policy user_blocks_select on public.user_blocks
+  for select to authenticated using (auth.uid() = blocker_id or auth.uid() = blocked_id);
+drop policy if exists user_blocks_write on public.user_blocks;
+create policy user_blocks_write on public.user_blocks
+  for all to authenticated using (auth.uid() = blocker_id) with check (auth.uid() = blocker_id);
+
+-- 15c. Mentions + hashtags extracted from a post at create time.
+create table if not exists public.post_mentions (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,   -- mentioned user
+  primary key (post_id, user_id)
+);
+create table if not exists public.post_hashtags (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  tag     text not null,   -- lowercased, no leading '#'
+  primary key (post_id, tag)
+);
+create index if not exists post_hashtags_tag_idx on public.post_hashtags (tag, post_id);
+alter table public.post_mentions enable row level security;
+alter table public.post_hashtags enable row level security;
+
+-- Public read (they follow post visibility); the post's author writes.
+drop policy if exists post_mentions_select on public.post_mentions;
+create policy post_mentions_select on public.post_mentions for select using (true);
+drop policy if exists post_mentions_write on public.post_mentions;
+create policy post_mentions_write on public.post_mentions
+  for all to authenticated using (public.is_post_author(post_id)) with check (public.is_post_author(post_id));
+
+drop policy if exists post_hashtags_select on public.post_hashtags;
+create policy post_hashtags_select on public.post_hashtags for select using (true);
+drop policy if exists post_hashtags_write on public.post_hashtags;
+create policy post_hashtags_write on public.post_hashtags
+  for all to authenticated using (public.is_post_author(post_id)) with check (public.is_post_author(post_id));
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Follow-ons (not in this migration, tracked in FUTURE_IMPLEMENTATION.md):
 --   • Email invites (needs an email provider) + Realtime live sync.
 --   • Spotify: export/sync to a real Spotify playlist (owner OAuth); AI "fill to trip length".
---   • Social feed: notifications center, algorithmic ranking, hashtags/mentions,
---     image moderation, user blocking, reposts.
+--   • Social feed: image moderation (NSFW ML), reposts, algorithmic ranking tuning.
 --   • rateable hotels/rentals once live pricing yields stable property IDs.
 --   • periodic refresh/TTL for route_recommendations (places change over time).
 -- ─────────────────────────────────────────────────────────────────────────────

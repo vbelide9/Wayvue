@@ -2,10 +2,11 @@
 // and their posts. Portaled to <body> so it isn't clipped.
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UserPlus, UserCheck, Loader2, Lock } from 'lucide-react';
+import { X, UserPlus, UserCheck, Loader2, Lock, UserX, UserCheck2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import {
     getUserPosts, getFollowCounts, getFollowingSet, getUserPrivacy, follow, unfollow,
+    getBlockedIds, blockUser, unblockUser,
     type FeedPost, type PostAuthor,
 } from '@/lib/feed';
 import { PostCard, Avatar } from './PostCard';
@@ -20,23 +21,35 @@ export function UserProfilePanel({ author, onClose, onOpenProfile }: { author: P
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const [followList, setFollowList] = useState<'followers' | 'following' | null>(null);
+    const [blocked, setBlocked] = useState(false);
     const isMe = author.userId === user?.id;
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
             setLoading(true);
-            const [p, c, set, priv] = await Promise.all([
+            const [p, c, set, priv, blk] = await Promise.all([
                 getUserPosts(author.userId),
                 getFollowCounts(author.userId),
                 user ? getFollowingSet() : Promise.resolve(new Set<string>()),
                 getUserPrivacy(author.userId),
+                user ? getBlockedIds() : Promise.resolve(new Set<string>()),
             ]);
             if (cancelled) return;
-            setPosts(p); setCounts(c); setFollowing(set.has(author.userId)); setIsPrivate(priv); setLoading(false);
+            setPosts(p); setCounts(c); setFollowing(set.has(author.userId)); setIsPrivate(priv); setBlocked(blk.has(author.userId)); setLoading(false);
         })();
         return () => { cancelled = true; };
     }, [author.userId, user]);
+
+    const toggleBlock = async () => {
+        if (!user || busy) return;
+        const next = !blocked;
+        setBusy(true);
+        try {
+            if (next) { await blockUser(author.userId); setBlocked(true); setFollowing(false); setPosts([]); }
+            else { await unblockUser(author.userId); setBlocked(false); }
+        } catch { /* ignore */ } finally { setBusy(false); }
+    };
 
     // A private account you don't follow hides its posts (RLS returns none).
     const locked = isPrivate && !following && !isMe;
@@ -67,13 +80,25 @@ export function UserProfilePanel({ author, onClose, onOpenProfile }: { author: P
                     <div className="flex items-end justify-between">
                         <Avatar author={author} size={72} />
                         {!isMe && user && (
-                            <button
-                                onClick={toggleFollow}
-                                disabled={busy}
-                                className={`flex items-center gap-1.5 h-9 px-4 rounded-full text-sm font-bold transition-colors ${following ? 'bg-secondary text-foreground border border-border' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
-                            >
-                                {following ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Follow</>}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {!blocked && (
+                                    <button
+                                        onClick={toggleFollow}
+                                        disabled={busy}
+                                        className={`flex items-center gap-1.5 h-9 px-4 rounded-full text-sm font-bold transition-colors ${following ? 'bg-secondary text-foreground border border-border' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                                    >
+                                        {following ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Follow</>}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={toggleBlock}
+                                    disabled={busy}
+                                    title={blocked ? 'Unblock' : 'Block'}
+                                    className={`flex items-center gap-1.5 h-9 px-3 rounded-full text-sm font-bold border transition-colors ${blocked ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary text-muted-foreground border-border hover:text-red-500'}`}
+                                >
+                                    {blocked ? <><UserCheck2 className="w-4 h-4" /> Unblock</> : <UserX className="w-4 h-4" />}
+                                </button>
+                            </div>
                         )}
                     </div>
                     <h2 className="flex items-center gap-1.5 text-xl font-black text-foreground tracking-tight mt-2">
@@ -92,6 +117,12 @@ export function UserProfilePanel({ author, onClose, onOpenProfile }: { author: P
                 <div className="px-4 pb-5 space-y-3 max-h-[55vh] overflow-y-auto">
                     {loading ? (
                         <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                    ) : blocked ? (
+                        <div className="text-center py-10 px-4">
+                            <UserX className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />
+                            <p className="text-sm font-bold text-foreground">You blocked {author.name}</p>
+                            <p className="text-xs text-muted-foreground mt-1">You won’t see their posts or comments. Unblock to see them again.</p>
+                        </div>
                     ) : locked ? (
                         <div className="text-center py-10 px-4">
                             <Lock className="w-8 h-8 mx-auto mb-3 text-muted-foreground/50" />

@@ -17,7 +17,7 @@ const RealCameraService = {
             // 511NY returns ALL cameras. In a real app we would cache this or use a geospatial query if available.
             // For this demo, we fetch and filter (inefficient but functional for a prototype)
             const url = `https://511ny.org/api/getcameras?key=${apiKey}&format=json`;
-            const response = await axios.get(url, { timeout: 3000 });
+            const response = await axios.get(url, { timeout: 5000 });
 
             const cameras = response.data;
             // Find closest camera

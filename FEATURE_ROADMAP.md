@@ -65,9 +65,11 @@ pull from, not a sprint plan.
 - [~] Road trip social feed — share trip photos, tips, favorite stops. **Built** (branch
       `feature/social-feed`): follow-based feed + Discover, a composer (text / photo /
       attach a saved trip / share a stop), likes, comments, follow/unfollow, user profiles,
-      and report → auto-hide moderation. Follow-ons: a notifications center (likes/comments/
-      new-follower), algorithmic ranking, hashtags/mentions, image moderation, blocking.
-      Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §12.
+      and report → auto-hide moderation. **Now added** (branch `feature/feed-and-trip-enhancements`):
+      a **notifications center** (likes/comments/follows/mentions), **user blocking**,
+      **@mentions** + **#hashtags** (clickable, filterable), and **ranked Discover**
+      (engagement-over-time). Remaining: **NSFW image moderation** (seam shipped, needs an ML
+      provider) and reposts. Technical detail in [FUTURE_IMPLEMENTATION.md](FUTURE_IMPLEMENTATION.md) §12.
 - [x] Ratings on recommendations — users rate hotels/restaurants Wayvue suggested; feeds
       back into recommendation quality and builds trust. **Shipped**: star ratings on stops
       & hotels, community reviews with author names/avatars, and a "Top rated" sort.
