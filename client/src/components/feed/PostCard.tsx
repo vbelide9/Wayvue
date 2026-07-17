@@ -1,13 +1,14 @@
 // A single feed post: author, body, optional photo + trip/stop chip, like toggle, an
 // expandable comment thread, and a ⋯ menu (author → Delete, others → Report).
 import { useEffect, useRef, useState } from 'react';
-import { Heart, MessageCircle, MoreHorizontal, Trash2, Flag, Loader2, MapPin, Route, Send } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Trash2, Flag, Loader2, MapPin, Route, Send, UserX } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useNotify } from '@/lib/Notifications';
 import {
-    toggleLike, getComments, addComment, deleteComment, deletePost, reportPost,
+    toggleLike, getComments, addComment, deleteComment, deletePost, reportPost, blockUser,
     type FeedPost, type PostComment, type PostAuthor,
 } from '@/lib/feed';
+import { RichText } from './RichText';
 
 function ago(iso: string): string {
     const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -32,10 +33,12 @@ export function Avatar({ author, size = 36, onClick }: { author: PostAuthor; siz
     );
 }
 
-export function PostCard({ post, onOpenProfile, onDeleted }: {
+export function PostCard({ post, onOpenProfile, onDeleted, onHashtag, onBlocked }: {
     post: FeedPost;
     onOpenProfile?: (a: PostAuthor) => void;
     onDeleted?: (id: string) => void;
+    onHashtag?: (tag: string) => void;
+    onBlocked?: (userId: string) => void;
 }) {
     const { user } = useAuth();
     const notify = useNotify();
@@ -65,7 +68,7 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
         if (!user) return;
         const next = !liked;
         setLiked(next); setLikeCount(c => c + (next ? 1 : -1));
-        try { await toggleLike(post.id, liked); }
+        try { await toggleLike(post.id, liked, post.userId); }
         catch { setLiked(!next); setLikeCount(c => c + (next ? -1 : 1)); }
     };
 
@@ -82,7 +85,7 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
         if (!text || !user) return;
         setCommentText('');
         try {
-            await addComment(post.id, text);
+            await addComment(post.id, text, post.userId);
             setComments(await getComments(post.id));
             setCommentCount(c => c + 1);
         } catch (e) { console.error(e); }
@@ -102,6 +105,12 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
     const onReport = async () => {
         setMenuOpen(false);
         try { await reportPost(post.id); notify('Thanks — this post was reported.'); } catch (e) { console.error(e); }
+    };
+
+    const onBlock = async () => {
+        setMenuOpen(false); setGone(true);
+        try { await blockUser(post.userId); onBlocked?.(post.userId); notify(`You blocked ${post.author.name}.`); }
+        catch (e) { console.error(e); setGone(false); }
     };
 
     return (
@@ -124,7 +133,10 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
                                     {isMine ? (
                                         <button onClick={onDelete} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-secondary"><Trash2 className="w-4 h-4" /> Delete</button>
                                     ) : (
-                                        <button onClick={onReport} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary"><Flag className="w-4 h-4" /> Report</button>
+                                        <>
+                                            <button onClick={onReport} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary"><Flag className="w-4 h-4" /> Report</button>
+                                            <button onClick={onBlock} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-secondary"><UserX className="w-4 h-4" /> Block {post.author.name.split(' ')[0]}</button>
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -133,7 +145,7 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
                 </div>
 
                 {/* Body */}
-                {post.body && <p className="text-sm text-foreground/90 leading-relaxed mt-3 whitespace-pre-wrap">{post.body}</p>}
+                {post.body && <p className="text-sm text-foreground/90 leading-relaxed mt-3 whitespace-pre-wrap"><RichText text={post.body} onHashtag={onHashtag} /></p>}
 
                 {/* Trip / stop chip */}
                 {(post.placeName || post.tripId) && (
@@ -173,7 +185,7 @@ export function PostCard({ post, onOpenProfile, onDeleted }: {
                                 <div className="min-w-0 flex-1">
                                     <span className="text-xs font-bold text-foreground">{c.author.name}</span>
                                     <span className="text-[10px] text-muted-foreground ml-2">{ago(c.createdAt)}</span>
-                                    <p className="text-sm text-foreground/85 leading-snug whitespace-pre-wrap">{c.body}</p>
+                                    <p className="text-sm text-foreground/85 leading-snug whitespace-pre-wrap"><RichText text={c.body} onHashtag={onHashtag} /></p>
                                 </div>
                                 {canDelete && <button onClick={() => removeComment(c.id)} className="opacity-0 group-hover/c:opacity-100 p-1 text-muted-foreground/50 hover:text-red-500 shrink-0"><Trash2 className="w-3 h-3" /></button>}
                             </div>

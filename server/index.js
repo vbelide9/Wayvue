@@ -696,6 +696,18 @@ app.get('/api/spotify/search', async (req, res) => {
   }
 });
 
+// Image moderation for community post photos. No-op (allow) unless a provider is configured.
+app.post('/api/moderate/image', async (req, res) => {
+  try {
+    const { screen } = require('./services/moderationService');
+    const result = await screen({ url: req.body && req.body.url });
+    res.json(result);
+  } catch (error) {
+    console.error('[moderation] error:', error.message);
+    res.json({ ok: true, configured: false }); // fail-open — never block posting on our error
+  }
+});
+
 app.listen(5001, () => {
   console.log(`Server running on port 5001`);
 });
