@@ -234,7 +234,7 @@ export function TripViewLayout({
             case 'expenses':
                 return <ExpensesTab />;
             case 'checklist':
-                return <ChecklistTab destination={destination} placeNames={waypoints.map(w => w.name).filter(Boolean)} depDate={depDate} />;
+                return <ChecklistTab destination={destination} placeNames={(waypoints ?? []).map(w => w.name).filter(Boolean)} depDate={depDate} />;
             case 'weather':
                 return isEnriching && weatherData.length === 0
                     ? <CardSkeleton rows={2} />
