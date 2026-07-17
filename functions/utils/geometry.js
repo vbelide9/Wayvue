@@ -68,4 +68,52 @@ const sampleRoute = (coordinates, intervalMiles = 15) => {
     return sampled;
 };
 
-module.exports = { decodePolyline, sampleRoute, getDistance };
+/**
+ * Builds a lightweight index of points along a route with their cumulative distance
+ * (miles) from the start. Downsampled to ~stepMiles spacing to keep lookups cheap.
+ * @param {Array<[number, number]>} coordinates - GeoJSON [lng, lat]
+ * @param {number} stepMiles
+ * @returns {Array<{lat:number, lon:number, cumMiles:number}>}
+ */
+const buildDistanceIndex = (coordinates, stepMiles = 1) => {
+    if (!coordinates || coordinates.length === 0) return [];
+    const index = [];
+    const [lon0, lat0] = coordinates[0];
+    index.push({ lat: lat0, lon: lon0, cumMiles: 0 });
+
+    let cum = 0;
+    let sinceLast = 0;
+    for (let i = 1; i < coordinates.length; i++) {
+        const [lon1, lat1] = coordinates[i - 1];
+        const [lon2, lat2] = coordinates[i];
+        const d = getDistance(lat1, lon1, lat2, lon2);
+        cum += d;
+        sinceLast += d;
+        if (sinceLast >= stepMiles) {
+            index.push({ lat: lat2, lon: lon2, cumMiles: cum });
+            sinceLast = 0;
+        }
+    }
+    const [lonN, latN] = coordinates[coordinates.length - 1];
+    if (index.length === 0 || index[index.length - 1].cumMiles < cum) {
+        index.push({ lat: latN, lon: lonN, cumMiles: cum });
+    }
+    return index;
+};
+
+/**
+ * Distance (miles) from the route start to the point on the route nearest to (lat, lon).
+ * Used to give each stop its true along-route mileage instead of the sample point's.
+ */
+const mileageAt = (index, lat, lon) => {
+    if (!index || index.length === 0) return 0;
+    let best = index[0];
+    let bestD = Infinity;
+    for (const p of index) {
+        const d = getDistance(lat, lon, p.lat, p.lon);
+        if (d < bestD) { bestD = d; best = p; }
+    }
+    return best.cumMiles;
+};
+
+module.exports = { decodePolyline, sampleRoute, getDistance, buildDistanceIndex, mileageAt };

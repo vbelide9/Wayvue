@@ -1,10 +1,67 @@
 const { getRouteFromOSRM } = require('./routeService');
-const { sampleRoute } = require('../utils/geometry');
+const { sampleRoute, buildDistanceIndex } = require('../utils/geometry');
 const { getWeatherForPoints, getWeather } = require('./weatherService');
 const RealCameraService = require('./realCameraService');
 const { reverseGeocode } = require('./geocodingService');
 const { getRecommendations } = require('./placesService');
+const { buildRouteKey, getCachedRecommendations, saveCachedRecommendations } = require('./recommendationCache');
 const { generateTripAnalysis, calculateTripScore } = require('./aiService');
+const { getGasPriceForLocation, calculateFuelCosts } = require('./gasPriceService');
+const { getRouteTrafficDelay } = require('./trafficService');
+const { getTollEstimate } = require('./tollService');
+const { getIncidentsAlongRoute } = require('./incidentService');
+
+/**
+ * Human-readable city from a geocoder display name, skipping a leading street-address
+ * segment. e.g. "1063 Olivia Dr, Oakdale, PA, 15071" -> "Oakdale"; "Buffalo, NY" -> "Buffalo".
+ */
+const cityFromDisplay = (displayName) => {
+    if (!displayName) return displayName;
+    const parts = displayName.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return displayName;
+    const looksLikeStreet = parts.length > 1 && (
+        /^\d/.test(parts[0]) ||
+        /\b(st|ave|dr|rd|blvd|ln|ct|way|hwy|pkwy|pike|street|avenue|drive|road|court|lane)\b/i.test(parts[0])
+    );
+    return looksLikeStreet ? parts[1] : parts[0];
+};
+
+// Full US state name -> 2-letter abbreviation, used to normalize whatever the
+// geocoder hands back ("Pennsylvania" or "PA") to a compact display abbreviation.
+const US_STATES = {
+    alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+    colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+    hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+    kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+    massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
+    montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+    'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH',
+    oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+    'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+    virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY',
+    'district of columbia': 'DC',
+};
+const US_ABBRS = new Set(Object.values(US_STATES));
+
+/**
+ * Extract a US state abbreviation from a geocoder display name.
+ * e.g. "Oakdale, PA" -> "PA"; "Buffalo, New York" -> "NY";
+ * "1063 Olivia Dr, Oakdale, PA, 15071" -> "PA". Returns null when none is found.
+ */
+const stateFromDisplay = (displayName) => {
+    if (!displayName) return null;
+    const parts = displayName.split(',').map(s => s.trim()).filter(Boolean);
+    // Scan from the end (state sits near the end, before ZIP/country).
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        const lower = p.toLowerCase();
+        if (US_STATES[lower]) return US_STATES[lower];
+        // Match a bare or embedded 2-letter abbreviation ("PA" or "PA 15071").
+        const m = p.toUpperCase().match(/\b([A-Z]{2})\b/);
+        if (m && US_ABBRS.has(m[1])) return m[1];
+    }
+    return null;
+};
 
 /**
  * Processes a single leg of a trip (e.g. Outbound or Return).
@@ -13,9 +70,13 @@ const { generateTripAnalysis, calculateTripScore } = require('./aiService');
  * @param {string} departureDate - YYYY-MM-DD
  * @param {string} departureTime - HH:MM
  * @param {boolean} isScenic - Whether to request an alternative "scenic" route
+ * @param {Array} waypoints - Ordered intermediate stops
+ * @param {Object|null} prefetchedRoute - Pre-selected { geometry, duration, distance }.
+ *   When provided (from a shared candidate set), the leg is enriched against this exact
+ *   geometry instead of making its own OSRM call — this is what keeps fastest ≤ scenic.
  * @returns {Promise<Object>} Enriched route data
  */
-const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false) => {
+const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScenic = false, waypoints = [], prefetchedRoute = null) => {
     // 1. Calculate Base Time
     let baseDepTime = Date.now();
     if (departureDate) {
@@ -26,12 +87,17 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     }
 
     // 2. Route (OSRM)
-    // Pass 'isScenic' as the 'alternatives' flag
-    const routeData = await getRouteFromOSRM(
-        startLoc.lon, startLoc.lat,
-        endLoc.lon, endLoc.lat,
-        isScenic
-    );
+    // Prefer a route pre-selected from the shared candidate set (guarantees fastest ≤ scenic).
+    // Fall back to a direct OSRM call only if none was supplied (e.g. candidate fetch failed).
+    const routeData = prefetchedRoute && prefetchedRoute.geometry
+        ? prefetchedRoute
+        : await getRouteFromOSRM(
+            startLoc.lon, startLoc.lat,
+            endLoc.lon, endLoc.lat,
+            isScenic,
+            'fastest',
+            waypoints
+        );
 
     // 3. Sample
     // 3. Sample
@@ -45,7 +111,6 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     if (intervalMiles < 10) intervalMiles = 10; // Increased min interval from 5 to 10 miles
 
     const sampledPoints = sampleRoute(fullCoordinates, intervalMiles);
-
     // 4. Enrichments
     // Pre-calc values
     const distanceVal = (routeData.distance / 1609.34).toFixed(1) + " miles";
@@ -54,7 +119,7 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     const mins = minutes % 60;
     const durationVal = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
 
-    const [weatherData, roadConditions, recommendations] = await Promise.all([
+    const [weatherData, roadConditions, recommendations, incidents] = await Promise.all([
         // A. Weather
         (async () => {
             const totalDurationSeconds = routeData.duration || 0;
@@ -102,32 +167,51 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
                 const eta = etaDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
                 let city = `Mile ${distMiles}`;
-                if (i === 0) city = startLoc.display_name.split(',')[0];
-                else if (i === weatherResults.length - 1) city = endLoc.display_name.split(',')[0];
+                let fullLocationForGas = city; // Full name with state for gas price lookup
+                if (i === 0) {
+                    city = cityFromDisplay(startLoc.display_name);
+                    fullLocationForGas = startLoc.display_name;
+                }
+                else if (i === weatherResults.length - 1) {
+                    city = cityFromDisplay(endLoc.display_name);
+                    fullLocationForGas = endLoc.display_name;
+                }
                 else {
                     // Try to get real name
                     try {
                         const realName = await reverseGeocode(w.lat, w.lng);
-                        if (realName) city = realName; // Keep full name (City, State)
+                        if (realName) {
+                            city = cityFromDisplay(realName);  // Display: just city
+                            fullLocationForGas = realName;      // Gas lookup: "City, State"
+                        }
                     } catch (e) {
                         console.warn(`Failed to geocode point ${i}: ${e.message}`);
                     }
                     console.log(`[DEBUG] Point ${i} (${w.lat}, ${w.lng}) -> ${city}`);
                 }
 
+                // Fetch real gas price for this location's state
+                let gasPrice = null;
+                try {
+                    gasPrice = await getGasPriceForLocation(fullLocationForGas);
+                } catch (e) {
+                    console.warn(`[GasPrice] Failed for ${city}: ${e.message}`);
+                }
+
                 return {
                     ...w.weather,
                     location: city,
+                    state: stateFromDisplay(fullLocationForGas),
                     lat: w.lat,
                     lng: w.lng,
                     distanceFromStart: distMiles,
                     eta: `ETA ${eta}`,
-                    gasPrice: (2.90 + Math.random() * 0.7).toFixed(2)
+                    gasPrice: gasPrice ? gasPrice.toFixed(2) : null
                 };
             });
 
             const finalResults = await Promise.all(finalResultsPromise);
-
+            console.log(`[TripProcessor] Weather data returned: ${finalResults.length} points with coords:`, finalResults.map(r => `${r.location}(${r.lat?.toFixed(3)},${r.lng?.toFixed(3)})`).join(' | '));
             return finalResults;
         })(),
 
@@ -182,25 +266,70 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
 
         // C. Places
         (async () => {
-            let samplePoints = [0.1, 0.5, 0.9];
-            if (totalDistanceMiles > 100) samplePoints = [0.1, 0.3, 0.5, 0.7, 0.9];
+            // Serve a stable, cached set per route when available — Overpass is flaky, so
+            // re-fetching live returns a different mix every time (breaks ratings, which
+            // need the same stop to reappear). Cache the first good result and reuse it.
+            const routeKey = buildRouteKey(startLoc, endLoc, isScenic, waypoints);
+            const cached = await getCachedRecommendations(routeKey);
+            if (cached) return cached;
 
-            const contextPoints = samplePoints.map(p => {
-                const idx = Math.floor(fullCoordinates.length * 0.999 * p);
-                const currentDist = (p * totalDistanceMiles).toFixed(0);
+            // Distance index over the full route — used both to place search points
+            // evenly by DISTANCE and to give each stop its true mileage from the start.
+            const distanceIndex = buildDistanceIndex(fullCoordinates);
+            const totalMiles = distanceIndex.length ? distanceIndex[distanceIndex.length - 1].cumMiles : totalDistanceMiles;
+
+            // Search points ANCHORED near the start, then spaced by a capped interval, so
+            // the early miles are always covered (a fraction-based spread put the first
+            // point at total/(n+1) — ~127mi on a 1400mi route, leaving the start empty).
+            const MAX_POINTS = 14;
+            const spacing = Math.max(50, totalMiles / MAX_POINTS); // cap the count via spacing
+            const firstAt = Math.min(30, totalMiles * 0.4);        // early coverage, even on long routes
+            const targetList = [];
+            for (let m = firstAt; m < totalMiles - 8 && targetList.length < MAX_POINTS; m += spacing) {
+                targetList.push(m);
+            }
+            if (targetList.length === 0) targetList.push(totalMiles / 2);
+
+            const contextPoints = targetList.map(targetMiles => {
+                let best = distanceIndex[0];
+                let bestD = Infinity;
+                for (const e of distanceIndex) {
+                    const dd = Math.abs(e.cumMiles - targetMiles);
+                    if (dd < bestD) { bestD = dd; best = e; }
+                }
                 return {
-                    segment: `${currentDist} mi`,
-                    location: { lat: fullCoordinates[idx][1], lon: fullCoordinates[idx][0] },
-                    miles: Number(currentDist)
+                    segment: `${Math.round(targetMiles)} mi`,
+                    location: { lat: best.lat, lon: best.lon },
+                    miles: Math.round(targetMiles),
                 };
             });
-            return getRecommendations(contextPoints);
+            const fresh = await getRecommendations(contextPoints, distanceIndex);
+            await saveCachedRecommendations(routeKey, fresh);
+            return fresh;
+        })(),
+
+        // D. Traffic Incidents (accidents, closures, construction, jams)
+        (async () => {
+            try {
+                return await getIncidentsAlongRoute(fullCoordinates);
+            } catch (e) {
+                console.warn(`[Incidents] Failed: ${e.message}`);
+                return [];
+            }
         })()
     ]);
 
     // D. AI Analysis
-    const fuelCostStr = `$${(routeData.distance / 1609.34 * 0.15).toFixed(0)}`;
-    const evCostStr = `$${(routeData.distance / 1609.34 * 0.10).toFixed(0)}`;
+    // Calculate real fuel costs using actual gas prices from the route
+    const gasPrices = weatherData.map(w => w.gasPrice).filter(p => p && !isNaN(parseFloat(p)));
+    const avgGasPrice = gasPrices.length > 0 
+        ? gasPrices.reduce((sum, p) => sum + parseFloat(p), 0) / gasPrices.length 
+        : 3.20; // National avg fallback
+    
+    const fuelCosts = calculateFuelCosts(totalDistanceMiles, avgGasPrice);
+    const fuelCostStr = fuelCosts.gas;
+    const evCostStr = fuelCosts.ev;
+
     const uniqueCities = [...new Set(weatherData.map(w => w.location).filter(l => l && !l.includes("Mile")))];
     const cityList = uniqueCities.length > 2 ? [uniqueCities[0], uniqueCities[Math.floor(uniqueCities.length / 2)], uniqueCities[uniqueCities.length - 1]] : uniqueCities;
 
@@ -208,9 +337,20 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
     const minTemp = temps.length ? Math.round((Math.min(...temps) * 9 / 5) + 32) : 0;
     const maxTemp = temps.length ? Math.round((Math.max(...temps) * 9 / 5) + 32) : 0;
 
-    const baselineSpeed = 50 + (Math.random() * 2 - 1);
-    const baseDurationMins = (routeData.distance * 0.000621371) / baselineSpeed * 60;
-    const trafficDelayMins = Math.max(0, Math.round((routeData.duration / 60) - baseDurationMins));
+    // Get REAL traffic delay from TomTom (or fallback to heuristic)
+    const trafficResult = await getRouteTrafficDelay(fullCoordinates, routeData.duration, routeData.distance);
+    const trafficDelayMins = trafficResult.delayMinutes;
+    console.log(`[TripProcessor] Traffic: ${trafficResult.isRealData ? 'TomTom' : 'Heuristic'} delay=${trafficDelayMins}min, level=${trafficResult.congestionLevel}`);
+
+    // Estimate toll costs (TollGuru if configured, else state-based heuristic)
+    // Build region hints from reverse-geocoded road segments + endpoints for state detection.
+    const tollRegionHints = [
+        startLoc.display_name,
+        ...roadConditions.map(rc => rc.segment),
+        endLoc.display_name
+    ].filter(Boolean);
+    const tollResult = await getTollEstimate(fullCoordinates, routeData.distance, tollRegionHints);
+    console.log(`[TripProcessor] Tolls: ${tollResult.source} total=${tollResult.display} (estimated=${tollResult.isEstimated})`);
 
     const maxWindKm = Math.max(...weatherData.map(w => w.windSpeed || 0), 0);
     const maxWind = Math.round(maxWindKm * 0.621371);
@@ -228,10 +368,19 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
         if (distinctStops.length >= 3) break;
     }
 
+    // Summarize incidents for AI context + scoring
+    const incidentCounts = incidents.reduce((acc, inc) => {
+        acc[inc.type] = (acc[inc.type] || 0) + 1;
+        return acc;
+    }, {});
+
     const aiContext = {
         fuelCost: fuelCostStr, evCost: evCostStr, cities: cityList,
         minTemp, maxTemp, trafficDelay: trafficDelayMins, maxWind, precipChance,
-        recommendations: distinctStops, roadConditions, departureDate, departureTime
+        recommendations: distinctStops, roadConditions, departureDate, departureTime,
+        tollCost: tollResult.total, tollDisplay: tollResult.display, tollEstimated: tollResult.isEstimated,
+        incidents, incidentCounts,
+        durationMinutes: minutes, distanceMiles: Number(totalDistanceMiles)
     };
 
     const aiAnalysis = generateTripAnalysis(startLoc.display_name, endLoc.display_name, weatherData, distanceVal, durationVal, roadConditions, aiContext);
@@ -282,13 +431,37 @@ const processLeg = async (startLoc, endLoc, departureDate, departureTime, isScen
 
     return {
         route: routeData.geometry,
-        metrics: { distance: distanceVal, time: durationVal, fuel: fuelCostStr, ev: evCostStr },
+        metrics: {
+            distance: distanceVal,
+            time: durationVal,
+            fuel: fuelCostStr,
+            ev: evCostStr,
+            gasPricePerGallon: `$${avgGasPrice.toFixed(2)}/gal`,
+            trafficSource: trafficResult.isRealData ? 'TomTom' : 'estimated',
+            tollCost: tollResult.display,
+            tollEstimated: tollResult.isEstimated
+        },
         weather: weatherData,
         roadConditions,
         aiAnalysis,
         tripScore: safetyScore,
         departureInsights,
-        recommendations
+        recommendations,
+        traffic: {
+            delayMinutes: trafficDelayMins,
+            congestionLevel: trafficResult.congestionLevel,
+            segments: trafficResult.segments,
+            isRealData: trafficResult.isRealData
+        },
+        incidents,
+        tolls: {
+            total: tollResult.total,
+            currency: tollResult.currency,
+            display: tollResult.display,
+            breakdown: tollResult.breakdown,
+            isEstimated: tollResult.isEstimated,
+            source: tollResult.source
+        }
     };
 };
 
