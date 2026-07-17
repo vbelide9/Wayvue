@@ -773,10 +773,15 @@ create table if not exists public.trip_checklist_items (
   done          boolean not null default false,
   completed_by  uuid references auth.users(id) on delete set null,
   completed_at  timestamptz,
+  assigned_to   uuid references auth.users(id) on delete set null,   -- optional owner
+  due_date      date,                                                -- optional deadline
   position      integer not null default 0,
   created_at    timestamptz not null default now()
 );
 create index if not exists trip_checklist_trip_idx on public.trip_checklist_items (trip_id, position);
+-- Existing deployments (§14 already run): add the assignee + due-date columns.
+alter table public.trip_checklist_items add column if not exists assigned_to uuid references auth.users(id) on delete set null;
+alter table public.trip_checklist_items add column if not exists due_date date;
 
 alter table public.trip_checklist_items enable row level security;
 
