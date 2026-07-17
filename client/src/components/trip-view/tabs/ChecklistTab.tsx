@@ -3,6 +3,7 @@
 // given a due date, reordered by drag, and seeded from trip-tailored suggestions. Shows who
 // added / completed each. Mirrors PlaylistTab/ExpensesTab gating & patterns.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ListChecks, Plus, Trash2, Check, Loader2, Calendar, User as UserIcon, GripVertical, Sparkles, X } from 'lucide-react';
 import { useTripPlan } from '@/lib/TripPlanContext';
 import { useGroupTrip } from '@/lib/GroupTripContext';
@@ -299,24 +300,42 @@ export function ChecklistTab({ destination, placeNames, depDate }: { destination
     );
 }
 
-// Small popover to (re)assign an item to a member.
+// Small popover to (re)assign an item to a member. Portaled to <body> with fixed positioning
+// so it isn't clipped by the insights panel's scroll container; opens above the trigger when
+// there isn't room below.
 function AssignMenu({ members, value, assigned, onChange }: {
     members: TripMember[]; value: string | null; assigned?: TripMember; onChange: (uid: string | null) => void;
 }) {
     const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+    const WIDTH = 176; // w-44
+    const place = () => {
+        const r = btnRef.current?.getBoundingClientRect();
+        if (!r) return;
+        const estHeight = Math.min(240, 40 + members.length * 32);
+        const below = window.innerHeight - r.bottom;
+        const top = below > estHeight + 8 ? r.bottom + 6 : Math.max(8, r.top - estHeight - 6);
+        const left = Math.min(Math.max(8, r.right - WIDTH), window.innerWidth - WIDTH - 8);
+        setPos({ top, left });
+    };
+    const toggle = () => { if (!open) place(); setOpen(o => !o); };
+
     return (
-        <div className="relative shrink-0">
-            <button onClick={() => setOpen(o => !o)} title={assigned ? `Assigned to ${assigned.name}` : 'Assign'} aria-label="Assign">
+        <div className="shrink-0">
+            <button ref={btnRef} onClick={toggle} title={assigned ? `Assigned to ${assigned.name}` : 'Assign'} aria-label="Assign">
                 {assigned ? <Avatar member={assigned} size={24} /> : (
                     <span className="w-6 h-6 rounded-full border border-dashed border-border flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:border-primary/50">
                         <UserIcon className="w-3.5 h-3.5" />
                     </span>
                 )}
             </button>
-            {open && (
+            {open && pos && createPortal(
                 <>
-                    <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-                    <div className="absolute right-0 top-8 z-20 w-44 bg-card border border-border rounded-xl shadow-soft-lg p-1">
+                    <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+                    <div style={{ position: 'fixed', top: pos.top, left: pos.left, width: WIDTH }}
+                        className="z-[91] max-h-60 overflow-y-auto bg-card border border-border rounded-xl shadow-soft-lg p-1">
                         <button onClick={() => { onChange(null); setOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-secondary">
                             <X className="w-3.5 h-3.5" /> Unassigned
                         </button>
@@ -327,7 +346,8 @@ function AssignMenu({ members, value, assigned, onChange }: {
                             </button>
                         ))}
                     </div>
-                </>
+                </>,
+                document.body,
             )}
         </div>
     );
