@@ -760,6 +760,35 @@ drop policy if exists trip_expense_shares_delete_member on public.trip_expense_s
 create policy trip_expense_shares_delete_member on public.trip_expense_shares
   for delete to authenticated using (public.is_trip_member(trip_id));
 
+-- 13b. Recorded settlements — a "mark as paid" cash transfer between two members. Balances
+--      fold these in (payer's net rises, receiver's net falls) so a settled debt zeroes out.
+--      Same participant RLS as expenses.
+create table if not exists public.trip_settlements (
+  id           uuid primary key default gen_random_uuid(),
+  trip_id      uuid not null references public.trips(id) on delete cascade,
+  from_user    uuid not null references auth.users(id) on delete cascade,   -- who paid
+  to_user      uuid not null references auth.users(id) on delete cascade,   -- who received
+  amount_cents integer not null check (amount_cents > 0),
+  currency     text not null default 'USD',
+  created_by   uuid not null references auth.users(id) on delete cascade,
+  created_at   timestamptz not null default now()
+);
+create index if not exists trip_settlements_trip_idx on public.trip_settlements (trip_id, created_at);
+
+alter table public.trip_settlements enable row level security;
+
+drop policy if exists trip_settlements_select_member on public.trip_settlements;
+create policy trip_settlements_select_member on public.trip_settlements
+  for select to authenticated using (public.is_trip_member(trip_id));
+
+drop policy if exists trip_settlements_insert_member on public.trip_settlements;
+create policy trip_settlements_insert_member on public.trip_settlements
+  for insert to authenticated with check (public.is_trip_member(trip_id) and auth.uid() = created_by);
+
+drop policy if exists trip_settlements_delete_member on public.trip_settlements;
+create policy trip_settlements_delete_member on public.trip_settlements
+  for delete to authenticated using (public.is_trip_member(trip_id));
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 14. Trip checklist — a shared to-do list per trip (pack the tent, book the campsite, …).
 --     Any member can add items and check them off; `completed_by` / `completed_at` record
