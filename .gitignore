@@ -52,9 +52,43 @@ server_log*.txt
 # Firebase
 .firebase/
 
-# AI Design Agents
+# AI coding-assistant config/skill dirs (auto-generated per tool — not part of the app)
+.adal/
+.agent/
 .agents/
+.augment/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
 .stitch/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+
+# Generated tool output (knowledge graph, etc.)
+graphify-out/
+
+# Source media originals (served copies live in client/public/) — kept locally, not in git
+resources/
 
 # Scrollytelling Raw Assets & Venvs
 Landing\ page\ 4k.mp4
