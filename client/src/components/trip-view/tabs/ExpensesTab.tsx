@@ -356,8 +356,11 @@ function ExpenseForm({ members, defaultPayer, tripId, editing, onSaved, onCancel
     const [weights, setWeights] = useState<Record<string, string>>(initWeights);
     const [saving, setSaving] = useState(false);
 
-    const totalCents = parseAmountToCents(amount) ?? 0;
     const parts = members.filter(m => selected.has(m.userId));
+    // In 'exact' mode the total IS the sum of the per-person amounts — the user shouldn't also
+    // have to type a separate total. For every other mode, the typed amount is the total.
+    const exactSumCents = parts.reduce((sum, p) => sum + (parseAmountToCents(weights[p.userId] ?? '') ?? 0), 0);
+    const totalCents = splitType === 'exact' ? exactSumCents : (parseAmountToCents(amount) ?? 0);
 
     const toggle = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
     const setWeight = (id: string, v: string) => setWeights(w => ({ ...w, [id]: v }));
@@ -385,14 +388,18 @@ function ExpenseForm({ members, defaultPayer, tripId, editing, onSaved, onCancel
             if (Math.abs(sum - 100) > 0.01) return { owed, error: `Percentages add up to ${+sum.toFixed(2)}% — they need to total 100%.` };
             return { owed, error: null };
         }
+        // exact: each input IS the amount that person owes; the total is their sum (above).
         const cents = ids.map(id => parseAmountToCents(weights[id] ?? '') ?? 0);
         cents.forEach((c, i) => owed.set(ids[i], c));
-        const sum = cents.reduce((s, c) => s + c, 0);
-        if (sum !== totalCents) return { owed, error: `Shares add up to ${fmt(sum)} — they need to total ${fmt(totalCents)}.` };
+        if (cents.every(c => c === 0)) return { owed, error: null };
         return { owed, error: null };
     }, [parts, totalCents, splitType, weights, currency]);
 
     const canSave = description.trim() && totalCents > 0 && paidBy && !error && parts.length > 0 && !saving;
+    // Why the Add button is disabled (shown when there's no harder validation error).
+    const disabledReason = !description.trim() ? 'Add a description'
+        : totalCents <= 0 ? (splitType === 'exact' ? 'Enter each person’s amount' : 'Enter an amount')
+        : parts.length === 0 ? 'Pick who’s splitting this' : null;
 
     const submit = async () => {
         if (!canSave) return;
@@ -432,8 +439,14 @@ function ExpenseForm({ members, defaultPayer, tripId, editing, onSaved, onCancel
             <div className="flex gap-2">
                 <input value={description} onChange={e => setDescription(e.target.value)} placeholder="What was it for?"
                     className="flex-1 min-w-0 h-10 px-3 text-sm bg-secondary/40 border border-border rounded-xl outline-none focus:border-primary/50" />
-                <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00"
-                    className="w-20 h-10 px-3 text-sm bg-secondary/40 border border-border rounded-xl outline-none focus:border-primary/50 tabular-nums" />
+                <input
+                    value={splitType === 'exact' ? (totalCents > 0 ? (totalCents / 100).toFixed(2) : '') : amount}
+                    onChange={e => setAmount(e.target.value)}
+                    readOnly={splitType === 'exact'}
+                    inputMode="decimal"
+                    placeholder={splitType === 'exact' ? 'auto' : '0.00'}
+                    title={splitType === 'exact' ? 'Total is the sum of each person’s exact amount' : undefined}
+                    className={`w-20 h-10 px-3 text-sm bg-secondary/40 border border-border rounded-xl outline-none focus:border-primary/50 tabular-nums ${splitType === 'exact' ? 'text-muted-foreground cursor-default' : ''}`} />
                 <select value={currency} onChange={e => setCurrency(e.target.value)}
                     className="h-10 px-2 text-sm bg-secondary/40 border border-border rounded-xl outline-none focus:border-primary/50">
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -517,7 +530,8 @@ function ExpenseForm({ members, defaultPayer, tripId, editing, onSaved, onCancel
                 })}
             </div>
 
-            {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+            {error ? <p className="text-xs text-rose-500 font-medium">{error}</p>
+                : disabledReason && !saving ? <p className="text-xs text-muted-foreground">{disabledReason}</p> : null}
 
             <button onClick={submit} disabled={!canSave}
                 className="w-full h-10 rounded-full text-sm font-bold flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-default transition-colors">
