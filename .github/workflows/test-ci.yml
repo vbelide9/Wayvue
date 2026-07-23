@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -26,7 +26,26 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Run unit tests with coverage
-        run: npm run test:report:files
+        shell: bash
+        env:
+          CI: true
+        run: |
+          set -euo pipefail
+          mkdir -p test-report
+          npx vitest run --coverage --reporter=verbose --coverage.reporter=text-summary --coverage.reporter=html 2>&1 | tee test-report/test-summary.txt
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const summaryPath = path.join('test-report', 'test-summary.txt');
+          const badgePath = path.join('test-report', 'badge.md');
+          const summary = fs.readFileSync(summaryPath, 'utf8');
+          const passed = summary.match(/Tests\s+(\d+)\s+passed/)?.[1] ?? '0';
+          const failed = summary.match(/Tests\s+\d+\s+passed,\s*(\d+)\s+failed/)?.[1] ?? '0';
+          const files = summary.match(/Test Files\s+(\d+)\s+passed/)?.[1] ?? '0';
+          const status = failed === '0' ? 'passing' : 'failing';
+          const badge = `![Tests](https://img.shields.io/badge/tests-${passed}%20passed%2C%20${failed}%20failed-${status}?style=for-the-badge&logo=vitest)\n\n`;
+          fs.writeFileSync(badgePath, `${badge}- Test files: ${files}\n- Tests: ${passed} passed, ${failed} failed\n- Report: [test-summary.txt](test-summary.txt)\n`);
+          NODE
 
       - name: Upload test summary artifact
         uses: actions/upload-artifact@v4
